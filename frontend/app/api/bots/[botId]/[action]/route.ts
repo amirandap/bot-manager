@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: NextRequest, { params }: { params: { botId: string; action: string } }) {
-  const { botId, action } = params;
+export async function POST(request: NextRequest, { params }: { params: Promise<{ botId: string; action: string }> }) {
+  const { botId, action } = await params;
   const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!apiUrl) {
