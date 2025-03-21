@@ -1,11 +1,17 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ botId: string; action: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ botId: string; action: string }> }
+) {
   const { botId, action } = await params;
   const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!apiUrl) {
-    return NextResponse.json({ error: 'API base URL is not defined' }, { status: 500 });
+    return NextResponse.json(
+      { error: "API base URL is not defined" },
+      { status: 500 }
+    );
   }
 
   // Simulate API delay
@@ -13,20 +19,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   // Validate action
   if (action !== "start" && action !== "stop") {
-    return NextResponse.json({ error: 'Invalid action. Use "start" or "stop".' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid action. Use "start" or "stop".' },
+      { status: 400 }
+    );
   }
 
   try {
     const response = await fetch(`${apiUrl}/api/bots/${botId}/${action}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      return NextResponse.json({ error: errorData.message }, { status: response.status });
+      return NextResponse.json(
+        { error: errorData.message },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -36,8 +48,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data,
     });
   } catch (error) {
-    console.error('Error communicating with the backend service:', error);
-    return NextResponse.json({ error: 'Failed to communicate with the backend service' }, { status: 500 });
+    console.error("Error communicating with the backend service:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to communicate with the backend service",
+        message: error,
+      },
+      { status: 500 }
+    );
   }
 }
-
