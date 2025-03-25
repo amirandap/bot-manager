@@ -68,7 +68,7 @@ export default function BotDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground" suppressHydrationWarning>
           {lastUpdated && <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>}
         </div>
         <Button
