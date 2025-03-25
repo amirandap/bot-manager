@@ -51,7 +51,7 @@ export default function BotCard({ bot, onStart, onStop }: BotCardProps) {
           <Button
             variant="default"
             size="sm"
-            className="w-full"
+            className="w-full cursor-pointer"
             onClick={onStart}
             disabled={bot.status === "online" || bot.status === "starting"}
           >
@@ -61,7 +61,7 @@ export default function BotCard({ bot, onStart, onStop }: BotCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full"
+            className="w-full cursor-pointer"
             onClick={onStop}
             disabled={bot.status === "offline" || bot.status === "stopping"}
           >

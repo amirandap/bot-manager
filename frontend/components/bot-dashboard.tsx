@@ -92,9 +92,9 @@ export default function BotDashboard() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {bots.map((bot) => (
+        {bots.map((bot, index) => (
           <BotCard
-            key={bot.id}
+            key={index}
             bot={bot}
             onStart={() => handleBotAction(bot.id, "start")}
             onStop={() => handleBotAction(bot.id, "stop")}
