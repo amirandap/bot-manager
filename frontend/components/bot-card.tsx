@@ -3,9 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Square, MessageSquare, MessageCircle } from "lucide-react"
+import { MessageSquare, MessageCircle, RefreshCw, QrCode } from "lucide-react"
 import StatusIndicator from "./status-indicator"
 import type { Bot } from "@/lib/types"
+import Link from "next/link"
 
 interface BotCardProps {
   bot: Bot
@@ -13,7 +14,7 @@ interface BotCardProps {
   onStop: () => void
 }
 
-export default function BotCard({ bot, onStart, onStop }: BotCardProps) {
+export default function BotCard({ bot, onStop }: BotCardProps) {
 
   const getBotIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -45,19 +46,11 @@ export default function BotCard({ bot, onStart, onStop }: BotCardProps) {
             <span className="text-sm font-medium capitalize">{bot.status}</span>
           </div>
           <span className="text-xs text-muted-foreground">{bot.uptime ? `Uptime: ${bot.uptime}` : ""}</span>
+          <span className="text-xs text-muted-foreground">Port: {bot.port}</span>
+          <span className="text-xs text-muted-foreground">Root folder: {bot.rootFolder}</span>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            className="w-full cursor-pointer"
-            onClick={onStart}
-            disabled={bot.status === "online" || bot.status === "starting"}
-          >
-            <Play className="h-4 w-4 mr-1" />
-            Start
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -65,8 +58,19 @@ export default function BotCard({ bot, onStart, onStop }: BotCardProps) {
             onClick={onStop}
             disabled={bot.status === "offline" || bot.status === "stopping"}
           >
-            <Square className="h-4 w-4 mr-1" />
-            Stop
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Restart
+          </Button>
+          <Button
+            asChild
+            size="sm"
+            className="w-full cursor-pointer"
+            disabled={bot.status === "offline" || bot.status === "stopping"}
+          >
+            <Link href={bot.QrCode} target="_blank">
+            <QrCode className="h-4 w-4 mr-1" />
+            Scan QR
+            </Link>
           </Button>
         </div>
       </CardContent>

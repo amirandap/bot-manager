@@ -13,10 +13,8 @@ export class BotsController {
 
     public async getAllBots(req: Request, res: Response): Promise<void> {
         try {
-            const discordBots = await this.discordService.fetchBots();
             const whatsappBots = await this.whatsappService.fetchBots();
-            const allBots = [...discordBots, ...whatsappBots];
-            res.json(allBots);
+            res.json(whatsappBots);
         } catch (error) {
             res.status(500).json({ message: 'Error fetching bots', error });
         }

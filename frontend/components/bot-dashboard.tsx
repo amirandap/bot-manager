@@ -95,7 +95,7 @@ export default function BotDashboard() {
         {bots.map((bot, index) => (
           <BotCard
             key={index}
-            bot={bot}
+            bot={{ ...bot, type: 'Whatsapp', id: index.toString(), name: `WhatsApp Bot ${index + 1}` }}
             onStart={() => handleBotAction(bot.id, "start")}
             onStop={() => handleBotAction(bot.id, "stop")}
           />

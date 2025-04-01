@@ -10,5 +10,8 @@ export interface Bot {
   type: string
   status: string
   uptime: string | null
+  port: number | string
+  rootFolder: string
+  QrCode: string
 }
 
