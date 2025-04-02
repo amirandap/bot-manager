@@ -45,12 +45,14 @@ export default function BotDashboard() {
     return () => clearInterval(intervalId)
   }, [])
 
-  const handleBotAction = async (botId: string, action: "start" | "stop") => {
+  const handleBotAction = async (botId: string, action: "start" | "stop", qrUrl: string) => {
     try {
       setError(null)
 
+      const baseUrl = qrUrl.split('/').slice(0, 3).join('/')
       const response = await fetch(`/api/bots/${botId}/${action}`, {
         method: "POST",
+        body: JSON.stringify({ apiBaseUrl: baseUrl }),
       })
 
       if (!response.ok) {
@@ -96,8 +98,8 @@ export default function BotDashboard() {
           <BotCard
             key={index}
             bot={{ ...bot, type: 'Whatsapp', id: index.toString(), name: `WhatsApp Bot ${index + 1}` }}
-            onStart={() => handleBotAction(bot.id, "start")}
-            onStop={() => handleBotAction(bot.id, "stop")}
+            onStart={() => handleBotAction(bot.id, "start", bot.QrCode)}
+            onStop={() => handleBotAction(bot.id, "stop", bot.QrCode)}
           />
         ))}
 

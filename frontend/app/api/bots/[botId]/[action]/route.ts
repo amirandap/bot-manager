@@ -4,29 +4,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ botId: string; action: string }> }
 ) {
-  const { botId, action } = await params;
-  const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-  if (!apiUrl) {
-    return NextResponse.json(
-      { error: "API base URL is not defined" },
-      { status: 500 }
-    );
-  }
-
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  // Validate action
-  if (action !== "start" && action !== "stop") {
-    return NextResponse.json(
-      { error: 'Invalid action. Use "start" or "stop".' },
-      { status: 400 }
-    );
-  }
-
+  const { apiBaseUrl } = await request.json();
   try {
-    const response = await fetch(`${apiUrl}/api/bots/${botId}/${action}`, {
+    const response = await fetch(`${apiBaseUrl}/restart`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -44,7 +24,7 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json({
       success: true,
-      message: `Bot ${botId} ${action} command sent successfully`,
+      message: `Bot restarted successfully`,
       data,
     });
   } catch (error) {
