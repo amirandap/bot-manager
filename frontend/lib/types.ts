@@ -13,5 +13,13 @@ export interface Bot {
   port: number | string
   rootFolder: string
   QrCode: string
+  client: {
+    wid: {
+      _serialized: string
+      user: string
+      server: string
+    }
+    pushname: string
+  }
 }
 

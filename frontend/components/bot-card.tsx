@@ -40,7 +40,7 @@ export default function BotCard({ bot, onStop }: BotCardProps) {
       </CardHeader>
 
       <CardContent className="pb-2">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-col">
           <div className="flex items-center gap-2">
             <StatusIndicator status={bot.status} />
             <span className="text-sm font-medium capitalize">{bot.status}</span>
@@ -48,6 +48,16 @@ export default function BotCard({ bot, onStop }: BotCardProps) {
           <span className="text-xs text-muted-foreground">{bot.uptime ? `Uptime: ${bot.uptime}` : ""}</span>
           <span className="text-xs text-muted-foreground">Port: {bot.port}</span>
           <span className="text-xs text-muted-foreground">Root folder: {bot.rootFolder}</span>
+          {bot.client?.pushname && (
+            <>
+            <span className="text-xs text-muted-foreground">
+              Pushname: {bot.client.pushname}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Wid: {bot.client.wid._serialized}
+            </span>
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
