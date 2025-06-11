@@ -9,11 +9,12 @@ import receiveImageAndJSONRoute from '../routes/receiveImageAndJson';
 import confirmationRoute from '../routes/confirmation';
 import getGroupsRoute from '../routes/getGroups';
 import { sendMessage } from '../helpers/helpers';
-import { app } from '..';
+import { app, BOT_ID, SESSION_PATH, QR_PATH, LOGS_PATH } from '..';
 import { getGroupDetails } from '@src/helpers/groupHelper';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fallbackNumber } from '@src/routes/changeFallbackNumberRoute';
 
 dotenv.config();
@@ -23,11 +24,26 @@ let emailSent = false;
 
 export async function initializeClient() {
   try {
+    console.log(`🚀 Initializing WhatsApp client for bot: ${BOT_ID}`);
+    console.log(`📂 Using session path: ${SESSION_PATH}`);
+    
     client = new Client({
-      authStrategy: new LocalAuth(),
+      authStrategy: new LocalAuth({
+        dataPath: SESSION_PATH,
+        clientId: BOT_ID
+      }),
       puppeteer: {
         headless: true,
-        args: ['--no-sandbox'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ],
         executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
       },
     });

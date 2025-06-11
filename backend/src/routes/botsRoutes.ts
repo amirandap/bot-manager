@@ -15,7 +15,7 @@ export function setBotsRoutes(app: Router) {
     // Get bot by ID
     app.get('/api/bots/:id', botsController.getBotById.bind(botsController));
     
-    // Create a new bot
+    // Create a new bot configuration
     app.post('/api/bots', botsController.createBot.bind(botsController));
     
     // Update a bot
@@ -39,4 +39,24 @@ export function setBotsRoutes(app: Router) {
             return res.status(500).send({ error: 'Internal server error' });
         }
     });
+
+    // ===== NEW BOT SPAWNING ROUTES =====
+    
+    // Create and start a new WhatsApp bot (creates config + starts PM2 process)
+    app.post('/api/bots/spawn/whatsapp', botsController.spawnWhatsAppBot.bind(botsController));
+    
+    // Terminate bot completely (stops PM2 + removes config + deletes data)
+    app.delete('/api/bots/:id/terminate', botsController.terminateBot.bind(botsController));
+    
+    // Start existing bot (PM2 start)
+    app.post('/api/bots/:id/start', botsController.spawnBot.bind(botsController));
+    
+    // Stop existing bot (PM2 stop)
+    app.post('/api/bots/:id/stop', botsController.killBot.bind(botsController));
+    
+    // Restart existing bot (PM2 restart)
+    app.post('/api/bots/:id/restart', botsController.restartBot.bind(botsController));
+    
+    // Get bot synchronization status (config vs PM2)
+    app.get('/api/bots/sync/status', botsController.getBotSync.bind(botsController));
 }

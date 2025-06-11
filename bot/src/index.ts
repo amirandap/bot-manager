@@ -10,7 +10,35 @@ import qrCodeRoute from './routes/qrCodeRoute';
 import statusRoute from './routes/statusRoute';
 import restartRoute from './routes/restartRoute';
 import changeFallbackNumberRoute from './routes/changeFallbackNumberRoute';
-import changePortRoute, { port } from './routes/changePortRoute';
+import changePortRoute from './routes/changePortRoute';
+import path from 'path';
+import fs from 'fs';
+
+// Bot configuration from environment variables
+export const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
+export const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
+export const BOT_PORT = parseInt(process.env.BOT_PORT || '3000');
+export const BOT_TYPE = process.env.BOT_TYPE || 'whatsapp';
+
+// Centralized data paths
+export const DATA_ROOT = path.join(__dirname, '../../data');
+export const SESSION_PATH = path.join(DATA_ROOT, 'sessions', BOT_ID);
+export const QR_PATH = path.join(DATA_ROOT, 'qr-codes');
+export const LOGS_PATH = path.join(DATA_ROOT, 'logs', BOT_ID);
+
+// Create directories if they don't exist
+[SESSION_PATH, QR_PATH, LOGS_PATH].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Created directory: ${dir}`);
+    }
+});
+
+console.log(`🤖 Initializing ${BOT_NAME} (${BOT_ID})`);
+console.log(`📂 Session path: ${SESSION_PATH}`);
+console.log(`📱 QR path: ${QR_PATH}`);
+console.log(`📄 Logs path: ${LOGS_PATH}`);
+console.log(`🌐 Port: ${BOT_PORT}`);
 
 export const app = express();
 app.use(bodyParser.json());
@@ -26,28 +54,87 @@ const startServer = (initialPort: number) => {
   let currentPort = initialPort;
 
   const attemptStart = () => app.listen(currentPort, () => {
-    console.log(`Server started on port ${currentPort}. Initializing WhatsApp client...`);
+    console.log(`✅ ${BOT_NAME} server started on port ${currentPort}`);
+    console.log(`🔗 Status: http://localhost:${currentPort}/status`);
+    console.log(`📱 QR Code: http://localhost:${currentPort}/qr-code`);
+    
+    // Log server start
+    const statusLog = path.join(LOGS_PATH, 'status.log');
+    fs.appendFileSync(statusLog, `${new Date().toISOString()} - Server Started on port ${currentPort}\n`);
+    
+    console.log('🚀 Initializing WhatsApp client...');
     initializeClient()
       .then(() => {
         if (client) {
           appendListeners(client);
+          console.log(`🎉 ${BOT_NAME} fully initialized and ready!`);
         }
+      })
+      .catch((error) => {
+        console.error('❌ Error initializing WhatsApp client:', error);
+        
+        // Log initialization error
+        const errorLog = path.join(LOGS_PATH, 'errors.log');
+        fs.appendFileSync(errorLog, `${new Date().toISOString()} - Init Error: ${error.message}\n`);
       });
   }).on('error', (err: SystemError) => {
-    console.log(err);
+    console.error(`❌ Server error on port ${currentPort}:`, err);
+    
     if (err.code === 'EADDRINUSE') {
-      console.log('Address in use, retrying...');
+      console.log(`⚠️  Port ${currentPort} in use, trying ${currentPort + 1}...`);
       setTimeout(() => {
         currentPort += 1;
         attemptStart();
       }, 1000);
+    } else {
+      // Log other server errors
+      const errorLog = path.join(LOGS_PATH, 'errors.log');
+      fs.appendFileSync(errorLog, `${new Date().toISOString()} - Server Error: ${err.message}\n`);
     }
   });
 
   attemptStart();
 };
 
-startServer(port);
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    console.log(`🛑 Gracefully shutting down ${BOT_NAME}...`);
+    
+    // Log shutdown
+    const statusLog = path.join(LOGS_PATH, 'status.log');
+    fs.appendFileSync(statusLog, `${new Date().toISOString()} - Graceful Shutdown\n`);
+    
+    if (client) {
+        try {
+            await client.destroy();
+            console.log('✅ WhatsApp client destroyed');
+        } catch (error) {
+            console.error('❌ Error destroying client:', error);
+        }
+    }
+    
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log(`🛑 Received SIGTERM, shutting down ${BOT_NAME}...`);
+    
+    // Log shutdown
+    const statusLog = path.join(LOGS_PATH, 'status.log');
+    fs.appendFileSync(statusLog, `${new Date().toISOString()} - SIGTERM Shutdown\n`);
+    
+    if (client) {
+        try {
+            await client.destroy();
+        } catch (error) {
+            console.error('❌ Error destroying client:', error);
+        }
+    }
+    
+    process.exit(0);
+});
+
+startServer(BOT_PORT);
 
 process.on('SIGINT', async () => {
   if (client !== null) {
