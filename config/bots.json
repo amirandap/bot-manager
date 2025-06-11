@@ -1,8 +1,8 @@
 {
   "bots": [
     {
-      "id": "whatsapp-bot-2",
-      "name": "WhatsApp Bot 2",
+      "id": "whatsapp-bot-3",
+      "name": "WhatsApp Bot 3",
       "type": "whatsapp",
       "pm2ServiceId": "wa-bot-2",
       "apiHost": "http://20.121.40.254",
