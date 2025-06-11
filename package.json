@@ -1,0 +1,47 @@
+{
+  "name": "bot-manager",
+  "version": "1.0.0",
+  "description": "A monorepo project for managing Discord and WhatsApp bots with a React frontend and Node.js backend",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "clean": "cd backend && rm -rf dist node_modules && cd ../frontend && rm -rf .next node_modules && rm -rf node_modules",
+    "setup": "./setup.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/bot-manager.git"
+  },
+  "keywords": [
+    "discord",
+    "whatsapp",
+    "bot",
+    "manager",
+    "nextjs",
+    "nodejs",
+    "typescript",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/bot-manager/issues"
+  },
+  "homepage": "https://github.com/yourusername/bot-manager#readme"
+}

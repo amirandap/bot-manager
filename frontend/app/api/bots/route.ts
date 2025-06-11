@@ -1,41 +1,16 @@
 import { NextResponse } from "next/server";
-import type { Bot } from "@/lib/types";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
 
 export async function GET() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-  if (!apiUrl) {
-    return NextResponse.json(
-      { error: "API base URL is not defined" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const response = await fetch(`${apiUrl}/api/bots`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return NextResponse.json(
-        { error: errorData.message },
-        { status: response.status }
-      );
-    }
-
-    const bots: Bot[] = await response.json();
-    return NextResponse.json(bots);
+    const response = await fetch(`${API_BASE_URL}/api/bots`);
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error("Error communicating with the backend service:", error);
+    console.error("Error fetching bots:", error);
     return NextResponse.json(
-      {
-        error: "Failed to communicate with the backend service",
-        message: error,
-      },
+      { error: "Failed to fetch bots" },
       { status: 500 }
     );
   }

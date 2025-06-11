@@ -3,12 +3,16 @@ import { setBotsRoutes } from './routes/botsRoutes';
 import { setStatusRoutes } from './routes/statusRoutes';
 import cors from 'cors';
 import morgan from 'morgan';
-import { WAPI_URL } from './constants/Urls';
+import { ConfigService } from './services/configService';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+
+// Initialize config service with fallback API host
+const configService = ConfigService.getInstance();
+configService.setFallbackApiHost(process.env.FALLBACK_API_HOST || 'http://localhost');
 
 app.use(express.json());
 app.use(cors());
@@ -16,6 +20,11 @@ app.use(morgan('short'))
 
 setBotsRoutes(app);
 setStatusRoutes(app);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

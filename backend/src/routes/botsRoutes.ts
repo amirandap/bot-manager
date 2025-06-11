@@ -9,10 +9,22 @@ const botsController = new BotsController();
 const upload = multer(); // No storage configuration needed for in-memory parsing
 
 export function setBotsRoutes(app: Router) {
+    // Get all bots
     app.get('/api/bots', botsController.getAllBots.bind(botsController));
+    
+    // Get bot by ID
     app.get('/api/bots/:id', botsController.getBotById.bind(botsController));
+    
+    // Create a new bot
+    app.post('/api/bots', botsController.createBot.bind(botsController));
+    
+    // Update a bot
+    app.put('/api/bots/:id', botsController.updateBot.bind(botsController));
+    
+    // Delete a bot
+    app.delete('/api/bots/:id', botsController.deleteBot.bind(botsController));
 
-    // New route to forward the request body to a specific bot by ID
+    // Send message to bot
     app.post('/api/bots/:id/send', upload.single('file'), async (req, res) => {
         try {
             const botId = req.params.id;

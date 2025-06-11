@@ -1,0 +1,30 @@
+{
+  "bots": [
+    {
+      "id": "whatsapp-bot-2",
+      "name": "WhatsApp Bot 2",
+      "type": "whatsapp",
+      "pm2ServiceId": "wa-bot-2",
+      "apiHost": "http://20.121.40.254",
+      "apiPort": 7263,
+      "phoneNumber": "+0987654321",
+      "pushName": "Bot Asistente 2",
+      "enabled": true,
+      "createdAt": "2025-06-11T00:00:00.000Z",
+      "updatedAt": "2025-06-11T00:00:00.000Z"
+    },
+    {
+      "name": "Container AMP",
+      "type": "whatsapp",
+      "pm2ServiceId": "wabot-7262",
+      "apiHost": "http://20.121.40.254",
+      "apiPort": 7262,
+      "phoneNumber": "18296459554",
+      "pushName": "AM",
+      "enabled": true,
+      "id": "whatsapp-bot-1749651719712",
+      "createdAt": "2025-06-11T14:21:59.712Z",
+      "updatedAt": "2025-06-11T17:35:52.771Z"
+    }
+  ]
+}

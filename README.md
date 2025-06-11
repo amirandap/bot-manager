@@ -1,6 +1,6 @@
 # Bot Manager
 
-Bot Manager is a monorepo project that provides a backend service for managing Discord and WhatsApp bots, along with a frontend interface built using Next.js. The backend exposes RESTful API endpoints to retrieve bot information and their statuses, while the frontend offers a user-friendly interface to manage and view the status of these bots.
+Bot Manager is a monorepo project that provides a backend service for managing Discord and WhatsApp bots, along with a frontend interface built using Next.js. The backend uses a configuration file to manage bot definitions and exposes RESTful API endpoints to retrieve bot information and their statuses, while the frontend offers a user-friendly interface to manage and view the status of these bots.
 
 ## Project Structure
 
@@ -10,7 +10,7 @@ bot-manager
 │   ├── src
 │   │   ├── controllers       # Controllers for handling requests
 │   │   ├── routes            # Route definitions
-│   │   ├── services          # Services for bot interactions
+│   │   ├── services          # Services for bot interactions and config management
 │   │   ├── app.ts            # Entry point for the backend application
 │   │   └── types             # Type definitions
 │   ├── package.json          # Backend dependencies and scripts
@@ -25,6 +25,8 @@ bot-manager
 │   ├── package.json         # Frontend dependencies and scripts
 │   ├── tsconfig.json        # TypeScript configuration for frontend
 │   └── README.md            # Documentation for the frontend
+├── config                 # Configuration files
+│   └── bots.json          # Bot configuration file
 ├── package.json           # Root configuration for the monorepo
 └── README.md              # Overview and setup instructions for the project
 ```
@@ -32,12 +34,36 @@ bot-manager
 ## Features
 
 - **Backend**:
-  - RESTful API to manage Discord and WhatsApp bots.
-  - Endpoints to retrieve all bots and their statuses.
+  - Configuration-driven bot management via JSON file
+  - RESTful API to manage Discord and WhatsApp bots
+  - Endpoints to retrieve all bots and their statuses
+  - CRUD operations for bot management
+  - Fallback API host configuration for empty apiHost values
   
 - **Frontend**:
-  - User interface to view and manage bot statuses.
-  - Built with Next.js 15 using the app router.
+  - User interface to view and manage bot statuses
+  - Built with Next.js 15 using the app router
+
+## Configuration
+
+The bot configuration is stored in `config/bots.json`. Each bot entry includes:
+
+- `id`: Unique identifier for the bot
+- `name`: Display name of the bot
+- `type`: Bot type ('whatsapp' or 'discord')
+- `pm2ServiceId`: PM2 process identifier
+- `apiHost`: API host URL (uses fallback if empty)
+- `apiPort`: API port number
+- `phoneNumber`: WhatsApp phone number (null for Discord bots)
+- `pushName`: WhatsApp display name (null for Discord bots)
+- `enabled`: Whether the bot is active
+- `createdAt`: Creation timestamp
+- `updatedAt`: Last update timestamp
+
+### Environment Variables
+
+- `FALLBACK_API_HOST`: Default API host when bot's apiHost is empty (default: 'http://localhost')
+- `PORT`: Backend server port (default: 3001)
 
 ## Getting Started
 
@@ -62,6 +88,12 @@ bot-manager
    npm install
    ```
 
+3. Ensure the configuration file exists:
+   ```
+   mkdir -p config
+   # Copy the sample configuration or create your own config/bots.json
+   ```
+
 ### Running the Application
 
 - To start the backend server:
@@ -78,9 +110,13 @@ bot-manager
 
 ### API Endpoints
 
-- **GET /api/bots**: Retrieve all current Discord and WhatsApp bots.
-- **GET /api/status/discord**: Get the status of Discord bots.
-- **GET /api/status/whatsapp**: Get the status of WhatsApp bots.
+- **GET /api/bots**: Retrieve all configured bots
+- **GET /api/status/discord**: Get the status of Discord bots
+- **GET /api/status/whatsapp**: Get the status of WhatsApp bots
+- **GET /api/status/:id**: Get the status of a specific bot
+- **POST /api/bots**: Create a new bot configuration
+- **PUT /api/bots/:id**: Update an existing bot configuration
+- **DELETE /api/bots/:id**: Delete a bot configuration
 
 ## Contributing
 
