@@ -73,6 +73,14 @@ next-env.d.ts
 # PM2
 .pm2/
 
+# Bot configurations (server-specific)
+config/bots.json
+
+# Data directories (runtime data)
+data/sessions/
+data/logs/
+data/qr-codes/
+
 # TypeScript
 *.tsbuildinfo
 

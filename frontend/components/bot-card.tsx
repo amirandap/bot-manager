@@ -77,13 +77,21 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             {getBotIcon(bot.type)}
             <CardTitle>{bot.name}</CardTitle>
           </div>
-          <Badge
-            variant={
-              bot.type.toLowerCase() === "discord" ? "default" : "outline"
-            }
-          >
-            {bot.type}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={
+                bot.type.toLowerCase() === "discord" ? "default" : "outline"
+              }
+            >
+              {bot.type}
+            </Badge>
+            <Badge
+              variant={bot.isExternal ? "secondary" : "default"}
+              title={bot.isExternal ? "External bot (not managed by our PM2)" : "Internal bot (managed by our PM2)"}
+            >
+              {bot.isExternal ? "External" : "Internal"}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
 
@@ -106,7 +114,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
           <div className="text-xs text-muted-foreground space-y-1 w-full">
             <div>API Host: {bot.apiHost}</div>
             <div>Port: {bot.apiPort}</div>
-            <div>PM2 Service: {bot.pm2ServiceId}</div>
+            {!bot.isExternal && bot.pm2ServiceId && (
+              <div>PM2 Service: {bot.pm2ServiceId}</div>
+            )}
             {bot.phoneNumber && <div>Phone: {bot.phoneNumber}</div>}
             {bot.pushName && <div>Push Name: {bot.pushName}</div>}
             <div>Created: {formatDate(bot.createdAt)}</div>
@@ -114,8 +124,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               <div>Last Seen: {new Date(status.lastSeen).toLocaleString()}</div>
             )}
 
-            {/* Enhanced PM2 Information */}
-            {status?.pm2 && (
+            {/* Enhanced PM2 Information - only for internal bots */}
+            {!bot.isExternal && status?.pm2 && (
               <div className="pt-2 border-t border-gray-200">
                 <div className="font-medium text-gray-700">Process Info:</div>
                 {status.pm2.pid && <div>PID: {status.pm2.pid}</div>}
