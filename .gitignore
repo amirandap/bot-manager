@@ -91,3 +91,5 @@ temp/
 # Lock files (optional - some teams prefer to commit these)
 # package-lock.json
 # yarn.lock
+config/bots.json
+config/bots.json

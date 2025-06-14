@@ -87,7 +87,11 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             </Badge>
             <Badge
               variant={bot.isExternal ? "secondary" : "default"}
-              title={bot.isExternal ? "External bot (not managed by our PM2)" : "Internal bot (managed by our PM2)"}
+              title={
+                bot.isExternal
+                  ? "External bot (not managed by our PM2)"
+                  : "Internal bot (managed by our PM2)"
+              }
             >
               {bot.isExternal ? "External" : "Internal"}
             </Badge>

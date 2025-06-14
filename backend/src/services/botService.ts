@@ -89,7 +89,7 @@ export class BotService {
       // Check if bot is external (not managed by our PM2)
       if (bot.isExternal) {
         console.log(`🌐 Bot ${bot.id} is external - skipping PM2 status check`);
-        
+
         // For external bots, only check API connectivity
         try {
           const startTime = Date.now();
@@ -113,7 +113,13 @@ export class BotService {
             apiResponseTime: responseTime,
           };
 
-          console.log(`✅ External bot ${bot.id}: API=responsive(${responseTime}ms), Status=${isConnected ? "online" : "offline"}`);
+          console.log(
+            `✅ External bot ${
+              bot.id
+            }: API=responsive(${responseTime}ms), Status=${
+              isConnected ? "online" : "offline"
+            }`
+          );
         } catch (error) {
           console.log(`❌ External bot ${bot.id}: API=unresponsive`);
           botStatus.status = "offline";
@@ -121,7 +127,9 @@ export class BotService {
       } else {
         // For internal bots, check both PM2 and API
         const pm2ProcessId = bot.pm2ServiceId || bot.id;
-        console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+        console.log(
+          `🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`
+        );
 
         // Get PM2 process status
         const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
@@ -232,7 +240,7 @@ export class BotService {
     // Check if bot is external (not managed by our PM2)
     if (bot.isExternal) {
       console.log(`🌐 Bot ${bot.id} is external - skipping PM2 status check`);
-      
+
       // For external bots, only check API connectivity
       try {
         const endpoint = bot.type === "discord" ? "/health" : "/status";
@@ -245,7 +253,11 @@ export class BotService {
         });
         const responseTime = Date.now() - startTime;
 
-        console.log("✅ External API response received:", response.status, response.data);
+        console.log(
+          "✅ External API response received:",
+          response.status,
+          response.data
+        );
 
         const isOnline =
           bot.type === "discord"
@@ -282,15 +294,27 @@ export class BotService {
           apiResponseTime: responseTime,
         };
 
-        console.log(`✅ External bot ${bot.id}: API=responsive(${responseTime}ms), Status=${isOnline ? "online" : "offline"}`);
+        console.log(
+          `✅ External bot ${
+            bot.id
+          }: API=responsive(${responseTime}ms), Status=${
+            isOnline ? "online" : "offline"
+          }`
+        );
       } catch (error) {
-        console.log(`❌ External bot ${bot.id}: API=unresponsive (${error instanceof Error ? error.message : "Unknown error"})`);
+        console.log(
+          `❌ External bot ${bot.id}: API=unresponsive (${
+            error instanceof Error ? error.message : "Unknown error"
+          })`
+        );
         botStatus.status = "offline";
       }
     } else {
       // For internal bots, check both PM2 and API
       const pm2ProcessId = bot.pm2ServiceId || bot.id;
-      console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+      console.log(
+        `🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`
+      );
 
       // Get PM2 process status first
       const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
@@ -387,7 +411,9 @@ export class BotService {
         }
       } else {
         // PM2 process is not online
-        console.log(`❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`);
+        console.log(
+          `❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`
+        );
       }
     }
 
@@ -429,7 +455,9 @@ export class BotService {
 
       // Add timeout for PM2 operations
       timeoutId = setTimeout(() => {
-        console.warn(`⚠️  PM2 operation timeout for ${pm2ProcessId}, falling back to unknown status`);
+        console.warn(
+          `⚠️  PM2 operation timeout for ${pm2ProcessId}, falling back to unknown status`
+        );
         safeResolve({ status: "unknown" });
       }, 5000);
 
@@ -443,17 +471,19 @@ export class BotService {
 
         pm2.connect((err) => {
           if (isResolved) return; // Already timed out
-          
+
           if (err) {
             console.error(`❌ Failed to connect to PM2 for status check:`, err);
-            console.warn(`💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`);
+            console.warn(
+              `💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`
+            );
             safeResolve({ status: "unknown" });
             return;
           }
 
           // Verify PM2 client is properly connected
           try {
-            if (!pm2 || typeof pm2.describe !== 'function') {
+            if (!pm2 || typeof pm2.describe !== "function") {
               console.error(`❌ PM2 client is not properly initialized`);
               safeResolve({ status: "unknown" });
               return;
@@ -465,16 +495,22 @@ export class BotService {
               // Always try to disconnect, but handle errors gracefully
               setTimeout(() => {
                 try {
-                  if (pm2 && typeof pm2.disconnect === 'function') {
+                  if (pm2 && typeof pm2.disconnect === "function") {
                     pm2.disconnect();
                   }
                 } catch (disconnectErr) {
-                  console.warn(`⚠️  Error disconnecting from PM2:`, disconnectErr);
+                  console.warn(
+                    `⚠️  Error disconnecting from PM2:`,
+                    disconnectErr
+                  );
                 }
               }, 100);
 
               if (describeErr) {
-                console.error(`❌ PM2 describe failed for ${pm2ProcessId}:`, describeErr);
+                console.error(
+                  `❌ PM2 describe failed for ${pm2ProcessId}:`,
+                  describeErr
+                );
                 safeResolve({ status: "unknown" });
                 return;
               }
@@ -530,20 +566,27 @@ export class BotService {
                   ? Date.now() - pm2Env.pm_uptime
                   : undefined,
                 lastRestart:
-                  pm2Env?.restart_time > 0 ? new Date().toISOString() : undefined,
+                  pm2Env?.restart_time > 0
+                    ? new Date().toISOString()
+                    : undefined,
               };
 
               console.log(`📊 PM2 status for ${pm2ProcessId}:`, result);
               safeResolve(result);
             });
           } catch (innerError) {
-            console.error(`❌ Error in PM2 describe operation for ${pm2ProcessId}:`, innerError);
+            console.error(
+              `❌ Error in PM2 describe operation for ${pm2ProcessId}:`,
+              innerError
+            );
             safeResolve({ status: "unknown" });
           }
         });
       } catch (pm2Error) {
         console.error(`❌ PM2 connection error for ${pm2ProcessId}:`, pm2Error);
-        console.warn(`💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`);
+        console.warn(
+          `💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`
+        );
         safeResolve({ status: "unknown" });
       }
     });

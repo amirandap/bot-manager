@@ -249,9 +249,7 @@ export class BotSpawnerService {
     };
 
     console.log(`📦 PM2 Configuration:`);
-    console.log(
-      `   - Script: ${path.join(this.botDirectory, "src/index.ts")}`
-    );
+    console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
     console.log(`   - Interpreter: ts-node`);
     console.log(`   - Working Directory: ${this.botDirectory}`);
     console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
@@ -334,7 +332,7 @@ export class BotSpawnerService {
   private async addBotToConfig(botConfig: any, botId: string): Promise<Bot> {
     // Generate PM2 service name using the predictable format: wabot-$portnumber
     const pm2ServiceId = `wabot-${botConfig.apiPort}`;
-    
+
     const newBot: Bot = {
       ...botConfig,
       id: botId,
@@ -352,7 +350,7 @@ export class BotSpawnerService {
     console.log(`   - Name: ${addedBot.name}`);
     console.log(`   - Port: ${addedBot.apiPort}`);
     console.log(`   - PM2 Service: ${addedBot.pm2ServiceId}`);
-    console.log(`   - External: ${addedBot.isExternal ? 'Yes' : 'No'}`);
+    console.log(`   - External: ${addedBot.isExternal ? "Yes" : "No"}`);
 
     return addedBot;
   }
@@ -392,10 +390,15 @@ export class BotSpawnerService {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error stopping bot ${botId} (PM2: ${pm2ServiceId}):`, err);
+            console.error(
+              `❌ Error stopping bot ${botId} (PM2: ${pm2ServiceId}):`,
+              err
+            );
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) stopped successfully`);
+            console.log(
+              `✅ Bot ${botId} (PM2: ${pm2ServiceId}) stopped successfully`
+            );
             resolve(true);
           }
         });
@@ -438,10 +441,15 @@ export class BotSpawnerService {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error starting bot ${botId} (PM2: ${pm2ServiceId}):`, err);
+            console.error(
+              `❌ Error starting bot ${botId} (PM2: ${pm2ServiceId}):`,
+              err
+            );
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) started successfully`);
+            console.log(
+              `✅ Bot ${botId} (PM2: ${pm2ServiceId}) started successfully`
+            );
             resolve(true);
           }
         });
@@ -484,10 +492,15 @@ export class BotSpawnerService {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error restarting bot ${botId} (PM2: ${pm2ServiceId}):`, err);
+            console.error(
+              `❌ Error restarting bot ${botId} (PM2: ${pm2ServiceId}):`,
+              err
+            );
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) restarted successfully`);
+            console.log(
+              `✅ Bot ${botId} (PM2: ${pm2ServiceId}) restarted successfully`
+            );
             resolve(true);
           }
         });
