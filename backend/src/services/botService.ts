@@ -76,8 +76,12 @@ export class BotService {
     for (const bot of whatsappBots) {
       console.log(`📊 Checking status for bot: ${bot.id}`);
 
+      // Determine which PM2 process ID to use
+      const pm2ProcessId = bot.pm2ServiceId || bot.id;
+      console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+
       // Get PM2 process status
-      const pm2Status = await this.getPM2ProcessStatus(bot.id);
+      const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
 
       // Initialize status object
       let botStatus: BotStatus = {
@@ -175,8 +179,12 @@ export class BotService {
       return null;
     }
 
+    // Determine which PM2 process ID to use
+    const pm2ProcessId = bot.pm2ServiceId || bot.id;
+    console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+
     // Get PM2 process status first
-    const pm2Status = await this.getPM2ProcessStatus(bot.id);
+    const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
     console.log(`📊 PM2 status for ${bot.id}:`, pm2Status);
 
     // Initialize status object
@@ -284,7 +292,7 @@ export class BotService {
   /**
    * Get detailed PM2 process status for a bot
    */
-  private async getPM2ProcessStatus(botId: string): Promise<{
+  private async getPM2ProcessStatus(pm2ProcessId: string): Promise<{
     status:
       | "online"
       | "offline"
@@ -301,80 +309,138 @@ export class BotService {
     lastRestart?: string;
   }> {
     return new Promise((resolve) => {
-      pm2.connect((err) => {
-        if (err) {
-          console.error(`❌ Failed to connect to PM2 for status check:`, err);
-          resolve({ status: "unknown" });
+      let timeoutId: NodeJS.Timeout | null = null;
+      let isResolved = false;
+
+      const safeResolve = (result: any) => {
+        if (!isResolved) {
+          isResolved = true;
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+          resolve(result);
+        }
+      };
+
+      // Add timeout for PM2 operations
+      timeoutId = setTimeout(() => {
+        console.warn(`⚠️  PM2 operation timeout for ${pm2ProcessId}, falling back to unknown status`);
+        safeResolve({ status: "unknown" });
+      }, 5000);
+
+      try {
+        // Check if PM2 is available
+        if (!pm2) {
+          console.error(`❌ PM2 module is not available`);
+          safeResolve({ status: "unknown" });
           return;
         }
 
-        pm2.describe(botId, (err, processDescription) => {
-          pm2.disconnect();
-
+        pm2.connect((err) => {
+          if (isResolved) return; // Already timed out
+          
           if (err) {
-            console.error(`❌ PM2 describe failed for ${botId}:`, err);
-            resolve({ status: "unknown" });
+            console.error(`❌ Failed to connect to PM2 for status check:`, err);
+            console.warn(`💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`);
+            safeResolve({ status: "unknown" });
             return;
           }
 
-          if (!processDescription || processDescription.length === 0) {
-            resolve({ status: "offline" });
-            return;
+          // Verify PM2 client is properly connected
+          try {
+            if (!pm2 || typeof pm2.describe !== 'function') {
+              console.error(`❌ PM2 client is not properly initialized`);
+              safeResolve({ status: "unknown" });
+              return;
+            }
+
+            pm2.describe(pm2ProcessId, (describeErr, processDescription) => {
+              if (isResolved) return; // Already timed out
+
+              // Always try to disconnect, but handle errors gracefully
+              setTimeout(() => {
+                try {
+                  if (pm2 && typeof pm2.disconnect === 'function') {
+                    pm2.disconnect();
+                  }
+                } catch (disconnectErr) {
+                  console.warn(`⚠️  Error disconnecting from PM2:`, disconnectErr);
+                }
+              }, 100);
+
+              if (describeErr) {
+                console.error(`❌ PM2 describe failed for ${pm2ProcessId}:`, describeErr);
+                safeResolve({ status: "unknown" });
+                return;
+              }
+
+              if (!processDescription || processDescription.length === 0) {
+                safeResolve({ status: "offline" });
+                return;
+              }
+
+              const proc = processDescription[0] as any;
+              const pm2Env = proc?.pm2_env;
+              const monit = proc?.monit;
+
+              // Map PM2 status to our status types
+              let status:
+                | "online"
+                | "offline"
+                | "stopped"
+                | "stopping"
+                | "errored"
+                | "launching"
+                | "unknown" = "unknown";
+
+              switch (pm2Env?.status) {
+                case "online":
+                  status = "online";
+                  break;
+                case "stopped":
+                  status = "stopped";
+                  break;
+                case "stopping":
+                  status = "stopping";
+                  break;
+                case "errored":
+                  status = "errored";
+                  break;
+                case "launching":
+                  status = "launching";
+                  break;
+                default:
+                  status = "offline";
+              }
+
+              const result = {
+                status,
+                pid: proc?.pid || undefined,
+                cpu: monit?.cpu || undefined,
+                memory: monit?.memory
+                  ? Math.round(monit.memory / 1024 / 1024)
+                  : undefined, // Convert to MB
+                restarts: pm2Env?.restart_time || undefined,
+                uptime: pm2Env?.pm_uptime
+                  ? Date.now() - pm2Env.pm_uptime
+                  : undefined,
+                lastRestart:
+                  pm2Env?.restart_time > 0 ? new Date().toISOString() : undefined,
+              };
+
+              console.log(`📊 PM2 status for ${pm2ProcessId}:`, result);
+              safeResolve(result);
+            });
+          } catch (innerError) {
+            console.error(`❌ Error in PM2 describe operation for ${pm2ProcessId}:`, innerError);
+            safeResolve({ status: "unknown" });
           }
-
-          const proc = processDescription[0] as any;
-          const pm2Env = proc.pm2_env;
-          const monit = proc.monit;
-
-          // Map PM2 status to our status types
-          let status:
-            | "online"
-            | "offline"
-            | "stopped"
-            | "stopping"
-            | "errored"
-            | "launching"
-            | "unknown" = "unknown";
-
-          switch (pm2Env?.status) {
-            case "online":
-              status = "online";
-              break;
-            case "stopped":
-              status = "stopped";
-              break;
-            case "stopping":
-              status = "stopping";
-              break;
-            case "errored":
-              status = "errored";
-              break;
-            case "launching":
-              status = "launching";
-              break;
-            default:
-              status = "offline";
-          }
-
-          const result = {
-            status,
-            pid: proc.pid || undefined,
-            cpu: monit?.cpu || undefined,
-            memory: monit?.memory
-              ? Math.round(monit.memory / 1024 / 1024)
-              : undefined, // Convert to MB
-            restarts: pm2Env?.restart_time || undefined,
-            uptime: pm2Env?.pm_uptime
-              ? Date.now() - pm2Env.pm_uptime
-              : undefined,
-            lastRestart:
-              pm2Env?.restart_time > 0 ? new Date().toISOString() : undefined,
-          };
-
-          console.log(`📊 PM2 status for ${botId}:`, result);
-          resolve(result);
         });
-      });
+      } catch (pm2Error) {
+        console.error(`❌ PM2 connection error for ${pm2ProcessId}:`, pm2Error);
+        console.warn(`💡 PM2 might not be running. Install PM2 globally: npm install -g pm2`);
+        safeResolve({ status: "unknown" });
+      }
     });
   }
 }
