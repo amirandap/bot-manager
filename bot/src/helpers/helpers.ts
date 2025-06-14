@@ -37,7 +37,7 @@ export const fetchUserData = async (discorduserid: string) => {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const users: User[] = await response.json();
+    const users = await response.json() as User[];
 
     if (response.status === 200 && users.length > 0) {
       return users[0];
