@@ -6,7 +6,7 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { botId, action } = params;
+    const { botId, action } = await params;
 
     // Validate action
     const validActions = ["start", "stop", "restart", "status"];
@@ -39,12 +39,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { botId: string; action: string } }
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { botId, action } = params;
+    const { botId, action } = await params;
 
     // Only allow status action for GET requests
     if (action !== "status") {

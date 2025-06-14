@@ -1,7 +1,8 @@
-import type { Bot } from './types';
+import type { Bot } from "./types";
 
 // API configuration
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 
 // API helpers
 export const api = {
@@ -12,7 +13,11 @@ export const api = {
   updateBot: (id: string) => `${API_BASE_URL}/api/bots/${id}`,
   deleteBot: (id: string) => `${API_BASE_URL}/api/bots/${id}`,
   sendMessage: (id: string) => `${API_BASE_URL}/api/bots/${id}/send`,
-  
+
+  // Bot spawning endpoints
+  spawnWhatsAppBot: () => `${API_BASE_URL}/api/bots/spawn/whatsapp`,
+  terminateBot: (id: string) => `${API_BASE_URL}/api/bots/${id}/terminate`,
+
   // Status endpoints
   getBotStatus: (id: string) => `${API_BASE_URL}/api/status/${id}`,
   getDiscordStatus: () => `${API_BASE_URL}/api/status/discord`,
@@ -22,16 +27,13 @@ export const api = {
 // Bot API helpers - for direct communication with bots
 export const botApi = {
   // WhatsApp Bot endpoints
-  getWhatsAppStatus: (bot: Bot) => 
-    `${bot.apiHost}:${bot.apiPort}/status`,
-  getWhatsAppQR: (bot: Bot) => 
-    `${bot.apiHost}:${bot.apiPort}/qr-code`,
-  sendWhatsAppMessage: (bot: Bot) => 
+  getWhatsAppStatus: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/status`,
+  getWhatsAppQR: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/qr-code`,
+  sendWhatsAppMessage: (bot: Bot) =>
     `${bot.apiHost}:${bot.apiPort}/send-message`,
-  
-  // Discord Bot endpoints  
-  getDiscordHealth: (bot: Bot) => 
-    `${bot.apiHost}:${bot.apiPort}/health`,
-  sendDiscordMessage: (bot: Bot) => 
+
+  // Discord Bot endpoints
+  getDiscordHealth: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/health`,
+  sendDiscordMessage: (bot: Bot) =>
     `${bot.apiHost}:${bot.apiPort}/send-message`,
 };

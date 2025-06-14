@@ -15,9 +15,7 @@ const PORT = process.env.PORT || 3001;
 
 // Initialize config service with fallback API host
 const configService = ConfigService.getInstance();
-configService.setFallbackApiHost(
-  process.env.FALLBACK_API_HOST || "http://localhost"
-);
+configService.setFallbackApiHost(process.env.DEFAULT_BOT_HOST || "localhost");
 
 app.use(express.json());
 app.use(cors());
