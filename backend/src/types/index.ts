@@ -2,7 +2,8 @@ export interface Bot {
   id: string;
   name: string;
   type: "whatsapp" | "discord";
-  pm2ServiceId: string;
+  pm2ServiceId?: string; // Optional - only for PM2-managed bots
+  isExternal?: boolean; // Flag to indicate if bot is external (not managed by our PM2)
   apiHost: string;
   apiPort: number;
   phoneNumber: string | null;
