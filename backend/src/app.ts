@@ -35,6 +35,6 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  const host = process.env.SERVER_HOST || '0.0.0.0';
+  const host = process.env.SERVER_HOST || "0.0.0.0";
   console.log(`Server is running on http://${host}:${PORT}`);
 });
