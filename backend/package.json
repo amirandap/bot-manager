@@ -4,8 +4,8 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/app.js",
-    "dev": "npx ts-node src/app.ts"
+    "start": "node -r dotenv/config dist/app.js dotenv_config_path=../.env",
+    "dev": "npx ts-node -r dotenv/config src/app.ts dotenv_config_path=../.env"
   },
   "dependencies": {
     "axios": "^1.9.0",

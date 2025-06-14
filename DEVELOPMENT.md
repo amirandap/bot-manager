@@ -3,6 +3,7 @@
 ## Quick Start
 
 ### 1. Initial Setup
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -17,21 +18,18 @@ npm run install:all
 
 ### 2. Environment Configuration
 
-#### Backend (.env)
+#### Shared Environment (.env)
+
 ```bash
-cd backend
+# Copy the example file to create your environment configuration
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
-#### Frontend (.env.local)
-```bash
-cd frontend
-cp .env.example .env.local
-# Edit .env.local with your configuration
-```
+The project uses a single shared `.env` file at the root level that both backend and frontend consume. This makes configuration management much simpler in the monorepo structure.
 
 ### 3. Development Mode
+
 ```bash
 # Start both backend and frontend in development mode
 npm run dev
@@ -44,6 +42,7 @@ npm run dev:frontend # Frontend on http://localhost:3000
 ## Project Structure
 
 ### Backend (`/backend`)
+
 - `src/app.ts` - Main application entry point
 - `src/controllers/` - Request handlers
 - `src/services/` - Business logic and external integrations
@@ -52,6 +51,7 @@ npm run dev:frontend # Frontend on http://localhost:3000
 - `config/bots.json` - Bot configuration file
 
 ### Frontend (`/frontend`)
+
 - `app/` - Next.js 15 app router pages
 - `components/` - React components
 - `lib/` - Utility functions and types
@@ -60,6 +60,7 @@ npm run dev:frontend # Frontend on http://localhost:3000
 ## Configuration
 
 ### Bot Configuration (`config/bots.json`)
+
 ```json
 {
   "bots": [
@@ -83,6 +84,7 @@ npm run dev:frontend # Frontend on http://localhost:3000
 ## API Endpoints
 
 ### Bots Management
+
 - `GET /api/bots` - List all bots
 - `POST /api/bots` - Create a new bot
 - `GET /api/bots/:id` - Get bot by ID
@@ -90,6 +92,7 @@ npm run dev:frontend # Frontend on http://localhost:3000
 - `DELETE /api/bots/:id` - Delete bot
 
 ### Bot Status
+
 - `GET /api/status/discord` - Discord bot statuses
 - `GET /api/status/whatsapp` - WhatsApp bot statuses
 - `GET /api/status/:id` - Individual bot status
@@ -116,30 +119,36 @@ npm run clean
 ## Bot Integration
 
 ### WhatsApp Bots
+
 - Bots should expose a `/status` endpoint returning connection status
 - Bots should expose a `/send-message` endpoint for sending messages
 
 ### Discord Bots
+
 - Bots should expose a `/health` endpoint for status checks
 - Additional endpoints can be configured as needed
 
 ## Environment Variables
 
 ### Backend
+
 - `PORT` - Backend server port (default: 3001)
 - `FALLBACK_API_HOST` - Default host for bots with empty apiHost
 
 ### Frontend
+
 - `NEXT_PUBLIC_API_BASE_URL` - Backend API URL (default: http://localhost:3001)
 
 ## Troubleshooting
 
 ### Build Issues
+
 1. Ensure Node.js 14+ is installed
 2. Clear node_modules: `npm run clean && npm run install:all`
 3. Check TypeScript errors: `npm run build`
 
 ### Runtime Issues
+
 1. Verify environment variables are set
 2. Check backend is running on correct port
 3. Verify bot configuration in `config/bots.json`
