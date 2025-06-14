@@ -232,6 +232,25 @@ export class BotSpawnerService {
     // Load bot environment defaults from bot folder .env
     const botEnvDefaults = this.loadBotEnvironmentDefaults();
 
+    // Determine the correct Chrome executable path based on the operating system
+    let chromeExecutablePath;
+    
+    if (process.env.CHROME_PATH) {
+      chromeExecutablePath = process.env.CHROME_PATH;
+    } else if (process.platform === 'darwin') {
+      // macOS
+      chromeExecutablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    } else if (process.platform === 'linux') {
+      // Linux
+      chromeExecutablePath = '/usr/bin/google-chrome';
+    } else if (process.platform === 'win32') {
+      // Windows
+      chromeExecutablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    } else {
+      // Default fallback
+      chromeExecutablePath = '/usr/bin/google-chrome';
+    }
+
     // Prepare environment variables
     const botEnv = {
       // Start with bot folder defaults
@@ -244,13 +263,13 @@ export class BotSpawnerService {
       BOT_PORT: botConfig.apiPort.toString(),
       BOT_TYPE: botConfig.type,
       BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
-      PORT: botConfig.apiPort.toString(),
       NODE_ENV: "production",
+      CHROME_PATH: chromeExecutablePath,
     };
 
     console.log(`📦 PM2 Configuration:`);
     console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
-    console.log(`   - Interpreter: ts-node`);
+    console.log(`   - Interpreter: ./node_modules/.bin/ts-node`);
     console.log(`   - Working Directory: ${this.botDirectory}`);
     console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
     console.log(`📋 Environment Variables:`);
@@ -260,6 +279,7 @@ export class BotSpawnerService {
     console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
     console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
     console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
+    console.log(`   - CHROME_PATH: ${botEnv.CHROME_PATH}`);
 
     return new Promise((resolve, reject) => {
       console.log(`🔌 Connecting to PM2...`);
@@ -275,10 +295,13 @@ export class BotSpawnerService {
         const pm2Config = {
           name: pm2ServiceId,
           script: path.join(this.botDirectory, "src/index.ts"),
-          interpreter: "ts-node",
+          interpreter: "./node_modules/.bin/ts-node",
           interpreter_args: "--files -r tsconfig-paths/register",
           cwd: this.botDirectory,
           env: botEnv,
+          error_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}-error.log`),
+          out_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}-out.log`),
+          log_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}.log`),
         };
 
         console.log(`📄 Starting PM2 process with name: ${pm2ServiceId}...`);
