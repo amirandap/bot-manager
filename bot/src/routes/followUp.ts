@@ -1,8 +1,8 @@
 /* eslint-disable max-len */
-import { client } from '@src/config/whatsAppClient';
-import { cleanAndFormatPhoneNumber } from '@src/helpers/cleanAndFormatPhoneNumber';
-import { sendErrorMessage, sendImageAndMessage } from '@src/helpers/helpers';
-import { Participant } from '@src/types/types';
+import { client } from '../config/whatsAppClient';
+import { cleanAndFormatPhoneNumber } from '../helpers/cleanAndFormatPhoneNumber';
+import { sendErrorMessage, sendImageAndMessage } from '../helpers/helpers';
+import { Participant } from '../types/types';
 import express from 'express';
 
 const router = express.Router();

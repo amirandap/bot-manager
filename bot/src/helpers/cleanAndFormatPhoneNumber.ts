@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import { fallbackNumber } from '@src/routes/changeFallbackNumberRoute';
+import { fallbackNumber } from '../routes/changeFallbackNumberRoute';
 
 /* eslint-disable max-len */
 export function cleanAndFormatPhoneNumber(phoneNumber: string): { cleanedPhoneNumber: string, isValid: boolean } {

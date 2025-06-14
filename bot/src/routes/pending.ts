@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable max-len */
-import { client } from '@src/config/whatsAppClient';
-import { User, fetchUserData, formatMessage, sendErrorMessage, sendMessage } from '@src/helpers/helpers';
+import { client } from '../config/whatsAppClient';
+import { User, fetchUserData, formatMessage, sendErrorMessage, sendMessage } from '../helpers/helpers';
 import express from 'express';
 
 const router = express.Router();

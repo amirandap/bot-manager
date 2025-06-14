@@ -26,8 +26,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const getBotIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+  const getBotIcon = (type: string | undefined) => {
+    switch (type?.toLowerCase()) {
       case "discord":
         return <MessageCircle className="h-5 w-5" />;
       case "whatsapp":
