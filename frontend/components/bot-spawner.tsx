@@ -124,13 +124,13 @@ export function BotSpawner({
     setIsSpawning(true);
     setErrors({});
 
-    console.log('🚀 Starting bot spawning process...');
-    console.log('📋 Bot configuration:', {
+    console.log("🚀 Starting bot spawning process...");
+    console.log("📋 Bot configuration:", {
       name: formData.name,
       type: "whatsapp",
       apiPort: formData.apiPort,
       apiHost: formData.apiHost,
-      phoneNumber: formData.phoneNumber || 'Not set',
+      phoneNumber: formData.phoneNumber || "Not set",
       pushName: formData.pushName || formData.name,
       enabled: true,
     });
@@ -146,8 +146,8 @@ export function BotSpawner({
         enabled: true,
       };
 
-      console.log('📡 Sending request to backend...');
-      console.log('🌐 API endpoint:', api.spawnWhatsAppBot());
+      console.log("📡 Sending request to backend...");
+      console.log("🌐 API endpoint:", api.spawnWhatsAppBot());
 
       const response = await fetch(api.spawnWhatsAppBot(), {
         method: "POST",
@@ -157,34 +157,36 @@ export function BotSpawner({
         body: JSON.stringify(botConfig),
       });
 
-      console.log('📡 Response received:', {
+      console.log("📡 Response received:", {
         status: response.status,
         statusText: response.statusText,
-        ok: response.ok
+        ok: response.ok,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('❌ Backend error response:', errorData);
+        console.error("❌ Backend error response:", errorData);
         throw new Error(
-          errorData.details || errorData.error || `Server error: ${response.status} ${response.statusText}`
+          errorData.details ||
+            errorData.error ||
+            `Server error: ${response.status} ${response.statusText}`
         );
       }
 
       const result = await response.json();
       const createdBot = result.bot;
 
-      console.log('✅ Bot created successfully!');
-      console.log('📋 Created bot details:', {
+      console.log("✅ Bot created successfully!");
+      console.log("📋 Created bot details:", {
         id: createdBot.id,
         name: createdBot.name,
         port: createdBot.apiPort,
         host: createdBot.apiHost,
-        pm2ServiceId: createdBot.pm2ServiceId
+        pm2ServiceId: createdBot.pm2ServiceId,
       });
-      console.log('🌐 Bot URLs:', {
+      console.log("🌐 Bot URLs:", {
         status: `${createdBot.apiHost}:${createdBot.apiPort}/status`,
-        qrCode: `${createdBot.apiHost}:${createdBot.apiPort}/qr-code`
+        qrCode: `${createdBot.apiHost}:${createdBot.apiPort}/qr-code`,
       });
 
       setLastCreatedBot(createdBot);
@@ -204,25 +206,28 @@ export function BotSpawner({
     } catch (error) {
       console.error("❌ Bot spawning failed:");
       console.error("❌ Error details:", error);
-      
+
       let errorMessage = "Failed to spawn bot";
       if (error instanceof Error) {
         errorMessage = error.message;
         console.error("❌ Error message:", error.message);
-        if (error.message.includes('network') || error.message.includes('fetch')) {
+        if (
+          error.message.includes("network") ||
+          error.message.includes("fetch")
+        ) {
           errorMessage += " (Network error - check backend connection)";
-        } else if (error.message.includes('port')) {
+        } else if (error.message.includes("port")) {
           errorMessage += " (Port conflict - try a different port)";
-        } else if (error.message.includes('PM2')) {
+        } else if (error.message.includes("PM2")) {
           errorMessage += " (PM2 error - check server logs)";
         }
       }
-      
+
       setErrors({
         submit: errorMessage,
       });
     } finally {
-      console.log('🏁 Bot spawning process completed');
+      console.log("🏁 Bot spawning process completed");
       setIsSpawning(false);
     }
   };
