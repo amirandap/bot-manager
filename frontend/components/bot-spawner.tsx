@@ -34,7 +34,7 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
     pushName: "",
     apiHost:
       process.env.NEXT_PUBLIC_API_BASE_URL?.replace(":3001", "") ||
-      "http://localhost",
+      "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastCreatedBot, setLastCreatedBot] = useState<Bot | null>(null);
@@ -112,7 +112,7 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
         apiPort: 7260,
         phoneNumber: "",
         pushName: "",
-        apiHost: "http://localhost",
+        apiHost: process.env.NEXT_PUBLIC_API_BASE_URL?.replace(":3001", "") || "",
       });
 
       // Call the callback if provided
@@ -220,7 +220,7 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
                       apiHost: e.target.value,
                     }))
                   }
-                  placeholder="http://localhost"
+                  placeholder="e.g., http://your-server.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {errors.apiHost && (

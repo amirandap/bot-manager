@@ -5,7 +5,7 @@ import { Bot, BotConfig } from '../types';
 export class ConfigService {
   private static instance: ConfigService;
   private configPath: string;
-  private fallbackApiHost: string = 'http://localhost';
+  private fallbackApiHost: string = '';
 
   private constructor() {
     this.configPath = path.join(__dirname, '../../../config/bots.json');

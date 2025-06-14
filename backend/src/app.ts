@@ -16,7 +16,10 @@ const PORT = process.env.PORT || 3001;
 
 // Initialize config service with fallback API host
 const configService = ConfigService.getInstance();
-configService.setFallbackApiHost(process.env.DEFAULT_BOT_HOST || "localhost");
+const defaultBotHost = process.env.DEFAULT_BOT_HOST;
+if (defaultBotHost) {
+  configService.setFallbackApiHost(defaultBotHost);
+}
 
 app.use(express.json());
 app.use(cors());
@@ -32,5 +35,6 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  const host = process.env.SERVER_HOST || '0.0.0.0';
+  console.log(`Server is running on http://${host}:${PORT}`);
 });
