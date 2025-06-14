@@ -20,10 +20,22 @@ export interface BotStatus {
   id: string;
   name: string;
   type: 'whatsapp' | 'discord';
-  status: 'online' | 'offline' | 'unknown';
+  status: 'online' | 'offline' | 'stopped' | 'stopping' | 'errored' | 'launching' | 'unknown';
   lastSeen?: string;
   phoneNumber?: string | null;
   pushName?: string | null;
+  // PM2 process information
+  pm2?: {
+    pid?: number;
+    cpu?: number;
+    memory?: number; // in MB
+    restarts?: number;
+    uptime?: number; // in milliseconds
+    lastRestart?: string;
+  };
+  // API connectivity
+  apiResponsive?: boolean;
+  apiResponseTime?: number; // in milliseconds
 }
 
 // Legacy interface for backward compatibility
