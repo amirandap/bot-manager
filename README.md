@@ -175,73 +175,82 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3001  # Backend API endpoint
 | **Frontend Web** | `7261` | Next.js development server |
 | **Bot Services** | `7260-7262, 8080` | Individual bot instances |
 
-## 🏃‍♂️ Quick Start
+## 🚀 Quick Start
 
-### 📋 Prerequisites
+### 1. Environment Setup
 
-- **Node.js** (v18 or higher recommended)
-- **npm** or **yarn** package manager
-- **Git** for version control
+Copy the root environment files and configure them for your setup:
 
-### 🛠️ Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd bot-manager
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   # Install root dependencies
-   npm install
-   
-   # Install backend dependencies
-   cd backend && npm install
-   
-   # Install frontend dependencies  
-   cd ../frontend && npm install
-   ```
-
-3. **Setup configuration:**
-   ```bash
-   # Ensure config directory exists
-   mkdir -p config
-   
-   # Copy sample configuration or create your own
-   # The system will auto-create bots.json if it doesn't exist
-   ```
-
-### 🚀 Running the Application
-
-#### Development Mode
-
-**Start Backend (Terminal 1):**
 ```bash
-cd backend
-npm run dev          # Starts on http://localhost:3001
+# Copy environment templates
+cp .env.example .env
+cp .env.example .env.production
+
+# Edit the files with your configuration
+nano .env
 ```
 
-**Start Frontend (Terminal 2):**
+### 2. Bot Configuration
+
+Create your bot configuration file:
+
 ```bash
-cd frontend  
-npm run dev          # Starts on http://localhost:7261
+# Copy the example bot configuration
+cp config/bots.json.example config/bots.json
+
+# Edit with your actual bot instances
+nano config/bots.json
 ```
 
-#### Production Mode
+**Bot Configuration Format:**
+```json
+{
+  "bots": [
+    {
+      "id": "unique-bot-id",
+      "name": "Bot Display Name",
+      "type": "whatsapp", // or "discord"
+      "pm2ServiceId": "wabot-7001", // PM2 service name (wabot-{port})
+      "isExternal": false, // true for remote bots, false for local PM2-managed
+      "apiHost": "http://localhost", // or remote server URL
+      "apiPort": 7001,
+      "phoneNumber": "+1234567890", // WhatsApp only
+      "pushName": "Bot Name", // WhatsApp display name
+      "enabled": true,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
 
-**Backend:**
+**Bot Types:**
+- **External Bots** (`isExternal: true`): Running on remote servers, API-only monitoring
+- **Internal Bots** (`isExternal: false`): Managed by local PM2, full process monitoring
+
+### 3. Installation & Development
+
 ```bash
-cd backend
+# Install dependencies
+npm install
+
+# Start development servers (both frontend and backend)
+npm run dev
+
+# Or start individually
+npm run dev:frontend  # Port 7261
+npm run dev:backend   # Port 3001
+```
+
+### 4. Production Deployment
+
+```bash
+# Build for production
 npm run build
-npm start
-```
 
-**Frontend:**
-```bash
-cd frontend
-npm run build
-npm start
+# Start production servers
+npm run start:backend
+npm run start:frontend
 ```
 
 ### 🧪 Verify Installation

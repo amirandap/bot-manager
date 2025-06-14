@@ -1,0 +1,46 @@
+{
+  "bots": [
+    {
+      "id": "example-external-bot",
+      "name": "External WhatsApp Bot",
+      "type": "whatsapp",
+      "pm2ServiceId": "wabot-7001",
+      "isExternal": true,
+      "apiHost": "http://remote-server.com",
+      "apiPort": 7001,
+      "phoneNumber": "+1234567890",
+      "pushName": "External Bot",
+      "enabled": true,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "example-internal-bot",
+      "name": "Internal WhatsApp Bot",
+      "type": "whatsapp",
+      "pm2ServiceId": "wabot-7002",
+      "isExternal": false,
+      "apiHost": "http://localhost",
+      "apiPort": 7002,
+      "phoneNumber": "+0987654321",
+      "pushName": "Internal Bot",
+      "enabled": true,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "example-discord-bot",
+      "name": "Discord Bot",
+      "type": "discord",
+      "pm2ServiceId": "discord-bot-7003",
+      "isExternal": false,
+      "apiHost": "http://localhost",
+      "apiPort": 7003,
+      "phoneNumber": null,
+      "pushName": null,
+      "enabled": true,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ]
+}
