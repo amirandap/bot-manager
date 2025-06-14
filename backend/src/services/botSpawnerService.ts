@@ -254,7 +254,7 @@ export class BotSpawnerService {
     );
     console.log(`   - Interpreter: ts-node`);
     console.log(`   - Working Directory: ${this.botDirectory}`);
-    console.log(`   - Process Name: ${botId}`);
+    console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
     console.log(`📋 Environment Variables:`);
     console.log(`   - BOT_ID: ${botEnv.BOT_ID}`);
     console.log(`   - BOT_NAME: ${botEnv.BOT_NAME}`);
@@ -273,15 +273,16 @@ export class BotSpawnerService {
         }
         console.log(`✅ Connected to PM2 successfully`);
 
+        const pm2ServiceId = `wabot-${botConfig.apiPort}`;
         const pm2Config = {
-          name: botId,
+          name: pm2ServiceId,
           script: path.join(this.botDirectory, "src/index.ts"),
           interpreter: "ts-node",
           cwd: this.botDirectory,
           env: botEnv,
         };
 
-        console.log(`📄 Starting PM2 process...`);
+        console.log(`📄 Starting PM2 process with name: ${pm2ServiceId}...`);
         pm2.start(pm2Config, (err, proc) => {
           console.log(`🔌 Disconnecting from PM2...`);
           pm2.disconnect(); // Always disconnect after operation
@@ -331,10 +332,14 @@ export class BotSpawnerService {
   }
 
   private async addBotToConfig(botConfig: any, botId: string): Promise<Bot> {
+    // Generate PM2 service name using the predictable format: wabot-$portnumber
+    const pm2ServiceId = `wabot-${botConfig.apiPort}`;
+    
     const newBot: Bot = {
       ...botConfig,
       id: botId,
-      pm2ServiceId: botId,
+      pm2ServiceId: pm2ServiceId,
+      isExternal: false, // This is a system-spawned bot
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -347,12 +352,33 @@ export class BotSpawnerService {
     console.log(`   - Name: ${addedBot.name}`);
     console.log(`   - Port: ${addedBot.apiPort}`);
     console.log(`   - PM2 Service: ${addedBot.pm2ServiceId}`);
+    console.log(`   - External: ${addedBot.isExternal ? 'Yes' : 'No'}`);
 
     return addedBot;
   }
 
   async stopBot(botId: string): Promise<boolean> {
     console.log(`🛑 Stopping bot: ${botId}`);
+
+    // Get bot config to find the PM2 service ID
+    const bot = this.configService.getBotById(botId);
+    if (!bot) {
+      console.error(`❌ Bot not found: ${botId}`);
+      return false;
+    }
+
+    if (bot.isExternal) {
+      console.log(`⚠️  Bot ${botId} is external - cannot stop via PM2`);
+      return false;
+    }
+
+    const pm2ServiceId = bot.pm2ServiceId;
+    if (!pm2ServiceId) {
+      console.error(`❌ No PM2 service ID found for bot: ${botId}`);
+      return false;
+    }
+
+    console.log(`🎯 Using PM2 service: ${pm2ServiceId}`);
 
     return new Promise((resolve) => {
       pm2.connect((err) => {
@@ -362,14 +388,14 @@ export class BotSpawnerService {
           return;
         }
 
-        pm2.stop(botId, (err) => {
+        pm2.stop(pm2ServiceId, (err) => {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error stopping bot ${botId}:`, err);
+            console.error(`❌ Error stopping bot ${botId} (PM2: ${pm2ServiceId}):`, err);
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} stopped successfully`);
+            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) stopped successfully`);
             resolve(true);
           }
         });
@@ -380,6 +406,26 @@ export class BotSpawnerService {
   async startBot(botId: string): Promise<boolean> {
     console.log(`🚀 Starting bot: ${botId}`);
 
+    // Get bot config to find the PM2 service ID
+    const bot = this.configService.getBotById(botId);
+    if (!bot) {
+      console.error(`❌ Bot not found: ${botId}`);
+      return false;
+    }
+
+    if (bot.isExternal) {
+      console.log(`⚠️  Bot ${botId} is external - cannot start via PM2`);
+      return false;
+    }
+
+    const pm2ServiceId = bot.pm2ServiceId;
+    if (!pm2ServiceId) {
+      console.error(`❌ No PM2 service ID found for bot: ${botId}`);
+      return false;
+    }
+
+    console.log(`🎯 Using PM2 service: ${pm2ServiceId}`);
+
     return new Promise((resolve) => {
       pm2.connect((err) => {
         if (err) {
@@ -388,14 +434,14 @@ export class BotSpawnerService {
           return;
         }
 
-        pm2.restart(botId, (err) => {
+        pm2.restart(pm2ServiceId, (err) => {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error starting bot ${botId}:`, err);
+            console.error(`❌ Error starting bot ${botId} (PM2: ${pm2ServiceId}):`, err);
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} started successfully`);
+            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) started successfully`);
             resolve(true);
           }
         });
@@ -406,6 +452,26 @@ export class BotSpawnerService {
   async restartBot(botId: string): Promise<boolean> {
     console.log(`🔄 Restarting bot: ${botId}`);
 
+    // Get bot config to find the PM2 service ID
+    const bot = this.configService.getBotById(botId);
+    if (!bot) {
+      console.error(`❌ Bot not found: ${botId}`);
+      return false;
+    }
+
+    if (bot.isExternal) {
+      console.log(`⚠️  Bot ${botId} is external - cannot restart via PM2`);
+      return false;
+    }
+
+    const pm2ServiceId = bot.pm2ServiceId;
+    if (!pm2ServiceId) {
+      console.error(`❌ No PM2 service ID found for bot: ${botId}`);
+      return false;
+    }
+
+    console.log(`🎯 Using PM2 service: ${pm2ServiceId}`);
+
     return new Promise((resolve) => {
       pm2.connect((err) => {
         if (err) {
@@ -414,14 +480,14 @@ export class BotSpawnerService {
           return;
         }
 
-        pm2.restart(botId, (err) => {
+        pm2.restart(pm2ServiceId, (err) => {
           pm2.disconnect();
 
           if (err) {
-            console.error(`❌ Error restarting bot ${botId}:`, err);
+            console.error(`❌ Error restarting bot ${botId} (PM2: ${pm2ServiceId}):`, err);
             resolve(false);
           } else {
-            console.log(`✅ Bot ${botId} restarted successfully`);
+            console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) restarted successfully`);
             resolve(true);
           }
         });

@@ -76,33 +76,21 @@ export class BotService {
     for (const bot of whatsappBots) {
       console.log(`📊 Checking status for bot: ${bot.id}`);
 
-      // Determine which PM2 process ID to use
-      const pm2ProcessId = bot.pm2ServiceId || bot.id;
-      console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
-
-      // Get PM2 process status
-      const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
-
-      // Initialize status object
       let botStatus: BotStatus = {
         id: bot.id,
         name: bot.name,
         type: bot.type,
-        status: pm2Status.status,
+        status: "offline",
         phoneNumber: bot.phoneNumber,
         pushName: bot.pushName,
-        pm2: {
-          pid: pm2Status.pid,
-          cpu: pm2Status.cpu,
-          memory: pm2Status.memory,
-          restarts: pm2Status.restarts,
-          uptime: pm2Status.uptime,
-          lastRestart: pm2Status.lastRestart,
-        },
+        apiResponsive: false,
       };
 
-      // If PM2 says the process is online, try to check API connectivity
-      if (pm2Status.status === "online") {
+      // Check if bot is external (not managed by our PM2)
+      if (bot.isExternal) {
+        console.log(`🌐 Bot ${bot.id} is external - skipping PM2 status check`);
+        
+        // For external bots, only check API connectivity
         try {
           const startTime = Date.now();
           const response = await axios.get(
@@ -113,14 +101,6 @@ export class BotService {
           );
           const responseTime = Date.now() - startTime;
 
-          // Extract real bot information from API
-          const realPhoneNumber =
-            response.data.client?.wid?.user ||
-            response.data.client?.me?.user ||
-            bot.phoneNumber;
-          const realPushName = response.data.client?.pushname || bot.pushName;
-
-          // Determine final status based on API response
           const isConnected =
             response.data.connected === true ||
             response.data.status === "online";
@@ -129,37 +109,96 @@ export class BotService {
             ...botStatus,
             status: isConnected ? "online" : "offline",
             lastSeen: new Date().toISOString(),
-            phoneNumber: realPhoneNumber,
-            pushName: realPushName,
             apiResponsive: true,
             apiResponseTime: responseTime,
           };
 
-          console.log(
-            `✅ Bot ${bot.id}: PM2=${
-              pm2Status.status
-            }, API=responsive(${responseTime}ms), WhatsApp=${
-              isConnected ? "connected" : "disconnected"
-            }`
-          );
+          console.log(`✅ External bot ${bot.id}: API=responsive(${responseTime}ms), Status=${isConnected ? "online" : "offline"}`);
         } catch (error) {
-          // PM2 says online but API is not responsive
-          botStatus = {
-            ...botStatus,
-            status: "errored", // Process running but API not working
-            apiResponsive: false,
-          };
-
-          console.log(
-            `⚠️  Bot ${bot.id}: PM2=${pm2Status.status}, API=unresponsive, Status=errored`
-          );
+          console.log(`❌ External bot ${bot.id}: API=unresponsive`);
+          botStatus.status = "offline";
         }
       } else {
-        // PM2 process is not online
-        botStatus.apiResponsive = false;
-        console.log(
-          `❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`
-        );
+        // For internal bots, check both PM2 and API
+        const pm2ProcessId = bot.pm2ServiceId || bot.id;
+        console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+
+        // Get PM2 process status
+        const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
+
+        // Initialize status object with PM2 data
+        botStatus = {
+          ...botStatus,
+          status: pm2Status.status,
+          pm2: {
+            pid: pm2Status.pid,
+            cpu: pm2Status.cpu,
+            memory: pm2Status.memory,
+            restarts: pm2Status.restarts,
+            uptime: pm2Status.uptime,
+            lastRestart: pm2Status.lastRestart,
+          },
+        };
+
+        // If PM2 says the process is online, try to check API connectivity
+        if (pm2Status.status === "online") {
+          try {
+            const startTime = Date.now();
+            const response = await axios.get(
+              `${bot.apiHost}:${bot.apiPort}/status`,
+              {
+                timeout: 5000,
+              }
+            );
+            const responseTime = Date.now() - startTime;
+
+            // Extract real bot information from API
+            const realPhoneNumber =
+              response.data.client?.wid?.user ||
+              response.data.client?.me?.user ||
+              bot.phoneNumber;
+            const realPushName = response.data.client?.pushname || bot.pushName;
+
+            // Determine final status based on API response
+            const isConnected =
+              response.data.connected === true ||
+              response.data.status === "online";
+
+            botStatus = {
+              ...botStatus,
+              status: isConnected ? "online" : "offline",
+              lastSeen: new Date().toISOString(),
+              phoneNumber: realPhoneNumber,
+              pushName: realPushName,
+              apiResponsive: true,
+              apiResponseTime: responseTime,
+            };
+
+            console.log(
+              `✅ Bot ${bot.id}: PM2=${
+                pm2Status.status
+              }, API=responsive(${responseTime}ms), WhatsApp=${
+                isConnected ? "connected" : "disconnected"
+              }`
+            );
+          } catch (error) {
+            // PM2 says online but API is not responsive
+            botStatus = {
+              ...botStatus,
+              status: "errored", // Process running but API not working
+              apiResponsive: false,
+            };
+
+            console.log(
+              `⚠️  Bot ${bot.id}: PM2=${pm2Status.status}, API=unresponsive, Status=errored`
+            );
+          }
+        } else {
+          // PM2 process is not online
+          console.log(
+            `❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`
+          );
+        }
       }
 
       statuses.push(botStatus);
@@ -179,38 +218,26 @@ export class BotService {
       return null;
     }
 
-    // Determine which PM2 process ID to use
-    const pm2ProcessId = bot.pm2ServiceId || bot.id;
-    console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
-
-    // Get PM2 process status first
-    const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
-    console.log(`📊 PM2 status for ${bot.id}:`, pm2Status);
-
-    // Initialize status object
+    // Initialize base status object
     let botStatus: BotStatus = {
       id: bot.id,
       name: bot.name,
       type: bot.type,
-      status: pm2Status.status,
+      status: "offline",
       phoneNumber: bot.phoneNumber,
       pushName: bot.pushName,
-      pm2: {
-        pid: pm2Status.pid,
-        cpu: pm2Status.cpu,
-        memory: pm2Status.memory,
-        restarts: pm2Status.restarts,
-        uptime: pm2Status.uptime,
-        lastRestart: pm2Status.lastRestart,
-      },
+      apiResponsive: false,
     };
 
-    // If PM2 says the process is online, try to check API connectivity
-    if (pm2Status.status === "online") {
+    // Check if bot is external (not managed by our PM2)
+    if (bot.isExternal) {
+      console.log(`🌐 Bot ${bot.id} is external - skipping PM2 status check`);
+      
+      // For external bots, only check API connectivity
       try {
         const endpoint = bot.type === "discord" ? "/health" : "/status";
         const url = `${bot.apiHost}:${bot.apiPort}${endpoint}`;
-        console.log("🌐 Checking API connectivity at:", url);
+        console.log("🌐 Checking external API connectivity at:", url);
 
         const startTime = Date.now();
         const response = await axios.get(url, {
@@ -218,11 +245,7 @@ export class BotService {
         });
         const responseTime = Date.now() - startTime;
 
-        console.log(
-          "✅ API response received:",
-          response.status,
-          response.data
-        );
+        console.log("✅ External API response received:", response.status, response.data);
 
         const isOnline =
           bot.type === "discord"
@@ -259,31 +282,113 @@ export class BotService {
           apiResponseTime: responseTime,
         };
 
-        console.log(
-          `✅ Bot ${bot.id}: PM2=${
-            pm2Status.status
-          }, API=responsive(${responseTime}ms), Final=${
-            isOnline ? "online" : "offline"
-          }`
-        );
+        console.log(`✅ External bot ${bot.id}: API=responsive(${responseTime}ms), Status=${isOnline ? "online" : "offline"}`);
       } catch (error) {
-        // PM2 says online but API is not responsive
-        botStatus = {
-          ...botStatus,
-          status: "errored", // Process running but API not working
-          apiResponsive: false,
-        };
-
-        console.log(
-          `⚠️  Bot ${bot.id}: PM2=${pm2Status.status}, API=unresponsive (${
-            error instanceof Error ? error.message : "Unknown error"
-          }), Status=errored`
-        );
+        console.log(`❌ External bot ${bot.id}: API=unresponsive (${error instanceof Error ? error.message : "Unknown error"})`);
+        botStatus.status = "offline";
       }
     } else {
-      // PM2 process is not online
-      botStatus.apiResponsive = false;
-      console.log(`❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`);
+      // For internal bots, check both PM2 and API
+      const pm2ProcessId = bot.pm2ServiceId || bot.id;
+      console.log(`🔍 Using PM2 process ID: ${pm2ProcessId} for bot: ${bot.id}`);
+
+      // Get PM2 process status first
+      const pm2Status = await this.getPM2ProcessStatus(pm2ProcessId);
+      console.log(`📊 PM2 status for ${bot.id}:`, pm2Status);
+
+      // Initialize status object with PM2 data
+      botStatus = {
+        ...botStatus,
+        status: pm2Status.status,
+        pm2: {
+          pid: pm2Status.pid,
+          cpu: pm2Status.cpu,
+          memory: pm2Status.memory,
+          restarts: pm2Status.restarts,
+          uptime: pm2Status.uptime,
+          lastRestart: pm2Status.lastRestart,
+        },
+      };
+
+      // If PM2 says the process is online, try to check API connectivity
+      if (pm2Status.status === "online") {
+        try {
+          const endpoint = bot.type === "discord" ? "/health" : "/status";
+          const url = `${bot.apiHost}:${bot.apiPort}${endpoint}`;
+          console.log("🌐 Checking API connectivity at:", url);
+
+          const startTime = Date.now();
+          const response = await axios.get(url, {
+            timeout: 5000,
+          });
+          const responseTime = Date.now() - startTime;
+
+          console.log(
+            "✅ API response received:",
+            response.status,
+            response.data
+          );
+
+          const isOnline =
+            bot.type === "discord"
+              ? response.status === 200
+              : response.data.connected === true ||
+                response.data.status === "online";
+
+          // Extract real bot information for WhatsApp bots
+          let realPhoneNumber = bot.phoneNumber;
+          let realPushName = bot.pushName;
+
+          if (bot.type === "whatsapp" && response.data.client) {
+            realPhoneNumber =
+              response.data.client.wid?.user ||
+              response.data.client.me?.user ||
+              bot.phoneNumber;
+            realPushName = response.data.client.pushname || bot.pushName;
+
+            // Update bot configuration with real data
+            this.configService.updateBotWithRealData(
+              bot.id,
+              realPhoneNumber || undefined,
+              realPushName || undefined
+            );
+          }
+
+          botStatus = {
+            ...botStatus,
+            status: isOnline ? "online" : "offline",
+            lastSeen: new Date().toISOString(),
+            phoneNumber: realPhoneNumber,
+            pushName: realPushName,
+            apiResponsive: true,
+            apiResponseTime: responseTime,
+          };
+
+          console.log(
+            `✅ Bot ${bot.id}: PM2=${
+              pm2Status.status
+            }, API=responsive(${responseTime}ms), Final=${
+              isOnline ? "online" : "offline"
+            }`
+          );
+        } catch (error) {
+          // PM2 says online but API is not responsive
+          botStatus = {
+            ...botStatus,
+            status: "errored", // Process running but API not working
+            apiResponsive: false,
+          };
+
+          console.log(
+            `⚠️  Bot ${bot.id}: PM2=${pm2Status.status}, API=unresponsive (${
+              error instanceof Error ? error.message : "Unknown error"
+            }), Status=errored`
+          );
+        }
+      } else {
+        // PM2 process is not online
+        console.log(`❌ Bot ${bot.id}: PM2=${pm2Status.status}, API=not checked`);
+      }
     }
 
     return botStatus;
