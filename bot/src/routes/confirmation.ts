@@ -4,8 +4,8 @@ import { Request, Response } from 'express';
 import express from 'express';
 import { sendMessage, fetchUserData, sendErrorMessage }
   from '../helpers/helpers';
-import { cleanAndFormatPhoneNumber } from '@src/helpers/cleanAndFormatPhoneNumber';
-import { client } from '@src/config/whatsAppClient';
+import { cleanAndFormatPhoneNumber } from '../helpers/cleanAndFormatPhoneNumber';
+import { client } from '../config/whatsAppClient';
 
 const router = express.Router();
 

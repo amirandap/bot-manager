@@ -10,12 +10,12 @@ import confirmationRoute from '../routes/confirmation';
 import getGroupsRoute from '../routes/getGroups';
 import { sendMessage } from '../helpers/helpers';
 import { app, BOT_ID, SESSION_PATH, QR_PATH, LOGS_PATH } from '..';
-import { getGroupDetails } from '@src/helpers/groupHelper';
+import { getGroupDetails } from '../helpers/groupHelper';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-import { fallbackNumber } from '@src/routes/changeFallbackNumberRoute';
+import { fallbackNumber } from '../routes/changeFallbackNumberRoute';
 
 dotenv.config();
 

@@ -1,6 +1,6 @@
 import express, { Response } from 'express';
 import { fallbackNumber } from './changeFallbackNumberRoute';
-import { client } from '@src/config/whatsAppClient';
+import { client } from '../config/whatsAppClient';
 
 const router = express.Router();
 

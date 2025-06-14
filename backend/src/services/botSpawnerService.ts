@@ -276,6 +276,7 @@ export class BotSpawnerService {
           name: pm2ServiceId,
           script: path.join(this.botDirectory, "src/index.ts"),
           interpreter: "ts-node",
+          interpreter_args: "--files -r tsconfig-paths/register",
           cwd: this.botDirectory,
           env: botEnv,
         };
@@ -336,6 +337,7 @@ export class BotSpawnerService {
     const newBot: Bot = {
       ...botConfig,
       id: botId,
+      type: botConfig.type || "whatsapp", // Ensure type is always set with fallback
       pm2ServiceId: pm2ServiceId,
       isExternal: false, // This is a system-spawned bot
       createdAt: new Date().toISOString(),

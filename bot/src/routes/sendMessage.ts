@@ -4,7 +4,7 @@
 import express from 'express';
 import multer from 'multer';
 import { fetchUserData, formatMessage, sendErrorMessage, sendFileAndMessage, sendImageAndMessage, sendMessage } from '../helpers/helpers';
-import { client } from '@src/config/whatsAppClient';
+import { client } from '../config/whatsAppClient';
 
 const router = express.Router();
 

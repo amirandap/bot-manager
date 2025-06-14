@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 /* eslint-disable max-len */
 import express from 'express';
-import { client } from '@src/config/whatsAppClient';
+import { client } from '../config/whatsAppClient';
 import { GroupChat } from 'whatsapp-web.js';
-import { getGroupDetails } from '@src/helpers/groupHelper';
+import { getGroupDetails } from '../helpers/groupHelper';
 
 const router = express.Router();
 

@@ -1,4 +1,4 @@
-import { DEFAULT_FALLBACK_PHONE_NUMBER } from '@src/constants/numbers';
+import { DEFAULT_FALLBACK_PHONE_NUMBER } from '../constants/numbers';
 import express, { Request, Response } from 'express';
 
 export let fallbackNumber = DEFAULT_FALLBACK_PHONE_NUMBER;
