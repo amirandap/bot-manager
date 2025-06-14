@@ -234,21 +234,23 @@ export class BotSpawnerService {
 
     // Determine the correct Chrome executable path based on the operating system
     let chromeExecutablePath;
-    
+
     if (process.env.CHROME_PATH) {
       chromeExecutablePath = process.env.CHROME_PATH;
-    } else if (process.platform === 'darwin') {
+    } else if (process.platform === "darwin") {
       // macOS
-      chromeExecutablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    } else if (process.platform === 'linux') {
+      chromeExecutablePath =
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+    } else if (process.platform === "linux") {
       // Linux
-      chromeExecutablePath = '/usr/bin/google-chrome';
-    } else if (process.platform === 'win32') {
+      chromeExecutablePath = "/usr/bin/google-chrome";
+    } else if (process.platform === "win32") {
       // Windows
-      chromeExecutablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+      chromeExecutablePath =
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
     } else {
       // Default fallback
-      chromeExecutablePath = '/usr/bin/google-chrome';
+      chromeExecutablePath = "/usr/bin/google-chrome";
     }
 
     // Prepare environment variables
@@ -299,9 +301,21 @@ export class BotSpawnerService {
           interpreter_args: "--files -r tsconfig-paths/register",
           cwd: this.botDirectory,
           env: botEnv,
-          error_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}-error.log`),
-          out_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}-out.log`),
-          log_file: path.join(process.env.HOME || '/tmp', '.pm2/logs', `${pm2ServiceId}.log`),
+          error_file: path.join(
+            process.env.HOME || "/tmp",
+            ".pm2/logs",
+            `${pm2ServiceId}-error.log`
+          ),
+          out_file: path.join(
+            process.env.HOME || "/tmp",
+            ".pm2/logs",
+            `${pm2ServiceId}-out.log`
+          ),
+          log_file: path.join(
+            process.env.HOME || "/tmp",
+            ".pm2/logs",
+            `${pm2ServiceId}.log`
+          ),
         };
 
         console.log(`📄 Starting PM2 process with name: ${pm2ServiceId}...`);
