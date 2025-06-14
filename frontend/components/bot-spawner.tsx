@@ -124,6 +124,17 @@ export function BotSpawner({
     setIsSpawning(true);
     setErrors({});
 
+    console.log('🚀 Starting bot spawning process...');
+    console.log('📋 Bot configuration:', {
+      name: formData.name,
+      type: "whatsapp",
+      apiPort: formData.apiPort,
+      apiHost: formData.apiHost,
+      phoneNumber: formData.phoneNumber || 'Not set',
+      pushName: formData.pushName || formData.name,
+      enabled: true,
+    });
+
     try {
       const botConfig = {
         name: formData.name,
@@ -135,6 +146,9 @@ export function BotSpawner({
         enabled: true,
       };
 
+      console.log('📡 Sending request to backend...');
+      console.log('🌐 API endpoint:', api.spawnWhatsAppBot());
+
       const response = await fetch(api.spawnWhatsAppBot(), {
         method: "POST",
         headers: {
@@ -143,20 +157,40 @@ export function BotSpawner({
         body: JSON.stringify(botConfig),
       });
 
+      console.log('📡 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ Backend error response:', errorData);
         throw new Error(
-          errorData.details || errorData.error || "Failed to spawn bot"
+          errorData.details || errorData.error || `Server error: ${response.status} ${response.statusText}`
         );
       }
 
       const result = await response.json();
       const createdBot = result.bot;
 
+      console.log('✅ Bot created successfully!');
+      console.log('📋 Created bot details:', {
+        id: createdBot.id,
+        name: createdBot.name,
+        port: createdBot.apiPort,
+        host: createdBot.apiHost,
+        pm2ServiceId: createdBot.pm2ServiceId
+      });
+      console.log('🌐 Bot URLs:', {
+        status: `${createdBot.apiHost}:${createdBot.apiPort}/status`,
+        qrCode: `${createdBot.apiHost}:${createdBot.apiPort}/qr-code`
+      });
+
       setLastCreatedBot(createdBot);
       setFormData({
         name: "",
-        apiPort: 7260,
+        apiPort: getNextAvailablePort(),
         phoneNumber: "",
         pushName: "",
         apiHost:
@@ -168,11 +202,27 @@ export function BotSpawner({
         onBotCreated(createdBot);
       }
     } catch (error) {
-      console.error("Error spawning bot:", error);
+      console.error("❌ Bot spawning failed:");
+      console.error("❌ Error details:", error);
+      
+      let errorMessage = "Failed to spawn bot";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("❌ Error message:", error.message);
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage += " (Network error - check backend connection)";
+        } else if (error.message.includes('port')) {
+          errorMessage += " (Port conflict - try a different port)";
+        } else if (error.message.includes('PM2')) {
+          errorMessage += " (PM2 error - check server logs)";
+        }
+      }
+      
       setErrors({
-        submit: error instanceof Error ? error.message : "Failed to spawn bot",
+        submit: errorMessage,
       });
     } finally {
+      console.log('🏁 Bot spawning process completed');
       setIsSpawning(false);
     }
   };
