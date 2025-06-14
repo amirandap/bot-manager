@@ -8,6 +8,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",
+      env_file: ".env.production",
       env: {
         NODE_ENV: "production",
         PORT: 3001,
@@ -31,6 +32,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",
+      env_file: "../.env.production",
       env: {
         NODE_ENV: "production",
         PORT: 7261,

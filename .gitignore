@@ -17,12 +17,16 @@ out/
 *.tsbuildinfo
 
 # Environment files
-.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env.*
+.env.*.local
+
+# Personal/sensitive environment files (these should be ignored)
+.env.personal
+.env.secrets
+.env.custom
 
 # Logs
 npm-debug.log*
