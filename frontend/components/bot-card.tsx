@@ -1,66 +1,73 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { MessageSquare, MessageCircle, RefreshCw, Settings, Trash2, QrCode } from "lucide-react"
-import StatusIndicator from "./status-indicator"
-import type { Bot, BotStatus } from "@/lib/types"
-import { useState, useEffect, useCallback } from "react"
-import { api, botApi } from "@/lib/api"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  MessageSquare,
+  MessageCircle,
+  RefreshCw,
+  Settings,
+  Trash2,
+  QrCode,
+} from "lucide-react";
+import StatusIndicator from "./status-indicator";
+import type { Bot, BotStatus } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
+import { api, botApi } from "@/lib/api";
 
 interface BotCardProps {
-  bot: Bot
-  onUpdate?: (bot: Bot) => void
-  onDelete?: (botId: string) => void
+  bot: Bot;
+  onUpdate?: (bot: Bot) => void;
+  onDelete?: (botId: string) => void;
 }
 
 export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
-  const [status, setStatus] = useState<BotStatus | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<BotStatus | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const getBotIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case "discord":
-        return <MessageCircle className="h-5 w-5" />
+        return <MessageCircle className="h-5 w-5" />;
       case "whatsapp":
-        return <MessageSquare className="h-5 w-5" />
+        return <MessageSquare className="h-5 w-5" />;
       default:
-        return <MessageSquare className="h-5 w-5" />
+        return <MessageSquare className="h-5 w-5" />;
     }
-  }
+  };
 
   const fetchBotStatus = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await fetch(api.getBotStatus(bot.id))
+      const response = await fetch(api.getBotStatus(bot.id));
       if (response.ok) {
-        const statusData: BotStatus = await response.json()
-        setStatus(statusData)
+        const statusData: BotStatus = await response.json();
+        setStatus(statusData);
       }
     } catch (error) {
-      console.error('Failed to fetch bot status:', error)
+      console.error("Failed to fetch bot status:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [bot.id])
+  }, [bot.id]);
 
   const handleViewQR = () => {
-    if (bot.type === 'whatsapp') {
-      window.open(botApi.getWhatsAppQR(bot), '_blank')
+    if (bot.type === "whatsapp") {
+      window.open(botApi.getWhatsAppQR(bot), "_blank");
     }
-  }
+  };
 
   useEffect(() => {
-    fetchBotStatus()
+    fetchBotStatus();
     // Poll for status updates every 30 seconds
-    const interval = setInterval(fetchBotStatus, 30000)
-    return () => clearInterval(interval)
-  }, [fetchBotStatus])
+    const interval = setInterval(fetchBotStatus, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBotStatus]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <Card>
@@ -70,17 +77,32 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             {getBotIcon(bot.type)}
             <CardTitle>{bot.name}</CardTitle>
           </div>
-          <Badge variant={bot.type.toLowerCase() === "discord" ? "default" : "outline"}>{bot.type}</Badge>
+          <Badge
+            variant={
+              bot.type.toLowerCase() === "discord" ? "default" : "outline"
+            }
+          >
+            {bot.type}
+          </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="pb-2">
         <div className="flex items-center justify-between mb-4 flex-col space-y-2">
           <div className="flex items-center gap-2">
-            <StatusIndicator status={status?.status || 'unknown'} />
-            <span className="text-sm font-medium capitalize">{status?.status || 'Loading...'}</span>
+            <StatusIndicator
+              status={status?.status || "unknown"}
+              botStatus={status || undefined}
+              showDetails={false}
+            />
+            <span className="text-sm font-medium capitalize">
+              {status?.status || "Loading..."}
+            </span>
+            {status?.apiResponsive === false && (
+              <span className="text-xs text-red-500">(API Down)</span>
+            )}
           </div>
-          
+
           <div className="text-xs text-muted-foreground space-y-1 w-full">
             <div>API Host: {bot.apiHost}</div>
             <div>Port: {bot.apiPort}</div>
@@ -88,7 +110,34 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             {bot.phoneNumber && <div>Phone: {bot.phoneNumber}</div>}
             {bot.pushName && <div>Push Name: {bot.pushName}</div>}
             <div>Created: {formatDate(bot.createdAt)}</div>
-            {status?.lastSeen && <div>Last Seen: {new Date(status.lastSeen).toLocaleString()}</div>}
+            {status?.lastSeen && (
+              <div>Last Seen: {new Date(status.lastSeen).toLocaleString()}</div>
+            )}
+
+            {/* Enhanced PM2 Information */}
+            {status?.pm2 && (
+              <div className="pt-2 border-t border-gray-200">
+                <div className="font-medium text-gray-700">Process Info:</div>
+                {status.pm2.pid && <div>PID: {status.pm2.pid}</div>}
+                {status.pm2.cpu !== undefined && (
+                  <div>CPU: {status.pm2.cpu}%</div>
+                )}
+                {status.pm2.memory !== undefined && (
+                  <div>Memory: {status.pm2.memory}MB</div>
+                )}
+                {status.pm2.restarts !== undefined && (
+                  <div>Restarts: {status.pm2.restarts}</div>
+                )}
+                {status.pm2.uptime !== undefined && (
+                  <div>
+                    Uptime: {Math.floor(status.pm2.uptime / 1000 / 60)}m
+                  </div>
+                )}
+                {status.apiResponseTime && (
+                  <div>API Response: {status.apiResponseTime}ms</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -100,11 +149,13 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             onClick={fetchBotStatus}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh Status
           </Button>
-          
-          {bot.type === 'whatsapp' && (
+
+          {bot.type === "whatsapp" && (
             <Button
               variant="outline"
               size="sm"
@@ -115,7 +166,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               View QR Code
             </Button>
           )}
-          
+
           {onUpdate && (
             <Button
               variant="outline"
@@ -127,7 +178,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               Edit
             </Button>
           )}
-          
+
           {onDelete && (
             <Button
               variant="destructive"
@@ -142,6 +193,5 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-

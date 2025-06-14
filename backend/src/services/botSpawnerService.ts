@@ -27,13 +27,25 @@ export class BotSpawnerService {
       try {
         const envConfig = dotenv.parse(fs.readFileSync(botEnvPath));
         Object.assign(botEnvDefaults, envConfig);
-        console.log(`   ✅ Loaded ${Object.keys(envConfig).length} environment variables from ${botEnvPath}`);
-        console.log(`   📋 Loaded variables: ${Object.keys(envConfig).join(', ')}`);
+        console.log(
+          `   ✅ Loaded ${
+            Object.keys(envConfig).length
+          } environment variables from ${botEnvPath}`
+        );
+        console.log(
+          `   📋 Loaded variables: ${Object.keys(envConfig).join(", ")}`
+        );
       } catch (error) {
-        console.log(`   ⚠️  Error parsing bot .env file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log(
+          `   ⚠️  Error parsing bot .env file: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
     } else {
-      console.log(`   ⚠️  Bot .env file not found at ${botEnvPath}, using system defaults only`);
+      console.log(
+        `   ⚠️  Bot .env file not found at ${botEnvPath}, using system defaults only`
+      );
     }
 
     return botEnvDefaults;
@@ -43,19 +55,19 @@ export class BotSpawnerService {
     botConfig: Omit<Bot, "id" | "createdAt" | "updatedAt">
   ): Promise<Bot> {
     const botId = `whatsapp-bot-${Date.now()}`;
-    
-    console.log('\n='.repeat(60));
+
+    console.log("\n=".repeat(60));
     console.log(`🚀 STARTING BOT CREATION PROCESS`);
-    console.log('='.repeat(60));
+    console.log("=".repeat(60));
     console.log(`🤖 Bot ID: ${botId}`);
     console.log(`📛 Bot Name: ${botConfig.name}`);
     console.log(`🔌 Port: ${botConfig.apiPort}`);
     console.log(`🌐 Host: ${botConfig.apiHost}`);
     console.log(`📱 Type: ${botConfig.type}`);
-    console.log(`🏷️  Push Name: ${botConfig.pushName || 'Not set'}`);
-    console.log(`📞 Phone: ${botConfig.phoneNumber || 'Not set'}`);
+    console.log(`🏷️  Push Name: ${botConfig.pushName || "Not set"}`);
+    console.log(`📞 Phone: ${botConfig.phoneNumber || "Not set"}`);
     console.log(`⚙️  Enabled: ${botConfig.enabled}`);
-    console.log('-'.repeat(60));
+    console.log("-".repeat(60));
 
     try {
       // 1. Validar que el bot directory existe y tiene package.json
@@ -74,29 +86,35 @@ export class BotSpawnerService {
       console.log(`📋 STEP 4: Adding bot to configuration...`);
       const newBot = await this.addBotToConfig(botConfig, botId);
 
-      console.log('\n' + '='.repeat(60));
+      console.log("\n" + "=".repeat(60));
       console.log(`✅ BOT CREATION COMPLETED SUCCESSFULLY`);
-      console.log('='.repeat(60));
+      console.log("=".repeat(60));
       console.log(`🆔 Bot ID: ${botId}`);
       console.log(`🌐 Bot URL: ${botConfig.apiHost}:${botConfig.apiPort}`);
-      console.log(`📊 Status URL: ${botConfig.apiHost}:${botConfig.apiPort}/status`);
-      console.log(`📱 QR Code URL: ${botConfig.apiHost}:${botConfig.apiPort}/qr-code`);
+      console.log(
+        `📊 Status URL: ${botConfig.apiHost}:${botConfig.apiPort}/status`
+      );
+      console.log(
+        `📱 QR Code URL: ${botConfig.apiHost}:${botConfig.apiPort}/qr-code`
+      );
       console.log(`📄 Updated config/bots.json with new bot`);
-      console.log('='.repeat(60) + '\n');
+      console.log("=".repeat(60) + "\n");
 
       return newBot;
     } catch (error) {
-      console.log('\n' + '❌'.repeat(20));
+      console.log("\n" + "❌".repeat(20));
       console.log(`❌ BOT CREATION FAILED`);
-      console.log('❌'.repeat(20));
+      console.log("❌".repeat(20));
       console.log(`🆔 Bot ID: ${botId}`);
-      console.log(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log(
+        `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
       if (error instanceof Error && error.stack) {
         console.log(`📋 Stack trace:`);
         console.log(error.stack);
       }
-      console.log('❌'.repeat(20) + '\n');
-      
+      console.log("❌".repeat(20) + "\n");
+
       // Attempt cleanup if bot was partially created
       console.log(`🧹 Attempting to cleanup partially created bot...`);
       try {
@@ -104,9 +122,15 @@ export class BotSpawnerService {
         await this.deleteBot(botId);
         console.log(`✅ Cleanup completed for ${botId}`);
       } catch (cleanupError) {
-        console.log(`⚠️  Cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown cleanup error'}`);
+        console.log(
+          `⚠️  Cleanup failed: ${
+            cleanupError instanceof Error
+              ? cleanupError.message
+              : "Unknown cleanup error"
+          }`
+        );
       }
-      
+
       throw new Error(
         `Failed to create new WhatsApp bot: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -117,7 +141,7 @@ export class BotSpawnerService {
 
   private async validateBotDirectory(): Promise<void> {
     const packageJsonPath = path.join(this.botDirectory, "package.json");
-    const scriptPath = path.join(this.botDirectory, "src/simple-index.ts");
+    const scriptPath = path.join(this.botDirectory, "src/index.ts");
 
     console.log(`📁 Validating bot directory structure...`);
     console.log(`   - Bot directory: ${this.botDirectory}`);
@@ -135,16 +159,20 @@ export class BotSpawnerService {
     if (!fs.existsSync(scriptPath)) {
       throw new Error(`Bot script not found: ${scriptPath}`);
     }
-    console.log(`   ✅ simple-index.ts found`);
+    console.log(`   ✅ index.ts found`);
 
     // Check if ts-node is available
     try {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
       console.log(`   📋 Bot package info:`);
-      console.log(`      - Name: ${packageJson.name || 'Unknown'}`);
-      console.log(`      - Version: ${packageJson.version || 'Unknown'}`);
+      console.log(`      - Name: ${packageJson.name || "Unknown"}`);
+      console.log(`      - Version: ${packageJson.version || "Unknown"}`);
     } catch (error) {
-      console.log(`   ⚠️  Could not parse package.json: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.log(
+        `   ⚠️  Could not parse package.json: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
 
     console.log(`✅ Bot directory validation completed`);
@@ -166,10 +194,16 @@ export class BotSpawnerService {
           fs.mkdirSync(dir, { recursive: true });
           console.log(`   ✅ Created: ${path.relative(process.cwd(), dir)}`);
         } catch (error) {
-          throw new Error(`Failed to create directory ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          throw new Error(
+            `Failed to create directory ${dir}: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
         }
       } else {
-        console.log(`   📁 Already exists: ${path.relative(process.cwd(), dir)}`);
+        console.log(
+          `   📁 Already exists: ${path.relative(process.cwd(), dir)}`
+        );
       }
     });
 
@@ -177,9 +211,15 @@ export class BotSpawnerService {
     directories.forEach((dir) => {
       try {
         fs.accessSync(dir, fs.constants.W_OK);
-        console.log(`   ✅ Write access confirmed: ${path.relative(process.cwd(), dir)}`);
+        console.log(
+          `   ✅ Write access confirmed: ${path.relative(process.cwd(), dir)}`
+        );
       } catch (error) {
-        throw new Error(`No write access to directory ${dir}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `No write access to directory ${dir}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
     });
 
@@ -191,7 +231,7 @@ export class BotSpawnerService {
 
     // Load bot environment defaults from bot folder .env
     const botEnvDefaults = this.loadBotEnvironmentDefaults();
-    
+
     // Prepare environment variables
     const botEnv = {
       // Start with bot folder defaults
@@ -209,7 +249,9 @@ export class BotSpawnerService {
     };
 
     console.log(`📦 PM2 Configuration:`);
-    console.log(`   - Script: ${path.join(this.botDirectory, "src/simple-index.ts")}`);
+    console.log(
+      `   - Script: ${path.join(this.botDirectory, "src/index.ts")}`
+    );
     console.log(`   - Interpreter: ts-node`);
     console.log(`   - Working Directory: ${this.botDirectory}`);
     console.log(`   - Process Name: ${botId}`);
@@ -233,7 +275,7 @@ export class BotSpawnerService {
 
         const pm2Config = {
           name: botId,
-          script: path.join(this.botDirectory, "src/simple-index.ts"),
+          script: path.join(this.botDirectory, "src/index.ts"),
           interpreter: "ts-node",
           cwd: this.botDirectory,
           env: botEnv,
@@ -247,12 +289,18 @@ export class BotSpawnerService {
           if (err) {
             console.error(`❌ PM2 start failed for ${botId}:`);
             console.error(`   Error: ${err.message}`);
-            if (err.message.includes('already exists')) {
-              console.error(`   💡 Suggestion: Process name conflict. Try stopping the existing process first.`);
-            } else if (err.message.includes('ENOENT')) {
-              console.error(`   💡 Suggestion: Check if the script file exists and ts-node is installed.`);
-            } else if (err.message.includes('port')) {
-              console.error(`   💡 Suggestion: Port ${botConfig.apiPort} might be in use.`);
+            if (err.message.includes("already exists")) {
+              console.error(
+                `   💡 Suggestion: Process name conflict. Try stopping the existing process first.`
+              );
+            } else if (err.message.includes("ENOENT")) {
+              console.error(
+                `   💡 Suggestion: Check if the script file exists and ts-node is installed.`
+              );
+            } else if (err.message.includes("port")) {
+              console.error(
+                `   💡 Suggestion: Port ${botConfig.apiPort} might be in use.`
+              );
             }
             reject(new Error(`PM2 start failed: ${err.message}`));
           } else {
@@ -260,10 +308,20 @@ export class BotSpawnerService {
             console.log(`📄 PM2 process created successfully`);
             if (proc && Array.isArray(proc) && proc.length > 0) {
               console.log(`📊 Process details:`);
-              console.log(`   - PID: ${(proc[0] as any).pid || 'Unknown'}`);
-              console.log(`   - Status: ${(proc[0] as any).pm2_env?.status || 'Unknown'}`);
-              console.log(`   - CPU: ${(proc[0] as any).monit?.cpu || 'Unknown'}%`);
-              console.log(`   - Memory: ${(proc[0] as any).monit?.memory ? Math.round((proc[0] as any).monit.memory / 1024 / 1024) : 'Unknown'}MB`);
+              console.log(`   - PID: ${(proc[0] as any).pid || "Unknown"}`);
+              console.log(
+                `   - Status: ${(proc[0] as any).pm2_env?.status || "Unknown"}`
+              );
+              console.log(
+                `   - CPU: ${(proc[0] as any).monit?.cpu || "Unknown"}%`
+              );
+              console.log(
+                `   - Memory: ${
+                  (proc[0] as any).monit?.memory
+                    ? Math.round((proc[0] as any).monit.memory / 1024 / 1024)
+                    : "Unknown"
+                }MB`
+              );
             }
             resolve();
           }
