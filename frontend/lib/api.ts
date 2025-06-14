@@ -6,6 +6,9 @@ export const API_BASE_URL =
 
 // API helpers
 export const api = {
+  // Base URL for manual construction
+  base: API_BASE_URL,
+
   // Bots endpoints
   getBots: () => `${API_BASE_URL}/api/bots`,
   getBot: (id: string) => `${API_BASE_URL}/api/bots/${id}`,
@@ -17,6 +20,14 @@ export const api = {
   // Bot spawning endpoints
   spawnWhatsAppBot: () => `${API_BASE_URL}/api/bots/spawn/whatsapp`,
   terminateBot: (id: string) => `${API_BASE_URL}/api/bots/${id}/terminate`,
+
+  // Deployment endpoints
+  deployStatus: () => `${API_BASE_URL}/api/deploy/status`,
+  deployTrigger: () => `${API_BASE_URL}/api/deploy/trigger`,
+  deployWebhook: () => `${API_BASE_URL}/api/deploy/webhook`,
+  deployHealth: () => `${API_BASE_URL}/api/deploy/health`,
+  deployHistory: (limit?: number) =>
+    `${API_BASE_URL}/api/deploy/history${limit ? `?limit=${limit}` : ""}`,
 
   // Status endpoints
   getBotStatus: (id: string) => `${API_BASE_URL}/api/status/${id}`,

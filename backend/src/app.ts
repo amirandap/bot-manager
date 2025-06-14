@@ -1,6 +1,7 @@
 import express from "express";
 import { setBotsRoutes } from "./routes/botsRoutes";
 import { setStatusRoutes } from "./routes/statusRoutes";
+import { setDeployRoutes } from "./routes/deployRoutes";
 import cors from "cors";
 import morgan from "morgan";
 import { ConfigService } from "./services/configService";
@@ -23,6 +24,7 @@ app.use(morgan("short"));
 
 setBotsRoutes(app);
 setStatusRoutes(app);
+setDeployRoutes(app);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

@@ -3,8 +3,17 @@
 import { useEffect, useState } from "react";
 import BotCard from "./bot-card";
 import { BotSpawner } from "./bot-spawner";
+import { DeploymentManager } from "./deployment-manager";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, RefreshCw, Plus, ArrowLeft } from "lucide-react";
+import {
+  AlertCircle,
+  RefreshCw,
+  Plus,
+  ArrowLeft,
+  Settings,
+  Rocket,
+  Activity,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Bot } from "@/lib/types";
 import { api } from "@/lib/api";
@@ -15,6 +24,7 @@ export default function BotDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpawner, setShowSpawner] = useState(false);
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments">("bots");
 
   const fetchBots = async () => {
     try {
@@ -104,75 +114,124 @@ export default function BotDashboard() {
           <BotSpawner onBotCreated={handleBotCreated} />
         </div>
       ) : (
-        // Main Dashboard View
+        // Main Dashboard with Tabs
         <>
-          <div className="flex justify-between items-center">
-            <div
-              className="text-sm text-muted-foreground"
-              suppressHydrationWarning
-            >
-              {lastUpdated && (
-                <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddBot}
-                className="flex items-center gap-1"
+          {/* Tab Navigation */}
+          <div className="border-b">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab("bots")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "bots"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
-                <Plus className="h-4 w-4" />
-                Spawn New Bot
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchBots}
-                disabled={loading}
-                className="flex items-center gap-1"
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Bot Management
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("deployments")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "deployments"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
-                <RefreshCw
-                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                />
-                Refresh
-              </Button>
-            </div>
+                <div className="flex items-center gap-2">
+                  <Rocket className="h-4 w-4" />
+                  CI/CD Platform
+                </div>
+              </button>
+            </nav>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {bots.map((bot) => (
-              <BotCard
-                key={bot.id}
-                bot={bot}
-                onUpdate={handleUpdateBot}
-                onDelete={handleDeleteBot}
-              />
-            ))}
-
-            {!loading && bots.length === 0 && !error && (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
-                <div className="space-y-4">
-                  <p>No bots configured yet.</p>
+          {/* Tab Content */}
+          {activeTab === "bots" ? (
+            // Bot Management Tab
+            <>
+              <div className="flex justify-between items-center">
+                <div
+                  className="text-sm text-muted-foreground"
+                  suppressHydrationWarning
+                >
+                  {lastUpdated && (
+                    <span>
+                      Last updated: {lastUpdated.toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
                   <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleAddBot}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1"
                   >
                     <Plus className="h-4 w-4" />
-                    Spawn Your First WhatsApp Bot
+                    Spawn New Bot
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchBots}
+                    disabled={loading}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                    />
+                    Refresh
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {bots.map((bot) => (
+                  <BotCard
+                    key={bot.id}
+                    bot={bot}
+                    onUpdate={handleUpdateBot}
+                    onDelete={handleDeleteBot}
+                  />
+                ))}
+
+                {!loading && bots.length === 0 && !error && (
+                  <div className="col-span-full text-center py-12 text-muted-foreground">
+                    <div className="space-y-4">
+                      <p>No bots configured yet.</p>
+                      <Button
+                        onClick={handleAddBot}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Spawn Your First WhatsApp Bot
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // CI/CD Platform Tab
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-600" />
+                <h2 className="text-xl font-semibold">CI/CD Platform</h2>
+              </div>
+              <DeploymentManager />
+            </div>
+          )}
         </>
       )}
     </div>

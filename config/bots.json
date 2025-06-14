@@ -25,6 +25,18 @@
       "id": "whatsapp-bot-1749651719712",
       "createdAt": "2025-06-11T14:21:59.712Z",
       "updatedAt": "2025-06-11T17:35:52.771Z"
+    },
+    {
+      "name": "Iguala Abril",
+      "type": "whatsapp",
+      "apiPort": 7260,
+      "apiHost": "http://localhost",
+      "pushName": "Iguala Abril",
+      "enabled": true,
+      "id": "whatsapp-bot-1749923429509",
+      "pm2ServiceId": "whatsapp-bot-1749923429486",
+      "createdAt": "2025-06-14T17:50:29.509Z",
+      "updatedAt": "2025-06-14T17:50:29.509Z"
     }
   ]
 }
