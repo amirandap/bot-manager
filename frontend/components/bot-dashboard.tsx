@@ -111,7 +111,7 @@ export default function BotDashboard() {
             <h2 className="text-xl font-semibold">Create New Bot</h2>
           </div>
 
-          <BotSpawner onBotCreated={handleBotCreated} />
+          <BotSpawner onBotCreated={handleBotCreated} existingBots={bots} />
         </div>
       ) : (
         // Main Dashboard with Tabs

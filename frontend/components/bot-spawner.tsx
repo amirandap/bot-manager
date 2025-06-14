@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -23,19 +23,57 @@ interface SpawnBotFormData {
 
 interface BotSpawnerProps {
   onBotCreated?: (bot: Bot) => void;
+  existingBots?: Bot[];
 }
 
-export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
+export function BotSpawner({
+  onBotCreated,
+  existingBots = [],
+}: BotSpawnerProps) {
   const [isSpawning, setIsSpawning] = useState(false);
+
+  // Calculate next available port
+  const getNextAvailablePort = () => {
+    if (existingBots.length === 0) {
+      return 7201; // Start from 7201 if no bots exist
+    }
+
+    const usedPorts = existingBots
+      .map((bot) => bot.apiPort)
+      .sort((a, b) => a - b);
+    const highestPort = Math.max(...usedPorts);
+    return highestPort + 1;
+  };
+
   const [formData, setFormData] = useState<SpawnBotFormData>({
     name: "",
-    apiPort: 7260,
+    apiPort: getNextAvailablePort(),
     phoneNumber: "",
     pushName: "",
     apiHost: process.env.NEXT_PUBLIC_API_BASE_URL?.replace(":3001", "") || "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastCreatedBot, setLastCreatedBot] = useState<Bot | null>(null);
+
+  // Update port when existing bots change
+  useEffect(() => {
+    const getNextAvailablePort = () => {
+      if (existingBots.length === 0) {
+        return 7201; // Start from 7201 if no bots exist
+      }
+
+      const usedPorts = existingBots
+        .map((bot) => bot.apiPort)
+        .sort((a, b) => a - b);
+      const highestPort = Math.max(...usedPorts);
+      return highestPort + 1;
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      apiPort: getNextAvailablePort(),
+    }));
+  }, [existingBots]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -50,6 +88,12 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
       formData.apiPort > 65535
     ) {
       newErrors.apiPort = "API port must be between 1000 and 65535";
+    } else {
+      // Check for port conflicts
+      const usedPorts = existingBots.map((bot) => bot.apiPort);
+      if (usedPorts.includes(formData.apiPort)) {
+        newErrors.apiPort = "This port is already in use by another bot";
+      }
     }
 
     if (!formData.apiHost.trim()) {
@@ -61,7 +105,12 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
   };
 
   const generateRandomPort = () => {
-    const port = Math.floor(Math.random() * (8000 - 7000) + 7000);
+    const usedPorts = existingBots.map((bot) => bot.apiPort);
+    let port;
+    do {
+      port = Math.floor(Math.random() * (8000 - 7200) + 7200);
+    } while (usedPorts.includes(port));
+
     setFormData((prev) => ({ ...prev, apiPort: port }));
   };
 
@@ -172,6 +221,9 @@ export function BotSpawner({ onBotCreated }: BotSpawnerProps) {
                   className="block text-sm font-medium mb-1"
                 >
                   API Port *
+                  <span className="text-sm text-gray-500 font-normal ml-2">
+                    (Auto-selected next available port)
+                  </span>
                 </label>
                 <div className="flex gap-2">
                   <input
