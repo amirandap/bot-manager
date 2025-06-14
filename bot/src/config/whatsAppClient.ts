@@ -27,6 +27,27 @@ export async function initializeClient() {
     console.log(`🚀 Initializing WhatsApp client for bot: ${BOT_ID}`);
     console.log(`📂 Using session path: ${SESSION_PATH}`);
     
+    // Determine the correct Chrome executable path based on the operating system
+    let chromeExecutablePath;
+    
+    if (process.env.CHROME_PATH) {
+      chromeExecutablePath = process.env.CHROME_PATH;
+    } else if (process.platform === 'darwin') {
+      // macOS
+      chromeExecutablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    } else if (process.platform === 'linux') {
+      // Linux
+      chromeExecutablePath = '/usr/bin/google-chrome';
+    } else if (process.platform === 'win32') {
+      // Windows
+      chromeExecutablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    } else {
+      // Default fallback
+      chromeExecutablePath = '/usr/bin/google-chrome';
+    }
+
+    console.log(`🌐 Using Chrome executable: ${chromeExecutablePath}`);
+    
     client = new Client({
       authStrategy: new LocalAuth({
         dataPath: SESSION_PATH,
@@ -44,7 +65,7 @@ export async function initializeClient() {
           '--single-process',
           '--disable-gpu'
         ],
-        executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
+        executablePath: chromeExecutablePath,
       },
     });
     console.log('Initializing client...');

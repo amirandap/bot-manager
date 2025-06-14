@@ -70,9 +70,9 @@ export const sendMessage = async (client: Client | null, phoneNumber: string , m
     }
     await client.sendMessage(formattedPhoneNumber, message);
     return { status: 'success', message: 'Message sent successfully' };
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = (error as any)?.response ? (error as any).response.data : { to: phoneNumber, text: errorMessage };
+    const errorDetails = error?.response ? error.response.data : { to: phoneNumber, text: errorMessage };
     throw new Error(`Error sending message: ${JSON.stringify(errorDetails)}`);
   }
 };
@@ -103,9 +103,9 @@ export const sendImageAndMessage = async (
 
     return { status: 'success', message: 'Message sent successfully' };
 
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = (error as any)?.response ? (error as any).response.data : { to: phoneNumber, text: errorMessage };
+    const errorDetails = error?.response ? error.response.data : { to: phoneNumber, text: errorMessage };
     throw new Error(`Error sending image: ${JSON.stringify(errorDetails)}`);
   }
 };
@@ -132,9 +132,9 @@ export const sendFileAndMessage = async (
 
     return { status: 'success', message: 'Message sent successfully' };
 
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = (error as any)?.response ? (error as any).response.data : { to: phoneNumber, text: errorMessage };
+    const errorDetails = error?.response ? error.response.data : { to: phoneNumber, text: errorMessage };
     throw new Error(`Error sending image: ${JSON.stringify(errorDetails)}`);
   }
 };
@@ -147,9 +147,9 @@ export const sendErrorMessage = async (client: Client | null, message: string) =
     }
     await client.sendMessage(formattedNumber, message);
     return { status: 'success', message: 'Message sent successfully' };
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = (error as any)?.response ? (error as any).response.data : { to: fallbackNumber, text: errorMessage };
+    const errorDetails = error?.response ? error.response.data : { to: fallbackNumber, text: errorMessage };
     throw new Error(`Error sending message: ${JSON.stringify(errorDetails)}`);
   }
 };
