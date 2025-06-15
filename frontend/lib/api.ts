@@ -64,8 +64,7 @@ export const api = {
     sendFollowup: () => `${API_BASE_URL}/api/bots/followup`,
     receiveImageAndJson: () =>
       `${API_BASE_URL}/api/bots/receive-image-and-json`,
-    sendConfirmation: () =>
-      `${API_BASE_URL}/api/bots/confirmation`,
+    sendConfirmation: () => `${API_BASE_URL}/api/bots/confirmation`,
   },
 };
 

@@ -43,9 +43,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
     try {
       // Use unified proxy endpoint with botId in request body
       const response = await fetch(api.proxy.getStatus(), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ botId: bot.id }),
       });
@@ -67,17 +67,17 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
       // Since we need to pass botId in the body, we'll open a form-based approach
       // or create a temporary URL that handles the POST request
       // For now, let's create a simple approach using a form
-      const form = document.createElement('form');
-      form.method = 'POST';
+      const form = document.createElement("form");
+      form.method = "POST";
       form.action = qrUrl;
-      form.target = '_blank';
-      
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'botId';
+      form.target = "_blank";
+
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "botId";
       input.value = bot.id;
       form.appendChild(input);
-      
+
       document.body.appendChild(form);
       form.submit();
       document.body.removeChild(form);
