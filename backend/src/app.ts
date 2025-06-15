@@ -1,5 +1,6 @@
 import express from "express";
 import { setBotsRoutes } from "./routes/botsRoutes";
+import { setBotProxyRoutes } from "./routes/botProxyRoutes";
 import { setStatusRoutes } from "./routes/statusRoutes";
 import { setDeployRoutes } from "./routes/deployRoutes";
 import { setupSwagger } from "./swagger";
@@ -27,6 +28,7 @@ app.use(cors());
 app.use(morgan("short"));
 
 setBotsRoutes(app);
+setBotProxyRoutes(app);
 setStatusRoutes(app);
 setDeployRoutes(app);
 

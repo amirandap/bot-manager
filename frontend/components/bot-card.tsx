@@ -15,7 +15,7 @@ import StatusIndicator from "./status-indicator";
 import PM2StatusIndicator from "./pm2-status-indicator";
 import type { Bot, BotStatus } from "@/lib/types";
 import { useState, useEffect, useCallback } from "react";
-import { api, botApi } from "@/lib/api";
+import { api } from "@/lib/api";
 
 interface BotCardProps {
   bot: Bot;
@@ -41,7 +41,14 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const fetchBotStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(api.getBotStatus(bot.id));
+      // Use unified proxy endpoint with botId in request body
+      const response = await fetch(api.proxy.getStatus(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ botId: bot.id }),
+      });
       if (response.ok) {
         const statusData: BotStatus = await response.json();
         setStatus(statusData);
@@ -55,7 +62,25 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
   const handleViewQR = () => {
     if (bot.type === "whatsapp") {
-      window.open(botApi.getWhatsAppQR(bot), "_blank");
+      // Use unified proxy endpoint for QR code
+      const qrUrl = api.proxy.getQRCode();
+      // Since we need to pass botId in the body, we'll open a form-based approach
+      // or create a temporary URL that handles the POST request
+      // For now, let's create a simple approach using a form
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = qrUrl;
+      form.target = '_blank';
+      
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'botId';
+      input.value = bot.id;
+      form.appendChild(input);
+      
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
     }
   };
 
