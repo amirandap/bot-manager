@@ -60,13 +60,85 @@ export default function ApiDocsPage() {
       ],
     },
     {
-      category: "Bot Messaging",
+      category: "Bot Proxy - Core Operations",
+      icon: <Settings className="h-5 w-5" />,
+      endpoints: [
+        {
+          method: "POST",
+          path: "/api/bots/status",
+          description: "Get bot status (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/qr-code",
+          description: "Get QR code for WhatsApp authentication (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/qr-code/update",
+          description: "Update QR code (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/restart",
+          description: "Restart bot (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/change-fallback-number",
+          description: "Change fallback number (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/change-port",
+          description: "Change bot port (botId in request body)",
+        },
+      ],
+    },
+    {
+      category: "Bot Proxy - Messaging Operations",
+      icon: <MessageSquare className="h-5 w-5" />,
+      endpoints: [
+        {
+          method: "POST",
+          path: "/api/bots/send-message",
+          description: "Send WhatsApp message with optional file (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/get-groups",
+          description: "Get WhatsApp groups (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/pending",
+          description: "Send pending message (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/followup",
+          description: "Send followup message (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/receive-image-and-json",
+          description: "Send image with JSON data (botId in request body)",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/confirmation",
+          description: "Send confirmation message (botId in request body)",
+        },
+      ],
+    },
+    {
+      category: "Bot Messaging (Legacy)",
       icon: <MessageSquare className="h-5 w-5" />,
       endpoints: [
         {
           method: "POST",
           path: "/api/bots/{id}/send",
-          description: "Send WhatsApp message with optional file attachment",
+          description: "Send WhatsApp message with optional file attachment (Legacy)",
         },
       ],
     },
@@ -279,17 +351,60 @@ export default function ApiDocsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Usage Examples</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Note: Bot proxy endpoints now use botId in the request body instead of URL parameters
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="font-medium mb-2">Send WhatsApp Message</h4>
+            <h4 className="font-medium mb-2">Get Bot Status (New Proxy API)</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-                {`curl -X POST "${backendUrl}/api/bots/{bot-id}/send" \\
+                {`curl -X POST "${backendUrl}/api/bots/status" \\
   -H "Content-Type: application/json" \\
   -d '{
+    "botId": "whatsapp-bot-1234567890"
+  }'`}
+              </pre>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Send WhatsApp Message (New Proxy API)</h4>
+            <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
+              <pre className="text-sm">
+                {`curl -X POST "${backendUrl}/api/bots/send-message" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "botId": "whatsapp-bot-1234567890",
     "phoneNumber": "+1234567890",
     "message": "Hello from the API!"
+  }'`}
+              </pre>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Get WhatsApp Groups (New Proxy API)</h4>
+            <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
+              <pre className="text-sm">
+                {`curl -X POST "${backendUrl}/api/bots/get-groups" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "botId": "whatsapp-bot-1234567890"
+  }'`}
+              </pre>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Restart Bot (New Proxy API)</h4>
+            <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
+              <pre className="text-sm">
+                {`curl -X POST "${backendUrl}/api/bots/restart" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "botId": "whatsapp-bot-1234567890"
   }'`}
               </pre>
             </div>
@@ -318,6 +433,52 @@ export default function ApiDocsPage() {
   }'`}
               </pre>
             </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Legacy Send Message (Old API)</h4>
+            <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
+              <pre className="text-sm">
+                {`curl -X POST "${backendUrl}/api/bots/{bot-id}/send" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phoneNumber": "+1234567890",
+    "message": "Hello from the API!"
+  }'`}
+              </pre>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* API Migration Notice */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Info className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-blue-800">API Migration Notice</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 text-sm">
+            <p>
+              <strong>New Unified Bot Proxy API:</strong> All bot operations now use a unified proxy API 
+              where the bot ID is passed in the request body instead of URL parameters.
+            </p>
+            <div className="bg-white p-3 rounded border">
+              <p className="font-medium mb-2">Key Changes:</p>
+              <ul className="space-y-1 text-gray-600">
+                <li>• Bot ID is now passed in the request body as <code className="bg-gray-100 px-1 rounded">botId</code></li>
+                <li>• All bot proxy endpoints use POST method (for consistency)</li>
+                <li>• Endpoints are now at <code className="bg-gray-100 px-1 rounded">/api/bots/operation</code> instead of <code className="bg-gray-100 px-1 rounded">/api/bots/{"{id}"}/operation</code></li>
+                <li>• Better error handling with validation for required botId</li>
+                <li>• Unified documentation and Swagger specs</li>
+              </ul>
+            </div>
+            <p>
+              <strong>Benefits:</strong> This new structure provides better consistency, 
+              easier payload management, and improved error handling across all bot operations.
+            </p>
           </div>
         </CardContent>
       </Card>
