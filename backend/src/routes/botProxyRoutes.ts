@@ -60,7 +60,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/status", botProxyController.getBotStatus.bind(botProxyController));
+  app.post(
+    "/api/bots/status",
+    botProxyController.getBotStatus.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -95,7 +98,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/qr-code", botProxyController.getBotQRCode.bind(botProxyController));
+  app.post(
+    "/api/bots/qr-code",
+    botProxyController.getBotQRCode.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -126,7 +132,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/qr-code/update", botProxyController.updateBotQRCode.bind(botProxyController));
+  app.post(
+    "/api/bots/qr-code/update",
+    botProxyController.updateBotQRCode.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -157,7 +166,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/restart", botProxyController.restartBot.bind(botProxyController));
+  app.post(
+    "/api/bots/restart",
+    botProxyController.restartBot.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -192,7 +204,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/change-fallback-number", botProxyController.changeFallbackNumber.bind(botProxyController));
+  app.post(
+    "/api/bots/change-fallback-number",
+    botProxyController.changeFallbackNumber.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -227,7 +242,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/change-port", botProxyController.changePort.bind(botProxyController));
+  app.post(
+    "/api/bots/change-port",
+    botProxyController.changePort.bind(botProxyController)
+  );
 
   // ===== MESSAGING OPERATIONS =====
 
@@ -289,7 +307,11 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/send-message", upload.single("file"), botProxyController.sendMessage.bind(botProxyController));
+  app.post(
+    "/api/bots/send-message",
+    upload.single("file"),
+    botProxyController.sendMessage.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -333,7 +355,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/get-groups", botProxyController.getGroups.bind(botProxyController));
+  app.post(
+    "/api/bots/get-groups",
+    botProxyController.getGroups.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -376,7 +401,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/pending", botProxyController.sendPendingMessage.bind(botProxyController));
+  app.post(
+    "/api/bots/pending",
+    botProxyController.sendPendingMessage.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -419,7 +447,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/followup", botProxyController.sendFollowupMessage.bind(botProxyController));
+  app.post(
+    "/api/bots/followup",
+    botProxyController.sendFollowupMessage.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -469,7 +500,10 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/receive-image-and-json", botProxyController.receiveImageAndJson.bind(botProxyController));
+  app.post(
+    "/api/bots/receive-image-and-json",
+    botProxyController.receiveImageAndJson.bind(botProxyController)
+  );
 
   /**
    * @swagger
@@ -512,5 +546,8 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post("/api/bots/confirmation", botProxyController.sendConfirmationMessage.bind(botProxyController));
+  app.post(
+    "/api/bots/confirmation",
+    botProxyController.sendConfirmationMessage.bind(botProxyController)
+  );
 }

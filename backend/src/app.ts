@@ -11,7 +11,11 @@ import dotenv from "dotenv";
 import path from "path";
 
 // Load environment variables from root .env file
-dotenv.config({ path: path.join(__dirname, "../../.env") });
+const envPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, "../../.env.production")
+  : path.join(__dirname, "../../.env.development");
+  
+dotenv.config({ path: envPath });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
