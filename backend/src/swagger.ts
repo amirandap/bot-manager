@@ -42,6 +42,16 @@ const options = {
         name: "WhatsApp Bot Direct API",
         description: "Direct API endpoints on bot instances",
       },
+      {
+        name: "Bot Proxy - Core",
+        description:
+          "Unified proxy endpoints for bot core operations (status, QR, restart, configuration)",
+      },
+      {
+        name: "Bot Proxy - Messaging",
+        description:
+          "Unified proxy endpoints for bot messaging operations (send messages, groups, pending, etc.)",
+      },
     ],
     components: {
       schemas: {

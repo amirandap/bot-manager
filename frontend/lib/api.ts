@@ -45,6 +45,28 @@ export const api = {
   restartBotPM2: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/restart`,
   recreateBotPM2: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/recreate`,
   getBotPM2Status: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/status`,
+
+  // Bot Proxy endpoints - unified access to all bot operations
+  proxy: {
+    // Core operations
+    getStatus: () => `${API_BASE_URL}/api/bots/status`,
+    getQRCode: () => `${API_BASE_URL}/api/bots/qr-code`,
+    updateQRCode: () => `${API_BASE_URL}/api/bots/qr-code/update`,
+    restart: () => `${API_BASE_URL}/api/bots/restart`,
+    changeFallbackNumber: () =>
+      `${API_BASE_URL}/api/bots/change-fallback-number`,
+    changePort: () => `${API_BASE_URL}/api/bots/change-port`,
+
+    // Messaging operations
+    sendMessage: () => `${API_BASE_URL}/api/bots/send-message`,
+    getGroups: () => `${API_BASE_URL}/api/bots/get-groups`,
+    sendPending: () => `${API_BASE_URL}/api/bots/pending`,
+    sendFollowup: () => `${API_BASE_URL}/api/bots/followup`,
+    receiveImageAndJson: () =>
+      `${API_BASE_URL}/api/bots/receive-image-and-json`,
+    sendConfirmation: () =>
+      `${API_BASE_URL}/api/bots/confirmation`,
+  },
 };
 
 // Bot API helpers - for direct communication with bots
