@@ -40,6 +40,11 @@ export const api = {
   getBotStatus: (id: string) => `${API_BASE_URL}/api/status/${id}`,
   getDiscordStatus: () => `${API_BASE_URL}/api/status/discord`,
   getWhatsAppStatus: () => `${API_BASE_URL}/api/status/whatsapp`,
+
+  // PM2 Management endpoints
+  restartBotPM2: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/restart`,
+  recreateBotPM2: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/recreate`,
+  getBotPM2Status: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/status`,
 };
 
 // Bot API helpers - for direct communication with bots

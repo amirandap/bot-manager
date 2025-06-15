@@ -671,4 +671,191 @@ export class BotSpawnerService {
 
     return { synchronized, orphaned, missing };
   }
+
+  async restartPM2Service(pm2ServiceId: string): Promise<any> {
+    console.log(`🔄 Restarting PM2 service: ${pm2ServiceId}`);
+
+    return new Promise((resolve, reject) => {
+      pm2.connect((err) => {
+        if (err) {
+          console.error("❌ Failed to connect to PM2:", err);
+          reject(new Error(`PM2 connection failed: ${err.message}`));
+          return;
+        }
+
+        pm2.restart(pm2ServiceId, (err, proc) => {
+          pm2.disconnect();
+
+          if (err) {
+            console.error(
+              `❌ Failed to restart PM2 service ${pm2ServiceId}:`,
+              err
+            );
+            reject(new Error(`Failed to restart PM2 service: ${err.message}`));
+          } else {
+            console.log(
+              `✅ PM2 service ${pm2ServiceId} restarted successfully`
+            );
+            resolve(proc);
+          }
+        });
+      });
+    });
+  }
+
+  async stopPM2Service(pm2ServiceId: string): Promise<any> {
+    console.log(`🛑 Stopping PM2 service: ${pm2ServiceId}`);
+
+    return new Promise((resolve, reject) => {
+      pm2.connect((err) => {
+        if (err) {
+          console.error("❌ Failed to connect to PM2:", err);
+          reject(new Error(`PM2 connection failed: ${err.message}`));
+          return;
+        }
+
+        pm2.stop(pm2ServiceId, (err, proc) => {
+          pm2.disconnect();
+
+          if (err) {
+            console.error(
+              `❌ Failed to stop PM2 service ${pm2ServiceId}:`,
+              err
+            );
+            reject(new Error(`Failed to stop PM2 service: ${err.message}`));
+          } else {
+            console.log(`✅ PM2 service ${pm2ServiceId} stopped successfully`);
+            resolve(proc);
+          }
+        });
+      });
+    });
+  }
+
+  async deletePM2Service(pm2ServiceId: string): Promise<any> {
+    console.log(`🗑️ Deleting PM2 service: ${pm2ServiceId}`);
+
+    return new Promise((resolve, reject) => {
+      pm2.connect((err) => {
+        if (err) {
+          console.error("❌ Failed to connect to PM2:", err);
+          reject(new Error(`PM2 connection failed: ${err.message}`));
+          return;
+        }
+
+        pm2.delete(pm2ServiceId, (err, proc) => {
+          pm2.disconnect();
+
+          if (err) {
+            console.error(
+              `❌ Failed to delete PM2 service ${pm2ServiceId}:`,
+              err
+            );
+            reject(new Error(`Failed to delete PM2 service: ${err.message}`));
+          } else {
+            console.log(`✅ PM2 service ${pm2ServiceId} deleted successfully`);
+            resolve(proc);
+          }
+        });
+      });
+    });
+  }
+
+  async recreatePM2Service(
+    bot: Bot
+  ): Promise<{ pm2ServiceId: string; result: any }> {
+    console.log(`🔧 Recreating PM2 service for bot: ${bot.id}`);
+
+    if (bot.isExternal) {
+      throw new Error("Cannot recreate PM2 service for external bot");
+    }
+
+    const pm2ServiceId = `wabot-${bot.apiPort}`;
+
+    // Try to stop and delete existing service (ignore errors)
+    try {
+      await this.stopPM2Service(pm2ServiceId);
+      await this.deletePM2Service(pm2ServiceId);
+    } catch (error) {
+      console.log(
+        `ℹ️ No existing PM2 service to remove or error during cleanup: ${error}`
+      );
+    }
+
+    // Start new service using existing method
+    await this.startBotWithPM2(bot.id, bot);
+
+    return {
+      pm2ServiceId,
+      result: { message: `PM2 service ${pm2ServiceId} recreated successfully` },
+    };
+  }
+
+  async getPM2ServiceStatus(pm2ServiceId: string): Promise<{
+    status: "online" | "stopped" | "errored" | "unknown";
+    pid?: number;
+    cpu?: number;
+    memory?: number;
+    restarts?: number;
+    uptime?: number;
+    lastRestart?: string;
+  }> {
+    console.log(`📊 Getting PM2 status for service: ${pm2ServiceId}`);
+
+    return new Promise((resolve, reject) => {
+      pm2.connect((err) => {
+        if (err) {
+          console.error("❌ Failed to connect to PM2:", err);
+          reject(new Error(`PM2 connection failed: ${err.message}`));
+          return;
+        }
+
+        pm2.describe(pm2ServiceId, (err, processDescriptionList) => {
+          pm2.disconnect();
+
+          if (err) {
+            console.error(
+              `❌ Failed to describe PM2 service ${pm2ServiceId}:`,
+              err
+            );
+            resolve({ status: "unknown" });
+            return;
+          }
+
+          if (!processDescriptionList || processDescriptionList.length === 0) {
+            console.log(`ℹ️ PM2 service ${pm2ServiceId} not found`);
+            resolve({ status: "unknown" });
+            return;
+          }
+
+          const process = processDescriptionList[0];
+          const pm2Process = process.pm2_env;
+          const monit = process.monit;
+
+          console.log(`✅ PM2 service ${pm2ServiceId} status retrieved`);
+
+          resolve({
+            status:
+              pm2Process?.status === "online"
+                ? "online"
+                : pm2Process?.status === "stopped"
+                ? "stopped"
+                : pm2Process?.status === "errored"
+                ? "errored"
+                : "unknown",
+            pid: process.pid || undefined,
+            cpu: monit?.cpu || undefined,
+            memory: monit?.memory
+              ? Math.round(monit.memory / (1024 * 1024))
+              : undefined, // Convert to MB
+            restarts: pm2Process?.restart_time || undefined,
+            uptime: pm2Process?.pm_uptime || undefined,
+            lastRestart: pm2Process?.restart_time
+              ? new Date(pm2Process.restart_time).toISOString()
+              : undefined,
+          });
+        });
+      });
+    });
+  }
 }
