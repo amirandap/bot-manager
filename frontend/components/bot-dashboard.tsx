@@ -5,6 +5,7 @@ import BotCard from "./bot-card";
 import { BotSpawner } from "./bot-spawner";
 import { DeploymentManager } from "./deployment-manager";
 import BotEditModal from "./bot-edit-modal";
+import ApiDocsPage from "../app/api-docs/page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
@@ -14,6 +15,7 @@ import {
   Settings,
   Rocket,
   Activity,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Bot } from "@/lib/types";
@@ -25,7 +27,7 @@ export default function BotDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bots" | "deployments">("bots");
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs">("bots");
   const [editingBot, setEditingBot] = useState<Bot | null>(null);
 
   const fetchBots = async () => {
@@ -159,6 +161,19 @@ export default function BotDashboard() {
                   CI/CD Platform
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab("api-docs")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "api-docs"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  API Documentation
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -236,7 +251,7 @@ export default function BotDashboard() {
                 )}
               </div>
             </>
-          ) : (
+          ) : activeTab === "deployments" ? (
             // CI/CD Platform Tab
             <div className="space-y-6">
               <div className="flex items-center gap-2">
@@ -244,6 +259,11 @@ export default function BotDashboard() {
                 <h2 className="text-xl font-semibold">CI/CD Platform</h2>
               </div>
               <DeploymentManager />
+            </div>
+          ) : (
+            // API Documentation Tab
+            <div className="space-y-6">
+              <ApiDocsPage />
             </div>
           )}
         </>
