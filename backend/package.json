@@ -6,7 +6,7 @@
     "build": "tsc",
     "start": "node dist/app.js",
     "start:prod": "NODE_ENV=production node dist/app.js",
-    "dev": "npx ts-node -r dotenv/config src/app.ts dotenv_config_path=../.env.development"
+    "dev": "ts-node -r dotenv/config src/app.ts dotenv_config_path=../.env.development"
   },
   "dependencies": {
     "@types/swagger-jsdoc": "^6.0.4",
