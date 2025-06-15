@@ -17,12 +17,15 @@ import {
 
 export default function ApiDocsPage() {
   const [backendUrl, setBackendUrl] = useState<string>("");
-  const [isBackendAvailable, setIsBackendAvailable] = useState<boolean | null>(null);
+  const [isBackendAvailable, setIsBackendAvailable] = useState<boolean | null>(
+    null
+  );
 
   useEffect(() => {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
     setBackendUrl(apiBaseUrl);
-    
+
     // Check if backend is available
     const checkBackend = async () => {
       try {
@@ -32,7 +35,7 @@ export default function ApiDocsPage() {
         setIsBackendAvailable(false);
       }
     };
-    
+
     checkBackend();
   }, []);
 
@@ -60,10 +63,10 @@ export default function ApiDocsPage() {
       category: "Bot Messaging",
       icon: <MessageSquare className="h-5 w-5" />,
       endpoints: [
-        { 
-          method: "POST", 
-          path: "/api/bots/{id}/send", 
-          description: "Send WhatsApp message with optional file attachment" 
+        {
+          method: "POST",
+          path: "/api/bots/{id}/send",
+          description: "Send WhatsApp message with optional file attachment",
         },
       ],
     },
@@ -71,20 +74,52 @@ export default function ApiDocsPage() {
       category: "Bot Spawning",
       icon: <Zap className="h-5 w-5" />,
       endpoints: [
-        { method: "POST", path: "/api/bots/spawn/whatsapp", description: "Spawn new WhatsApp bot" },
-        { method: "DELETE", path: "/api/bots/{id}/terminate", description: "Terminate bot completely" },
-        { method: "POST", path: "/api/bots/{id}/start", description: "Start existing bot" },
-        { method: "POST", path: "/api/bots/{id}/stop", description: "Stop existing bot" },
-        { method: "POST", path: "/api/bots/{id}/restart", description: "Restart existing bot" },
+        {
+          method: "POST",
+          path: "/api/bots/spawn/whatsapp",
+          description: "Spawn new WhatsApp bot",
+        },
+        {
+          method: "DELETE",
+          path: "/api/bots/{id}/terminate",
+          description: "Terminate bot completely",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/{id}/start",
+          description: "Start existing bot",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/{id}/stop",
+          description: "Stop existing bot",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/{id}/restart",
+          description: "Restart existing bot",
+        },
       ],
     },
     {
       category: "PM2 Management",
       icon: <RefreshCw className="h-5 w-5" />,
       endpoints: [
-        { method: "POST", path: "/api/bots/{id}/pm2/restart", description: "Restart PM2 service" },
-        { method: "POST", path: "/api/bots/{id}/pm2/recreate", description: "Recreate PM2 service" },
-        { method: "GET", path: "/api/bots/{id}/pm2/status", description: "Get PM2 status" },
+        {
+          method: "POST",
+          path: "/api/bots/{id}/pm2/restart",
+          description: "Restart PM2 service",
+        },
+        {
+          method: "POST",
+          path: "/api/bots/{id}/pm2/recreate",
+          description: "Recreate PM2 service",
+        },
+        {
+          method: "GET",
+          path: "/api/bots/{id}/pm2/status",
+          description: "Get PM2 status",
+        },
       ],
     },
   ];
@@ -114,11 +149,15 @@ export default function ApiDocsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge 
+          <Badge
             variant={isBackendAvailable ? "default" : "destructive"}
             className="flex items-center gap-1"
           >
-            <div className={`w-2 h-2 rounded-full ${isBackendAvailable ? "bg-green-500" : "bg-red-500"}`} />
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isBackendAvailable ? "bg-green-500" : "bg-red-500"
+              }`}
+            />
             {isBackendAvailable ? "Backend Online" : "Backend Offline"}
           </Badge>
         </div>
@@ -128,14 +167,18 @@ export default function ApiDocsPage() {
         <Alert variant="destructive">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Backend server is not available. Make sure the backend is running on {backendUrl}
+            Backend server is not available. Make sure the backend is running on{" "}
+            {backendUrl}
           </AlertDescription>
         </Alert>
       )}
 
       {/* Quick Access Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={openSwaggerDocs}>
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={openSwaggerDocs}
+        >
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-6 w-6 text-blue-600" />
@@ -153,7 +196,10 @@ export default function ApiDocsPage() {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={openJsonSpec}>
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={openJsonSpec}
+        >
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-6 w-6 text-green-600" />
@@ -192,7 +238,7 @@ export default function ApiDocsPage() {
       {/* API Endpoints Overview */}
       <div className="space-y-6">
         <h2 className="text-2xl font-semibold">API Endpoints Overview</h2>
-        
+
         {apiEndpoints.map((category) => (
           <Card key={category.category}>
             <CardHeader>
@@ -208,7 +254,11 @@ export default function ApiDocsPage() {
                     key={index}
                     className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                   >
-                    <Badge className={`${getMethodColor(endpoint.method)} font-mono text-xs`}>
+                    <Badge
+                      className={`${getMethodColor(
+                        endpoint.method
+                      )} font-mono text-xs`}
+                    >
                       {endpoint.method}
                     </Badge>
                     <code className="text-sm font-mono flex-1">
@@ -235,7 +285,7 @@ export default function ApiDocsPage() {
             <h4 className="font-medium mb-2">Send WhatsApp Message</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-{`curl -X POST "${backendUrl}/api/bots/{bot-id}/send" \\
+                {`curl -X POST "${backendUrl}/api/bots/{bot-id}/send" \\
   -H "Content-Type: application/json" \\
   -d '{
     "phoneNumber": "+1234567890",
@@ -249,7 +299,7 @@ export default function ApiDocsPage() {
             <h4 className="font-medium mb-2">Get All Bots</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-{`curl -X GET "${backendUrl}/api/bots" \\
+                {`curl -X GET "${backendUrl}/api/bots" \\
   -H "Accept: application/json"`}
               </pre>
             </div>
@@ -259,7 +309,7 @@ export default function ApiDocsPage() {
             <h4 className="font-medium mb-2">Spawn New WhatsApp Bot</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-{`curl -X POST "${backendUrl}/api/bots/spawn/whatsapp" \\
+                {`curl -X POST "${backendUrl}/api/bots/spawn/whatsapp" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "My WhatsApp Bot",

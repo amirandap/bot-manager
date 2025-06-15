@@ -27,7 +27,9 @@ export default function BotDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs">("bots");
+  const [activeTab, setActiveTab] = useState<
+    "bots" | "deployments" | "api-docs"
+  >("bots");
   const [editingBot, setEditingBot] = useState<Bot | null>(null);
 
   const fetchBots = async () => {

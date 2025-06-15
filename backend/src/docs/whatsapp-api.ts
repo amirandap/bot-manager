@@ -37,7 +37,7 @@
  *               isAdmin:
  *                 type: boolean
  *                 description: Whether participant is group admin
- *     
+ *
  *     WhatsAppStatus:
  *       type: object
  *       properties:
@@ -60,7 +60,7 @@
  *             plugged:
  *               type: boolean
  *               description: Whether device is plugged in
- *     
+ *
  *     QRCodeResponse:
  *       type: object
  *       properties:
@@ -74,21 +74,21 @@
 
 /**
  * WhatsApp Bot Direct API Documentation
- * 
+ *
  * Each WhatsApp bot instance runs its own API server on a specific port.
  * These endpoints are called directly on the bot's API host:port.
- * 
+ *
  * Base URL Pattern: http://{bot.apiHost}:{bot.apiPort}
- * 
+ *
  * Available endpoints on each bot:
- * 
+ *
  * GET /status - Get bot connection status
  * GET /qr-code - Get QR code for WhatsApp authentication
  * GET /groups - Get list of WhatsApp groups
  * POST /send-message - Send WhatsApp message
  * POST /restart - Restart the bot
  * POST /change-fallback-number - Change fallback phone number
- * 
+ *
  * Note: These endpoints are accessed through the bot manager's proxy endpoint:
  * POST /api/bots/{id}/send - which forwards to the bot's /send-message endpoint
  */
