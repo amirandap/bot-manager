@@ -12,6 +12,7 @@ import {
   QrCode,
 } from "lucide-react";
 import StatusIndicator from "./status-indicator";
+import PM2StatusIndicator from "./pm2-status-indicator";
 import type { Bot, BotStatus } from "@/lib/types";
 import { useState, useEffect, useCallback } from "react";
 import { api, botApi } from "@/lib/api";
@@ -154,6 +155,11 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             )}
           </div>
         </div>
+
+        {/* PM2 Status Indicator - separate detailed PM2 management */}
+        {!bot.isExternal && (
+          <PM2StatusIndicator bot={bot} onStatusChange={fetchBotStatus} />
+        )}
 
         <div className="flex flex-col gap-2">
           <Button

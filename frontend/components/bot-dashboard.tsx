@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import BotCard from "./bot-card";
 import { BotSpawner } from "./bot-spawner";
 import { DeploymentManager } from "./deployment-manager";
+import BotEditModal from "./bot-edit-modal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
@@ -25,6 +26,7 @@ export default function BotDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpawner, setShowSpawner] = useState(false);
   const [activeTab, setActiveTab] = useState<"bots" | "deployments">("bots");
+  const [editingBot, setEditingBot] = useState<Bot | null>(null);
 
   const fetchBots = async () => {
     try {
@@ -59,8 +61,7 @@ export default function BotDashboard() {
   }, []);
 
   const handleUpdateBot = (bot: Bot) => {
-    // TODO: Implement bot update modal/form
-    console.log("Update bot:", bot);
+    setEditingBot(bot);
   };
 
   const handleDeleteBot = async (botId: string) => {
@@ -91,6 +92,19 @@ export default function BotDashboard() {
     setBots((prev) => [...prev, newBot]);
     setShowSpawner(false);
     fetchBots(); // Refresh to get latest status
+  };
+
+  const handleBotUpdated = (updatedBot: Bot) => {
+    // Update the bot in the list
+    setBots((prev) =>
+      prev.map((bot) => (bot.id === updatedBot.id ? updatedBot : bot))
+    );
+    setEditingBot(null);
+    fetchBots(); // Refresh to get latest status
+  };
+
+  const handleCloseEditModal = () => {
+    setEditingBot(null);
   };
 
   return (
@@ -234,6 +248,14 @@ export default function BotDashboard() {
           )}
         </>
       )}
+
+      {/* Bot Edit Modal */}
+      <BotEditModal
+        bot={editingBot}
+        isOpen={editingBot !== null}
+        onClose={handleCloseEditModal}
+        onBotUpdated={handleBotUpdated}
+      />
     </div>
   );
 }
