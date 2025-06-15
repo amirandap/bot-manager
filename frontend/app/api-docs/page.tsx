@@ -71,7 +71,8 @@ export default function ApiDocsPage() {
         {
           method: "POST",
           path: "/api/bots/qr-code",
-          description: "Get QR code for WhatsApp authentication (botId in request body)",
+          description:
+            "Get QR code for WhatsApp authentication (botId in request body)",
         },
         {
           method: "POST",
@@ -102,7 +103,8 @@ export default function ApiDocsPage() {
         {
           method: "POST",
           path: "/api/bots/send-message",
-          description: "Send WhatsApp message with optional file (botId in request body)",
+          description:
+            "Send WhatsApp message with optional file (botId in request body)",
         },
         {
           method: "POST",
@@ -138,7 +140,8 @@ export default function ApiDocsPage() {
         {
           method: "POST",
           path: "/api/bots/{id}/send",
-          description: "Send WhatsApp message with optional file attachment (Legacy)",
+          description:
+            "Send WhatsApp message with optional file attachment (Legacy)",
         },
       ],
     },
@@ -352,7 +355,8 @@ export default function ApiDocsPage() {
         <CardHeader>
           <CardTitle>Usage Examples</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Note: Bot proxy endpoints now use botId in the request body instead of URL parameters
+            Note: Bot proxy endpoints now use botId in the request body instead
+            of URL parameters
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -370,7 +374,9 @@ export default function ApiDocsPage() {
           </div>
 
           <div>
-            <h4 className="font-medium mb-2">Send WhatsApp Message (New Proxy API)</h4>
+            <h4 className="font-medium mb-2">
+              Send WhatsApp Message (New Proxy API)
+            </h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
                 {`curl -X POST "${backendUrl}/api/bots/send-message" \\
@@ -385,7 +391,9 @@ export default function ApiDocsPage() {
           </div>
 
           <div>
-            <h4 className="font-medium mb-2">Get WhatsApp Groups (New Proxy API)</h4>
+            <h4 className="font-medium mb-2">
+              Get WhatsApp Groups (New Proxy API)
+            </h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
                 {`curl -X POST "${backendUrl}/api/bots/get-groups" \\
@@ -456,28 +464,48 @@ export default function ApiDocsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Info className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-blue-800">API Migration Notice</CardTitle>
+            <CardTitle className="text-blue-800">
+              API Migration Notice
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm">
             <p>
-              <strong>New Unified Bot Proxy API:</strong> All bot operations now use a unified proxy API 
-              where the bot ID is passed in the request body instead of URL parameters.
+              <strong>New Unified Bot Proxy API:</strong> All bot operations now
+              use a unified proxy API where the bot ID is passed in the request
+              body instead of URL parameters.
             </p>
             <div className="bg-white p-3 rounded border">
               <p className="font-medium mb-2">Key Changes:</p>
               <ul className="space-y-1 text-gray-600">
-                <li>• Bot ID is now passed in the request body as <code className="bg-gray-100 px-1 rounded">botId</code></li>
-                <li>• All bot proxy endpoints use POST method (for consistency)</li>
-                <li>• Endpoints are now at <code className="bg-gray-100 px-1 rounded">/api/bots/operation</code> instead of <code className="bg-gray-100 px-1 rounded">/api/bots/{"{id}"}/operation</code></li>
-                <li>• Better error handling with validation for required botId</li>
+                <li>
+                  • Bot ID is now passed in the request body as{" "}
+                  <code className="bg-gray-100 px-1 rounded">botId</code>
+                </li>
+                <li>
+                  • All bot proxy endpoints use POST method (for consistency)
+                </li>
+                <li>
+                  • Endpoints are now at{" "}
+                  <code className="bg-gray-100 px-1 rounded">
+                    /api/bots/operation
+                  </code>{" "}
+                  instead of{" "}
+                  <code className="bg-gray-100 px-1 rounded">
+                    /api/bots/{"{id}"}/operation
+                  </code>
+                </li>
+                <li>
+                  • Better error handling with validation for required botId
+                </li>
                 <li>• Unified documentation and Swagger specs</li>
               </ul>
             </div>
             <p>
-              <strong>Benefits:</strong> This new structure provides better consistency, 
-              easier payload management, and improved error handling across all bot operations.
+              <strong>Benefits:</strong> This new structure provides better
+              consistency, easier payload management, and improved error
+              handling across all bot operations.
             </p>
           </div>
         </CardContent>
