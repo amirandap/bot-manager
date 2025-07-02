@@ -22,8 +22,8 @@ export function cleanAndFormatPhoneNumber(phoneNumber: string): {
   // Pattern 1: Standard Dominican format 809/829/849 + 7 digits
   if (/^(\+?1)?(809|829|849)\d{7}$/.test(finalNumber)) {
     if (!finalNumber.startsWith("+1")) {
-      finalNumber = finalNumber.startsWith("1") 
-        ? `+${finalNumber}` 
+      finalNumber = finalNumber.startsWith("1")
+        ? `+${finalNumber}`
         : `+1${finalNumber}`;
     }
     console.log(`🇩🇴 Dominican number (standard) detected: "${finalNumber}"`);
@@ -31,8 +31,8 @@ export function cleanAndFormatPhoneNumber(phoneNumber: string): {
   // Pattern 2: Extended Dominican format like 8296459554 (10 digits starting with 829)
   else if (/^(\+?1)?(809|829|849)\d{7,10}$/.test(finalNumber)) {
     if (!finalNumber.startsWith("+1")) {
-      finalNumber = finalNumber.startsWith("1") 
-        ? `+${finalNumber}` 
+      finalNumber = finalNumber.startsWith("1")
+        ? `+${finalNumber}`
         : `+1${finalNumber}`;
     }
     console.log(`🇩🇴 Dominican number (extended) detected: "${finalNumber}"`);
@@ -56,7 +56,7 @@ export function cleanAndFormatPhoneNumber(phoneNumber: string): {
   // Validate the cleaned phone number
   const isValid =
     finalNumber.startsWith("+") &&
-    finalNumber.length >= 10 && 
+    finalNumber.length >= 10 &&
     finalNumber.length <= 15;
 
   console.log(`✅ Number validation: ${isValid ? "VALID" : "INVALID"}`);
