@@ -10,7 +10,7 @@ export function cleanAndFormatPhoneNumber(phoneNumber: string): {
   console.log(`🔍 Processing phone number: "${phoneNumber}"`);
 
   // Clean the phone number by removing all non-numeric characters except for the plus sign
-  let cleaned = phoneNumber.replace(/[^\d+]/g, "");
+  const cleaned = phoneNumber.replace(/[^\d+]/g, "");
   console.log(`🧹 Cleaned number: "${cleaned}"`);
 
   // Handle special case for Argentina
