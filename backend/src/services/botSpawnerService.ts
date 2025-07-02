@@ -254,15 +254,23 @@ export class BotSpawnerService {
     }
 
     // Prepare environment variables
+    // Create a clean environment to avoid conflicts with backend variables
+    const systemEnv = { ...process.env };
+    
+    // Remove potentially conflicting environment variables
+    delete systemEnv.PORT; // Remove backend's PORT to avoid conflicts
+    delete systemEnv.NODE_ENV; // We'll set this explicitly
+    
     const botEnv = {
       // Start with bot folder defaults
       ...botEnvDefaults,
-      // Override with system environment
-      ...process.env,
+      // Override with filtered system environment
+      ...systemEnv,
       // Override with bot-specific configuration
       BOT_ID: botId,
       BOT_NAME: botConfig.name,
       BOT_PORT: botConfig.apiPort.toString(),
+      PORT: botConfig.apiPort.toString(), // Set PORT for bot compatibility
       BOT_TYPE: botConfig.type,
       BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
       NODE_ENV: "production",
@@ -278,6 +286,7 @@ export class BotSpawnerService {
     console.log(`   - BOT_ID: ${botEnv.BOT_ID}`);
     console.log(`   - BOT_NAME: ${botEnv.BOT_NAME}`);
     console.log(`   - BOT_PORT: ${botEnv.BOT_PORT}`);
+    console.log(`   - PORT: ${botEnv.PORT} (for bot compatibility)`);
     console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
     console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
     console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
