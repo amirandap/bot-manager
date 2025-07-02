@@ -15,7 +15,7 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
-import { fallbackNumber } from "../routes/changeFallbackNumberRoute";
+import { getFallbackNumber } from "../utils/fallbackUtils";
 
 dotenv.config();
 
@@ -178,7 +178,7 @@ export function appendListeners(client: Client) {
     ${groups.map((group) => `Group: ${group.name}, ID: ${group.id}`).join("\n")}
     Endpoints available: POST /send-message, POST /pending, POST /followup, POST /receive-image-and-json, GET /get-groups`;
     try {
-      await sendMessage(client, fallbackNumber, message);
+      await sendMessage(client, getFallbackNumber(), message);
     } catch (error: unknown) {
       console.error("Error sending initial message:", error);
     }
