@@ -50,22 +50,14 @@ export const fetchUserData = async (discorduserid: string) => {
 };
 
 export const formatMessage = (message: string, user: User) => {
-  const { cleanedPhoneNumber, isValid } = cleanAndFormatPhoneNumber(
-    user.celular || getFallbackNumber()
-  );
+  // Return the raw phone number - let the helper functions handle cleaning
+  const phoneNumber = user.celular || getFallbackNumber();
   let formattedMessage = message.replace(/-/g, " ");
 
-  if (!isValid) {
-    formattedMessage += ` 
-  Mensaje no enviado a: ${
-    user.full_name
-  } con numero de telefono ${cleanedPhoneNumber}.
-  ${user.instagram ? `Instagram: ${user.instagram},` : ""}
-  Nombre completo: ${user.full_name},
-  Celular: ${user.celular}`;
-  }
+  // Note: We can't do validation here since it would duplicate cleaning
+  // The sendMessage helper will handle validation and fallback if needed
 
-  return { formattedMessage, cleanedPhoneNumber };
+  return { formattedMessage, phoneNumber };
 };
 
 export const sendMessage = async (
