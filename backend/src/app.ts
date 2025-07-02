@@ -45,7 +45,27 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  const host = process.env.SERVER_HOST || "0.0.0.0";
-  console.log(`Server is running on http://${host}:${PORT}`);
-});
+app
+  .listen(PORT, () => {
+    const host = process.env.SERVER_HOST || "0.0.0.0";
+    console.log(
+      `🚀 Backend server started successfully on http://${host}:${PORT}`
+    );
+    console.log(
+      `📚 Swagger documentation available at http://${host}:${PORT}/api-docs`
+    );
+  })
+  .on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `❌ Port ${PORT} is already in use. Please check for other instances or change the port.`
+      );
+      console.error(
+        `💡 You can set a different port using: PORT=<new_port> npm run dev`
+      );
+      process.exit(1);
+    } else {
+      console.error(`❌ Server failed to start:`, err);
+      process.exit(1);
+    }
+  });
