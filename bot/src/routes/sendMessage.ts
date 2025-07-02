@@ -79,35 +79,32 @@ router.post("/", upload.single("file"), async (req, res) => {
       for (const number of numbersToProcess) {
         try {
           console.log(number, "NUMBER");
-          const { cleanedPhoneNumber, formattedMessage } = formatMessage(
-            message,
-            {
-              full_name: "",
-              celular: number,
-              user_id: 0,
-              username: "",
-              nickname: "",
-              email: "",
-              user_discord_id: "",
-              youtube_id: "",
-              individualID: 0,
-              individual_id: 0,
-              SubmissionId: 0,
-              instagram: "",
-            }
-          );
+          const { phoneNumber, formattedMessage } = formatMessage(message, {
+            full_name: "",
+            celular: number,
+            user_id: 0,
+            username: "",
+            nickname: "",
+            email: "",
+            user_discord_id: "",
+            youtube_id: "",
+            individualID: 0,
+            individual_id: 0,
+            SubmissionId: 0,
+            instagram: "",
+          });
 
           if (file) {
             await sendFileAndMessage(
               client,
-              cleanedPhoneNumber,
+              phoneNumber,
               { data: file.buffer.toString("base64"), mimetype: file.mimetype },
               formattedMessage
             );
           } else {
-            await sendMessage(client, cleanedPhoneNumber, formattedMessage);
+            await sendMessage(client, phoneNumber, formattedMessage);
           }
-          messagesSent.push(cleanedPhoneNumber);
+          messagesSent.push(phoneNumber);
         } catch (error: unknown) {
           const reason =
             error instanceof Error ? error.message : "Unknown error";
