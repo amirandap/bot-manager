@@ -236,9 +236,9 @@ export const sendErrorMessage = async (
     ? fallbackNum.slice(1)
     : fallbackNum;
   const formattedNumber = `${whatsappNumber.trim()}@c.us`;
-  
+
   console.log(`📱 Sending error message to fallback: "${formattedNumber}"`);
-  
+
   try {
     if (!client) {
       throw new Error("Client not initialized");

@@ -9,12 +9,12 @@ let runtimeFallbackNumber: string | null = null;
  */
 function basicCleanPhoneNumber(phoneNumber: string): string {
   let cleaned = phoneNumber.replace(/[^\d+]/g, "");
-  
+
   // Ensure it starts with + for international format
   if (!cleaned.startsWith("+") && cleaned.length >= 10) {
     cleaned = `+${cleaned}`;
   }
-  
+
   return cleaned;
 }
 
@@ -24,7 +24,9 @@ function basicCleanPhoneNumber(phoneNumber: string): string {
  */
 export function setFallbackNumber(newNumber: string): void {
   const cleanedNumber = basicCleanPhoneNumber(newNumber);
-  console.log(`📞 Updating fallback number from "${getFallbackNumber()}" to "${cleanedNumber}"`);
+  console.log(
+    `📞 Updating fallback number from "${getFallbackNumber()}" to "${cleanedNumber}"`
+  );
   runtimeFallbackNumber = cleanedNumber;
 }
 
@@ -36,12 +38,14 @@ export function setFallbackNumber(newNumber: string): void {
 export function getFallbackNumber(): string {
   const rawNumber = runtimeFallbackNumber || DEFAULT_FALLBACK_PHONE_NUMBER;
   const cleaned = basicCleanPhoneNumber(rawNumber);
-  
+
   // Log if we had to format the fallback number
   if (cleaned !== rawNumber) {
-    console.log(`🔧 Fallback number formatted from "${rawNumber}" to "${cleaned}"`);
+    console.log(
+      `🔧 Fallback number formatted from "${rawNumber}" to "${cleaned}"`
+    );
   }
-  
+
   return cleaned;
 }
 
@@ -49,6 +53,8 @@ export function getFallbackNumber(): string {
  * Resets the fallback number to the default from environment
  */
 export function resetFallbackNumber(): void {
-  console.log(`🔄 Resetting fallback number to default: "${DEFAULT_FALLBACK_PHONE_NUMBER}"`);
+  console.log(
+    `🔄 Resetting fallback number to default: "${DEFAULT_FALLBACK_PHONE_NUMBER}"`
+  );
   runtimeFallbackNumber = null;
 }
