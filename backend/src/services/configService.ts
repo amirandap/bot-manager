@@ -68,7 +68,26 @@ export class ConfigService {
   }
 
   public getBotById(id: string): Bot | undefined {
-    return this.getAllBots().find((bot) => bot.id === id);
+    const allBots = this.getAllBots();
+    const bot = allBots.find((bot) => bot.id === id);
+
+    if (!bot) {
+      console.warn(
+        `⚠️ Bot with ID '${id}' not found. Available bots:`,
+        allBots.map((b) => ({
+          id: b.id,
+          name: b.name,
+          apiHost: b.apiHost,
+          apiPort: b.apiPort,
+        }))
+      );
+    } else {
+      console.log(
+        `✅ Found bot '${bot.name}' (${bot.id}) at ${bot.apiHost}:${bot.apiPort}`
+      );
+    }
+
+    return bot;
   }
 
   public addBot(bot: Omit<Bot, "id" | "createdAt" | "updatedAt">): Bot {

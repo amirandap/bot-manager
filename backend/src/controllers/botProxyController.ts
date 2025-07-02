@@ -15,7 +15,17 @@ export class BotProxyController {
     if (!bot) {
       throw new Error("Bot not found");
     }
-    return `http://${bot.apiHost}:${bot.apiPort}`;
+
+    // Check if apiHost already includes protocol
+    const host = bot.apiHost;
+    if (host.startsWith("http://") || host.startsWith("https://")) {
+      // Extract the hostname/IP from the URL
+      const url = new URL(host);
+      return `${url.protocol}//${url.hostname}:${bot.apiPort}`;
+    } else {
+      // No protocol, add http://
+      return `http://${host}:${bot.apiPort}`;
+    }
   }
 
   private async forwardRequest(
@@ -28,7 +38,8 @@ export class BotProxyController {
     const baseUrl = this.getBotApiUrl(botId);
     const url = `${baseUrl}${endpoint}`;
 
-    console.log(`Forwarding ${method} request to bot ${botId}: ${url}`);
+    console.log(`🔄 Forwarding ${method} request to bot ${botId}`);
+    console.log(`📡 Target URL: ${url}`);
 
     const config: any = {
       method,
