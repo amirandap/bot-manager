@@ -256,11 +256,11 @@ export class BotSpawnerService {
     // Prepare environment variables
     // Create a clean environment to avoid conflicts with backend variables
     const systemEnv = { ...process.env };
-    
+
     // Remove potentially conflicting environment variables
     delete systemEnv.PORT; // Remove backend's PORT to avoid conflicts
     delete systemEnv.NODE_ENV; // We'll set this explicitly
-    
+
     const botEnv = {
       // Start with bot folder defaults
       ...botEnvDefaults,
