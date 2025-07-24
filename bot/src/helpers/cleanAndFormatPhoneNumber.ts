@@ -1,71 +1,138 @@
-/* eslint-disable no-console */
-
 import { getFallbackNumber } from "../utils/fallbackUtils";
 
-/* eslint-disable max-len */
-export function cleanAndFormatPhoneNumber(phoneNumber: string): {
+interface PhoneNumberResult {
   cleanedPhoneNumber: string;
   isValid: boolean;
-} {
+}
+
+interface CountryConfig {
+  code: string;
+  name: string;
+  pattern: RegExp;
+  formatter: (number: string) => string;
+}
+
+const PHONE_CONSTRAINTS = {
+  MIN_LENGTH: 10,
+  MAX_LENGTH: 15,
+  COUNTRY_CODE_PREFIX: '+',
+} as const;
+
+const REGEX_PATTERNS = {
+  NON_NUMERIC: /[^\d+]/g,
+  ARGENTINA_MOBILE: /^\+541/,
+  DOMINICAN_STANDARD: /^(\+?1)?(809|829|849)\d{7}$/,
+  DOMINICAN_EXTENDED: /^(\+?1)?(809|829|849)\d{7,10}$/,
+  DOMINICAN_FULL: /^(\+?1)(809|829|849)\d{7,10}$/,
+  INTERNATIONAL: /^\d{10,15}$/,
+} as const;
+
+const COUNTRY_CONFIGS: CountryConfig[] = [
+  {
+    code: 'AR',
+    name: 'Argentina',
+    pattern: REGEX_PATTERNS.ARGENTINA_MOBILE,
+    formatter: (number: string) => number.replace('+54', '+549'),
+  },
+];
+
+const DOMINICAN_PATTERNS = [
+  {
+    name: 'standard',
+    pattern: REGEX_PATTERNS.DOMINICAN_STANDARD,
+    handler: (number: string): string => formatDominicanNumber(number),
+  },
+  {
+    name: 'extended',
+    pattern: REGEX_PATTERNS.DOMINICAN_EXTENDED,
+    handler: (number: string): string => formatDominicanNumber(number),
+  },
+  {
+    name: 'full',
+    pattern: REGEX_PATTERNS.DOMINICAN_FULL,
+    handler: (number: string): string => ensureCountryCodePrefix(number),
+  },
+];
+
+function sanitizePhoneNumber(phoneNumber: string): string {
+  return phoneNumber.replace(REGEX_PATTERNS.NON_NUMERIC, '');
+}
+
+function formatDominicanNumber(number: string): string {
+  if (number.startsWith('+1')) {
+    return number;
+  }
+  
+  return number.startsWith('1') ? `+${number}` : `+1${number}`;
+}
+
+function ensureCountryCodePrefix(number: string): string {
+  return number.startsWith('+') ? number : `+${number}`;
+}
+
+function applyCountrySpecificFormatting(number: string): string {
+  for (const config of COUNTRY_CONFIGS) {
+    if (config.pattern.test(number)) {
+      const formatted = config.formatter(number);
+      console.log(`🇦🇷 ${config.name} number detected: "${formatted}"`);
+      return formatted;
+    }
+  }
+
+  for (const domPattern of DOMINICAN_PATTERNS) {
+    if (domPattern.pattern.test(number)) {
+      const formatted = domPattern.handler(number);
+      console.log(`🇩🇴 Dominican number (${domPattern.name}) detected: "${formatted}"`);
+      return formatted;
+    }
+  }
+
+  if (REGEX_PATTERNS.INTERNATIONAL.test(number) && !number.startsWith('+')) {
+    const formatted = ensureCountryCodePrefix(number);
+    console.log(`🌍 International number detected, adding +: "${formatted}"`);
+    return formatted;
+  }
+
+  return number;
+}
+
+function validatePhoneNumber(phoneNumber: string): boolean {
+  const hasCountryCode = phoneNumber.startsWith(PHONE_CONSTRAINTS.COUNTRY_CODE_PREFIX);
+  const isValidLength = phoneNumber.length >= PHONE_CONSTRAINTS.MIN_LENGTH && 
+                       phoneNumber.length <= PHONE_CONSTRAINTS.MAX_LENGTH;
+  
+  return hasCountryCode && isValidLength;
+}
+
+function createResult(phoneNumber: string, isValid: boolean): PhoneNumberResult {
+  if (isValid) {
+    return { cleanedPhoneNumber: phoneNumber, isValid: true };
+  }
+
+  const fallbackNumber = getFallbackNumber();
+  console.log(`❌ Using fallback number: "${fallbackNumber}"`);
+  return { cleanedPhoneNumber: fallbackNumber, isValid: false };
+}
+
+/**
+ * Cleans and formats a phone number according to international standards
+ * 
+ * @param phoneNumber - The raw phone number to process
+ * @returns Object containing the cleaned phone number and validation status
+ */
+export function cleanAndFormatPhoneNumber(phoneNumber: string): PhoneNumberResult {
   console.log(`🔍 Processing phone number: "${phoneNumber}"`);
 
-  // Clean the phone number by removing all non-numeric characters except for the plus sign
-  const cleaned = phoneNumber.replace(/[^\d+]/g, "");
+  const cleaned = sanitizePhoneNumber(phoneNumber);
   console.log(`🧹 Cleaned number: "${cleaned}"`);
 
-  // Handle special case for Argentina
-  let finalNumber = cleaned.startsWith("+541")
-    ? cleaned.replace("+54", "+549")
-    : cleaned;
+  const formatted = applyCountrySpecificFormatting(cleaned);
+  console.log(`📞 Final formatted number: "${formatted}"`);
 
-  // Handle Dominican Republic numbers - More comprehensive detection
-  // Pattern 1: Standard Dominican format 809/829/849 + 7 digits
-  if (/^(\+?1)?(809|829|849)\d{7}$/.test(finalNumber)) {
-    if (!finalNumber.startsWith("+1")) {
-      finalNumber = finalNumber.startsWith("1")
-        ? `+${finalNumber}`
-        : `+1${finalNumber}`;
-    }
-    console.log(`🇩🇴 Dominican number (standard) detected: "${finalNumber}"`);
-  }
-  // Pattern 2: Extended Dominican format like 8296459554 (10 digits starting with 829)
-  else if (/^(\+?1)?(809|829|849)\d{7,10}$/.test(finalNumber)) {
-    if (!finalNumber.startsWith("+1")) {
-      finalNumber = finalNumber.startsWith("1")
-        ? `+${finalNumber}`
-        : `+1${finalNumber}`;
-    }
-    console.log(`🇩🇴 Dominican number (extended) detected: "${finalNumber}"`);
-  }
-  // Pattern 3: Full format like 18296459554 (11+ digits starting with 1829)
-  else if (/^(\+?1)(809|829|849)\d{7,10}$/.test(finalNumber)) {
-    if (!finalNumber.startsWith("+")) {
-      finalNumber = `+${finalNumber}`;
-    }
-    console.log(`🇩🇴 Dominican number (full format) detected: "${finalNumber}"`);
-  }
-  // If number doesn't start with + but looks like a full international number, add +
-  else if (/^\d{10,15}$/.test(finalNumber) && !finalNumber.startsWith("+")) {
-    // For numbers that look like they might be missing the +
-    finalNumber = `+${finalNumber}`;
-    console.log(`🌍 International number detected, adding +: "${finalNumber}"`);
-  }
-
-  console.log(`📞 Final formatted number: "${finalNumber}"`);
-
-  // Validate the cleaned phone number
-  const isValid =
-    finalNumber.startsWith("+") &&
-    finalNumber.length >= 10 &&
-    finalNumber.length <= 15;
-
+  const isValid = validatePhoneNumber(formatted);
   console.log(`✅ Number validation: ${isValid ? "VALID" : "INVALID"}`);
 
-  if (isValid) {
-    return { cleanedPhoneNumber: finalNumber, isValid };
-  } else {
-    const fallback = getFallbackNumber();
-    console.log(`❌ Using fallback number: "${fallback}"`);
-    return { cleanedPhoneNumber: fallback, isValid: false };
-  }
+  return createResult(formatted, isValid);
 }
+
+export type { PhoneNumberResult };
