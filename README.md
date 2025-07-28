@@ -184,14 +184,10 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3001  # Backend API endpoint
 
 ### 1. Environment Setup
 
-Copy the root environment files and configure them for your setup:
+Configure your environment variables:
 
 ```bash
-# Copy environment templates
-cp .env.example .env
-cp .env.example .env.production
-
-# Edit the files with your configuration
+# Edit the main environment file with your configuration
 nano .env
 ```
 

@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "wadmin-backend",
+      name: "bot-manager-backend",
       script: "dist/app.js",
       cwd: "/home/linuxuser/bot-manager/backend",
       watch: false,
@@ -12,18 +12,16 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
+        SERVER_HOST: "0.0.0.0",
+        FRONTEND_URL: "https://wapi.softgrouprd.com",
+        BOT_CONFIG_PATH: "../config/bots.json",
+        DEFAULT_BOT_HOST: "0.0.0.0",
+        CHROME_PATH: "/usr/bin/google-chrome",
+        LOG_LEVEL: "info"
       },
-      env_production: {
-        NODE_ENV: "production",
-        PORT: 3001,
-      },
-      env_development: {
-        NODE_ENV: "development",
-        PORT: 3001,
-      },
-      error_file: "/home/linuxuser/bot-manager/logs/wadmin-backend-error.log",
-      out_file: "/home/linuxuser/bot-manager/logs/wadmin-backend-out.log",
-      log_file: "/home/linuxuser/bot-manager/logs/wadmin-backend-combined.log",
+      error_file: "/home/linuxuser/bot-manager/logs/bot-manager-backend-error.log",
+      out_file: "/home/linuxuser/bot-manager/logs/bot-manager-backend-out.log",
+      log_file: "/home/linuxuser/bot-manager/logs/bot-manager-backend-combined.log",
       time: true,
     },
   ],

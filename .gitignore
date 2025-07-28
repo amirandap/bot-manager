@@ -18,9 +18,10 @@ out/
 
 # Environment files
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.development*
+.env.production*
+.env.dev*
+.env.test*
 .env.*.local
 
 # Personal/sensitive environment files (these should be ignored)
@@ -34,6 +35,24 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 lerna-debug.log*
+
+# Application logs
+logs/
+*.log
+**/*.log
+
+# PM2 logs
+ecosystem.log
+pm2.log
+pm2-error.log
+pm2-out.log
+
+# Bot Manager specific logs
+*-combined.log
+*-error.log
+*-out.log
+bot-manager-*.log
+wadmin-*.log
 
 # Runtime data
 pids
@@ -81,6 +100,9 @@ data/sessions/
 data/logs/
 data/qr-codes/
 
+# Root logs directory
+logs/
+
 # TypeScript
 *.tsbuildinfo
 
@@ -91,5 +113,3 @@ temp/
 # Lock files (optional - some teams prefer to commit these)
 # package-lock.json
 # yarn.lock
-config/bots.json
-config/bots.json
