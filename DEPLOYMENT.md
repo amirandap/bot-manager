@@ -4,18 +4,14 @@
 
 ### 1. Environment Configuration
 
-For production deployment, you need to update the environment variables to match your server setup:
-
-#### Option A: Copy Production Template
+For production deployment, update the environment variables in `.env` to match your server setup:
 
 ```bash
-cp .env.production .env
 # Edit .env with your actual domain/IP addresses
+nano .env
 ```
 
-#### Option B: Manual Configuration
-
-Edit `.env` and update these key variables:
+Update these key variables:
 
 ```bash
 # Set to production
@@ -28,8 +24,8 @@ FRONTEND_URL=https://yourdomain.com                  # or http://your-server-ip:
 # Server binding (0.0.0.0 for all interfaces)
 SERVER_HOST=0.0.0.0
 
-# Your bot server location
-DEFAULT_BOT_HOST=yourdomain.com                      # or your-server-ip
+# Your bot server location (use 0.0.0.0 for local/nginx setup)
+DEFAULT_BOT_HOST=0.0.0.0                             # or localhost for local development
 
 # Disable development features
 DEV_MODE=false
@@ -45,7 +41,7 @@ NODE_ENV=production
 NEXT_PUBLIC_API_BASE_URL=http://123.456.789.10:3001
 FRONTEND_URL=http://123.456.789.10:7261
 SERVER_HOST=0.0.0.0
-DEFAULT_BOT_HOST=123.456.789.10
+DEFAULT_BOT_HOST=0.0.0.0
 ```
 
 #### Scenario 2: Domain with HTTPS (Recommended)
@@ -55,7 +51,7 @@ NODE_ENV=production
 NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com
 FRONTEND_URL=https://yourdomain.com
 SERVER_HOST=0.0.0.0
-DEFAULT_BOT_HOST=yourdomain.com
+DEFAULT_BOT_HOST=0.0.0.0
 ```
 
 #### Scenario 3: Subdomain Setup
@@ -65,7 +61,7 @@ NODE_ENV=production
 NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com
 FRONTEND_URL=https://dashboard.yourdomain.com
 SERVER_HOST=0.0.0.0
-DEFAULT_BOT_HOST=bots.yourdomain.com
+DEFAULT_BOT_HOST=0.0.0.0
 ```
 
 ### 3. Build and Deploy Commands

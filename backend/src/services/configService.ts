@@ -32,10 +32,10 @@ export class ConfigService {
 
       const config: BotConfig = JSON.parse(configData);
 
-      // Apply fallback apiHost if empty
+      // Apply fallback apiHost if empty, with smart defaults
       config.bots = config.bots.map((bot) => ({
         ...bot,
-        apiHost: bot.apiHost || this.fallbackApiHost,
+        apiHost: bot.apiHost || this.getSmartFallbackHost(),
       }));
 
       console.log("Loaded", config.bots.length, "bots");
@@ -148,6 +148,29 @@ export class ConfigService {
 
   public getFallbackApiHost(): string {
     return this.fallbackApiHost;
+  }
+
+  /**
+   * Get smart fallback host with intelligent defaults
+   * Priority: 1) Environment variable, 2) Smart defaults based on environment
+   */
+  private getSmartFallbackHost(): string {
+    // If explicitly set via environment, use it
+    if (this.fallbackApiHost && this.fallbackApiHost.trim() !== "") {
+      return this.fallbackApiHost;
+    }
+
+    // Smart defaults based on environment
+    const nodeEnv = process.env.NODE_ENV;
+    const serverHost = process.env.SERVER_HOST;
+
+    if (nodeEnv === "production") {
+      // In production, prefer 0.0.0.0 for nginx compatibility
+      return serverHost === "0.0.0.0" ? "0.0.0.0" : "localhost";
+    } else {
+      // In development, use localhost
+      return "localhost";
+    }
   }
 
   public updateBotWithRealData(

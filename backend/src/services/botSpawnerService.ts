@@ -275,22 +275,30 @@ export class BotSpawnerService {
       BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
       NODE_ENV: "production",
       CHROME_PATH: chromeExecutablePath,
-    };
+    };        console.log(`📦 PM2 Configuration:`);
+        console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
+        console.log(`   - Interpreter: ${path.join(this.botDirectory, "node_modules/.bin/ts-node")}`);
+        console.log(`   - Working Directory: ${this.botDirectory}`);
+        console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
+        console.log(`📋 Environment Variables:`);
+        console.log(`   - BOT_ID: ${botEnv.BOT_ID}`);
+        console.log(`   - BOT_NAME: ${botEnv.BOT_NAME}`);
+        console.log(`   - BOT_PORT: ${botEnv.BOT_PORT}`);
+        console.log(`   - PORT: ${botEnv.PORT} (for bot compatibility)`);
+        console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
+        console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
+        console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
+        console.log(`   - CHROME_PATH: ${botEnv.CHROME_PATH}`);
 
-    console.log(`📦 PM2 Configuration:`);
-    console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
-    console.log(`   - Interpreter: ./node_modules/.bin/ts-node`);
-    console.log(`   - Working Directory: ${this.botDirectory}`);
-    console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
-    console.log(`📋 Environment Variables:`);
-    console.log(`   - BOT_ID: ${botEnv.BOT_ID}`);
-    console.log(`   - BOT_NAME: ${botEnv.BOT_NAME}`);
-    console.log(`   - BOT_PORT: ${botEnv.BOT_PORT}`);
-    console.log(`   - PORT: ${botEnv.PORT} (for bot compatibility)`);
-    console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
-    console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
-    console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
-    console.log(`   - CHROME_PATH: ${botEnv.CHROME_PATH}`);
+        // Check if ts-node exists
+        const tsNodePath = path.join(this.botDirectory, "node_modules/.bin/ts-node");
+        if (!fs.existsSync(tsNodePath)) {
+          console.error(`❌ ts-node not found at: ${tsNodePath}`);
+          console.log(`💡 Trying to install ts-node in bot directory...`);
+          // You might want to run npm install here
+        } else {
+          console.log(`✅ ts-node found at: ${tsNodePath}`);
+        }
 
     return new Promise((resolve, reject) => {
       console.log(`🔌 Connecting to PM2...`);
@@ -306,7 +314,7 @@ export class BotSpawnerService {
         const pm2Config = {
           name: pm2ServiceId,
           script: path.join(this.botDirectory, "src/index.ts"),
-          interpreter: "./node_modules/.bin/ts-node",
+          interpreter: path.join(this.botDirectory, "node_modules/.bin/ts-node"),
           interpreter_args: "--files -r tsconfig-paths/register",
           cwd: this.botDirectory,
           env: botEnv,
@@ -335,6 +343,7 @@ export class BotSpawnerService {
           if (err) {
             console.error(`❌ PM2 start failed for ${botId}:`);
             console.error(`   Error: ${err.message}`);
+            console.error(`   Full error object:`, err);
             if (err.message.includes("already exists")) {
               console.error(
                 `   💡 Suggestion: Process name conflict. Try stopping the existing process first.`
@@ -343,6 +352,8 @@ export class BotSpawnerService {
               console.error(
                 `   💡 Suggestion: Check if the script file exists and ts-node is installed.`
               );
+              console.error(`   Script path: ${path.join(this.botDirectory, "src/index.ts")}`);
+              console.error(`   ts-node path: ${path.join(this.botDirectory, "node_modules/.bin/ts-node")}`);
             } else if (err.message.includes("port")) {
               console.error(
                 `   💡 Suggestion: Port ${botConfig.apiPort} might be in use.`
