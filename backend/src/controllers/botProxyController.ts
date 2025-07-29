@@ -328,14 +328,14 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/send-message - Send WhatsApp message
+  // POST /api/bots/send-message - Send WhatsApp message (with message type detection and normalization)
   public async sendMessage(req: Request, res: Response): Promise<void> {
     const requestId = Date.now();
     
     try {
       console.log(`📨 [BACKEND] Message request ${requestId} received`);
       
-      const { botId, ...bodyData } = req.body;
+      const { botId, ...rawBodyData } = req.body;
       if (!botId) {
         console.error(`❌ [BACKEND] Request ${requestId}: Bot ID missing`);
         res.status(400).json({ 
@@ -346,9 +346,14 @@ export class BotProxyController {
         return;
       }
 
+      // Normalize message data for different types of sends
+      const bodyData = this.normalizeMessageData(rawBodyData);
+      
       console.log(`📋 [BACKEND] Request ${requestId} details:`, {
         botId,
-        messageData: bodyData,
+        messageType: bodyData.messageType,
+        originalData: rawBodyData,
+        normalizedData: bodyData,
         hasFile: !!req.file
       });
 
@@ -364,6 +369,7 @@ export class BotProxyController {
       res.json({
         success: true,
         result,
+        messageType: bodyData.messageType,
         requestId,
         timestamp: new Date().toISOString()
       });
@@ -410,6 +416,44 @@ export class BotProxyController {
         }[errorType]
       });
     }
+  }
+
+  // Helper method to normalize different message data formats
+  private normalizeMessageData(data: any): any {
+    const normalized = { ...data };
+    
+    // Detect message type and normalize accordingly
+    if (data.group_id || (typeof data.to === 'string' && data.to.includes('@g.us'))) {
+      // Group message
+      normalized.messageType = 'GROUP';
+      normalized.group_id = data.group_id || data.to;
+      // Remove individual recipient fields for group messages
+      delete normalized.to;
+      delete normalized.phoneNumber;
+      console.log(`🏢 [BACKEND] Detected GROUP message to: ${normalized.group_id}`);
+      
+    } else if (Array.isArray(data.to) || Array.isArray(data.phoneNumber)) {
+      // Multiple recipients (broadcast)
+      normalized.messageType = 'BROADCAST';
+      const recipients = data.to || data.phoneNumber;
+      normalized.to = recipients; // Use 'to' as the standard field for bot
+      delete normalized.phoneNumber; // Remove phoneNumber to avoid confusion
+      console.log(`📢 [BACKEND] Detected BROADCAST message to ${recipients.length} recipients`);
+      
+    } else if (data.to || data.phoneNumber) {
+      // Single recipient
+      normalized.messageType = 'INDIVIDUAL';
+      normalized.to = data.to || data.phoneNumber; // Use 'to' as the standard field
+      delete normalized.phoneNumber; // Remove phoneNumber to avoid confusion
+      console.log(`👤 [BACKEND] Detected INDIVIDUAL message to: ${normalized.to}`);
+      
+    } else {
+      // No valid recipient found
+      normalized.messageType = 'UNKNOWN';
+      console.warn(`⚠️ [BACKEND] No valid recipient found in message data`);
+    }
+    
+    return normalized;
   }
 
   // POST /api/bots/get-groups - Get WhatsApp groups
