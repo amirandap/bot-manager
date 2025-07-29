@@ -129,6 +129,53 @@ export function setBotProxyRoutes(app: Router) {
 
   /**
    * @swagger
+   * /api/bots/{id}/status:
+   *   get:
+   *     summary: Get bot status by ID
+   *     tags: [Bot Proxy - Core]
+   *     description: Retrieve the current status of a specific bot instance using REST pattern
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: The bot ID
+   *         example: "whatsapp-bot-1234567890"
+   *     responses:
+   *       200:
+   *         description: Bot status retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 authenticated:
+   *                   type: boolean
+   *                   description: Whether the bot is authenticated
+   *                 ready:
+   *                   type: boolean
+   *                   description: Whether the bot is ready to send/receive messages
+   *                 phone:
+   *                   type: string
+   *                   description: The phone number associated with the bot
+   *                 qr:
+   *                   type: string
+   *                   description: QR code data if authentication is needed
+   *       400:
+   *         description: Bot ID is required
+   *       404:
+   *         description: Bot not found
+   *       500:
+   *         description: Bot not responding or server error
+   */
+  app.get(
+    "/api/bots/:id/status",
+    botProxyController.getBotStatusById.bind(botProxyController)
+  );
+
+  /**
+   * @swagger
    * /api/bots/restart:
    *   post:
    *     summary: Restart bot
