@@ -35,11 +35,23 @@ export class BotProxyController {
     requestData?: any,
     file?: Express.Multer.File
   ) {
-    const baseUrl = this.getBotApiUrl(botId);
+    const startTime = Date.now();
+    let baseUrl: string;
+    
+    try {
+      baseUrl = this.getBotApiUrl(botId);
+    } catch (error) {
+      console.error(`❌ [BACKEND] Bot configuration error for ${botId}:`, error);
+      throw new Error(`BACKEND_ERROR: Bot ${botId} not found or misconfigured`);
+    }
+
     const url = `${baseUrl}${endpoint}`;
 
-    console.log(`🔄 Forwarding ${method} request to bot ${botId}`);
-    console.log(`📡 Target URL: ${url}`);
+    console.log(`🔄 [BACKEND] Forwarding ${method} request to bot ${botId}`);
+    console.log(`📡 [BACKEND] Target URL: ${url}`);
+    if (requestData) {
+      console.log(`📦 [BACKEND] Request data:`, JSON.stringify(requestData, null, 2));
+    }
 
     const config: any = {
       method,
@@ -49,6 +61,7 @@ export class BotProxyController {
 
     if (method === "POST" || method === "PUT") {
       if (file) {
+        console.log(`📁 [BACKEND] Handling file upload: ${file.originalname}`);
         // Handle multipart/form-data for file uploads
         const formData = new FormData();
 
@@ -78,26 +91,49 @@ export class BotProxyController {
     }
 
     try {
+      console.log(`⏳ [BACKEND] Sending request to bot...`);
       const response = await axios(config);
+      const duration = Date.now() - startTime;
+      
+      console.log(`✅ [BACKEND] Bot responded successfully in ${duration}ms`);
+      console.log(`📤 [BACKEND] Response status: ${response.status}`);
+      
       return response.data;
     } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ [BACKEND] Request failed after ${duration}ms`);
+      
       if (axios.isAxiosError(error)) {
         if (error.response) {
           // The bot responded with an error status
+          console.error(`🤖 [BOT_ERROR] Bot responded with error:`, {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            url: url
+          });
+          
           throw new Error(
-            `Bot API error (${error.response.status}): ${JSON.stringify(
-              error.response.data
-            )}`
+            `BOT_ERROR: Bot API returned ${error.response.status} - ${JSON.stringify(error.response.data)}`
           );
         } else if (error.request) {
           // The request was made but no response was received
-          throw new Error(`Bot not responding: Cannot connect to ${url}`);
+          console.error(`🔌 [CONNECTION_ERROR] Bot not responding:`, {
+            url: url,
+            timeout: config.timeout,
+            code: error.code
+          });
+          
+          throw new Error(`CONNECTION_ERROR: Cannot connect to bot at ${url} - ${error.code || 'Unknown error'}`);
         } else {
           // Something happened in setting up the request
-          throw new Error(`Request setup error: ${error.message}`);
+          console.error(`⚙️ [REQUEST_SETUP_ERROR] Request configuration error:`, error.message);
+          throw new Error(`REQUEST_SETUP_ERROR: ${error.message}`);
         }
       }
-      throw error;
+      
+      console.error(`🔥 [UNKNOWN_ERROR] Unexpected error:`, error);
+      throw new Error(`UNKNOWN_ERROR: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
     }
   }
 
@@ -294,12 +330,28 @@ export class BotProxyController {
 
   // POST /api/bots/send-message - Send WhatsApp message
   public async sendMessage(req: Request, res: Response): Promise<void> {
+    const requestId = Date.now();
+    
     try {
+      console.log(`📨 [BACKEND] Message request ${requestId} received`);
+      
       const { botId, ...bodyData } = req.body;
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        console.error(`❌ [BACKEND] Request ${requestId}: Bot ID missing`);
+        res.status(400).json({ 
+          error: "VALIDATION_ERROR: Bot ID is required in request body",
+          requestId,
+          timestamp: new Date().toISOString()
+        });
         return;
       }
+
+      console.log(`📋 [BACKEND] Request ${requestId} details:`, {
+        botId,
+        messageData: bodyData,
+        hasFile: !!req.file
+      });
+
       const result = await this.forwardRequest(
         botId,
         "/send-message",
@@ -307,12 +359,55 @@ export class BotProxyController {
         bodyData,
         req.file
       );
-      res.json(result);
+      
+      console.log(`✅ [BACKEND] Request ${requestId} completed successfully`);
+      res.json({
+        success: true,
+        result,
+        requestId,
+        timestamp: new Date().toISOString()
+      });
+      
     } catch (error) {
-      console.error("Error sending message:", error);
-      res.status(500).json({
+      console.error(`❌ [BACKEND] Request ${requestId} failed:`, error);
+      
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const isBackendError = errorMessage.startsWith('BACKEND_ERROR:');
+      const isBotError = errorMessage.startsWith('BOT_ERROR:');
+      const isConnectionError = errorMessage.startsWith('CONNECTION_ERROR:');
+      const isRequestSetupError = errorMessage.startsWith('REQUEST_SETUP_ERROR:');
+      
+      let statusCode = 500;
+      let errorType = "UNKNOWN_ERROR";
+      
+      if (isBackendError) {
+        statusCode = 404;
+        errorType = "BACKEND_ERROR";
+      } else if (isBotError) {
+        statusCode = 502;
+        errorType = "BOT_ERROR";
+      } else if (isConnectionError) {
+        statusCode = 503;
+        errorType = "CONNECTION_ERROR";
+      } else if (isRequestSetupError) {
+        statusCode = 400;
+        errorType = "REQUEST_SETUP_ERROR";
+      }
+      
+      res.status(statusCode).json({
+        success: false,
         error: "Failed to send message",
-        details: error instanceof Error ? error.message : "Unknown error",
+        errorType,
+        details: errorMessage,
+        requestId,
+        timestamp: new Date().toISOString(),
+        troubleshooting: {
+          BACKEND_ERROR: "Check bot configuration in config/bots.json",
+          BOT_ERROR: "Check bot logs and WhatsApp session status",
+          CONNECTION_ERROR: "Verify bot is running and accessible",
+          REQUEST_SETUP_ERROR: "Check request format and parameters",
+          UNKNOWN_ERROR: "Check system logs for more details"
+        }[errorType]
       });
     }
   }

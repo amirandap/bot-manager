@@ -21,6 +21,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 interface SendMessageRequestBody {
   discorduserid?: string;
   phoneNumber?: string | string[];
+  to?: string | string[]; // Alias for phoneNumber
   message: string;
   group_id?: string;
   group_name?: string;
@@ -33,11 +34,11 @@ interface ErrorObject {
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
-    const { discorduserid, phoneNumber, message, group_id, group_name } =
+    const { discorduserid, phoneNumber, to, message, group_id, group_name } =
       req.body as SendMessageRequestBody;
     const file = req.file as Express.Multer.File;
     const userData = discorduserid ? await fetchUserData(discorduserid) : null;
-    console.log("Payload recibido en /sendMessage: ", req.body);
+    console.log("Payload recibido en /send-message: ", req.body);
 
     if (!message && !file) {
       return res
@@ -45,12 +46,14 @@ router.post("/", upload.single("file"), async (req, res) => {
         .send({ error: "Missing message or file parameter" });
     }
 
-    // Check if phoneNumber is a single string, array of phone numbers, or group_id is provided
+    // Check if phoneNumber/to is a single string, array of phone numbers, or group_id is provided
+    // Use 'to' as alias for 'phoneNumber' for API compatibility
+    const targetNumber = phoneNumber || to;
     let numbersToProcess: string[] = [];
-    if (typeof phoneNumber === "string") {
-      numbersToProcess = [phoneNumber];
-    } else if (Array.isArray(phoneNumber)) {
-      numbersToProcess = phoneNumber;
+    if (typeof targetNumber === "string") {
+      numbersToProcess = [targetNumber];
+    } else if (Array.isArray(targetNumber)) {
+      numbersToProcess = targetNumber;
     } else if (discorduserid) {
       numbersToProcess = [userData?.celular as string];
     }
@@ -106,10 +109,31 @@ router.post("/", upload.single("file"), async (req, res) => {
           }
           messagesSent.push(phoneNumber);
         } catch (error: unknown) {
-          const reason =
-            error instanceof Error ? error.message : "Unknown error";
-          errors.push({ phoneNumber: number, error: reason });
-          console.error(`Error sending message to ${number}:`, error);
+          console.error(`❌ [BOT_ROUTE] Error sending message to ${number}:`, error);
+          
+          let errorType = "UNKNOWN_ERROR";
+          let errorMessage = error instanceof Error ? error.message : "Unknown error";
+          
+          // Parse structured error from helper
+          if (errorMessage.startsWith("BOT_SEND_ERROR:")) {
+            try {
+              const errorData = JSON.parse(errorMessage.replace("BOT_SEND_ERROR: ", ""));
+              errorType = errorData.errorType;
+              errorMessage = errorData.originalError;
+            } catch (parseError) {
+              console.error(`❌ [BOT_ROUTE] Failed to parse error data:`, parseError);
+            }
+          }
+          
+          const errorDetails = {
+            phoneNumber: number,
+            error: errorMessage,
+            errorType,
+            timestamp: new Date().toISOString()
+          };
+          
+          errors.push(errorDetails);
+          console.error(`🔥 [BOT_ROUTE] Detailed error for ${number}:`, errorDetails);
         }
       }
     }
@@ -132,21 +156,63 @@ Errors: ${JSON.stringify(errors)}
 
     return res.status(errors.length === 0 ? 200 : 207).send(response);
   } catch (error: unknown) {
-    console.error("Error sending the message:", error);
+    console.error("❌ [BOT_ROUTE] Critical error in /send-message endpoint:", error);
+    
     let reason = "Unknown reason";
+    let errorType = "CRITICAL_ERROR";
+    
     if (error instanceof Error) {
       reason = error.message;
+      
+      // Categorize critical errors
+      if (reason.includes("Client not initialized")) {
+        errorType = "CLIENT_NOT_INITIALIZED";
+      } else if (reason.includes("Cannot read properties")) {
+        errorType = "SESSION_CORRUPTED";
+      } else if (reason.includes("Evaluation failed")) {
+        errorType = "WHATSAPP_SESSION_LOST";
+      }
     }
+    
+    const errorDetails = {
+      endpoint: "/send-message",
+      errorType,
+      error: reason,
+      payload: req.body,
+      timestamp: new Date().toISOString(),
+      troubleshooting: {
+        CLIENT_NOT_INITIALIZED: "Restart bot service",
+        SESSION_CORRUPTED: "Scan QR code to re-authenticate",
+        WHATSAPP_SESSION_LOST: "Re-scan QR code",
+        CRITICAL_ERROR: "Check bot logs and restart if necessary"
+      }[errorType]
+    };
+    
+    console.error(`🔥 [BOT_ROUTE] Critical error details:`, errorDetails);
+    
     const errorMessage: string = `
-Error en /send-message
+🚨 Critical Error in /send-message
 
-Payload: ${JSON.stringify(req.body)}
+Error Type: ${errorType}
+Payload: ${JSON.stringify(req.body, null, 2)}
 Error: ${reason}
+Timestamp: ${new Date().toISOString()}
+Troubleshooting: ${errorDetails.troubleshooting}
 `;
-    await sendErrorMessage(client, errorMessage);
-    return res
-      .status(500)
-      .send({ error: `Error sending message: ${reason}`, errorMessage });
+
+    try {
+      await sendErrorMessage(client, errorMessage);
+    } catch (fallbackError) {
+      console.error("❌ [BOT_ROUTE] Failed to send error message to fallback:", fallbackError);
+    }
+    
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+      errorType,
+      details: reason,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

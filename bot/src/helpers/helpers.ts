@@ -87,22 +87,75 @@ export const sendMessage = async (
 
   try {
     if (!client) {
-      throw new Error("Client not initialized");
+      console.error(`❌ [BOT] Client not initialized`);
+      throw new Error("BOT_ERROR: WhatsApp client not initialized");
     }
+
+    // Check if the number is registered on WhatsApp before sending
+    try {
+      console.log(`🔍 [BOT] Verifying number on WhatsApp: ${formattedPhoneNumber}`);
+      const numberId = await client.getNumberId(formattedPhoneNumber);
+      if (!numberId) {
+        console.error(`❌ [BOT] Number not registered: ${formattedPhoneNumber}`);
+        throw new Error(`WHATSAPP_ERROR: Number ${formattedPhoneNumber} is not registered on WhatsApp`);
+      }
+      console.log(`✅ [BOT] Number verified on WhatsApp: ${numberId._serialized}`);
+    } catch (verifyError) {
+      console.error(`❌ [BOT] Number verification failed for ${formattedPhoneNumber}:`, verifyError);
+      throw new Error(`WHATSAPP_VERIFICATION_ERROR: Number not available on WhatsApp - ${formattedPhoneNumber}`);
+    }
+
+    console.log(`📤 [BOT] Sending message to verified number: ${formattedPhoneNumber}`);
     await client.sendMessage(formattedPhoneNumber, message);
-    console.log(`✅ Message sent successfully to: "${formattedPhoneNumber}"`);
-    return { status: "success", message: "Message sent successfully" };
+    console.log(`✅ [BOT] Message sent successfully to: "${formattedPhoneNumber}"`);
+    return { 
+      status: "success", 
+      message: "Message sent successfully",
+      recipient: formattedPhoneNumber,
+      timestamp: new Date().toISOString()
+    };
   } catch (error: any) {
-    console.error(
-      `❌ Error sending message to ${formattedPhoneNumber}:`,
-      error
-    );
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    const errorDetails = error?.response
-      ? error.response.data
-      : { to: phoneNumber, text: errorMessage };
-    throw new Error(`Error sending message: ${JSON.stringify(errorDetails)}`);
+    console.error(`❌ [BOT] Error sending message to ${formattedPhoneNumber}:`, error);
+    
+    let errorType = "UNKNOWN_ERROR";
+    let errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Categorize error types
+    if (errorMessage.includes("BOT_ERROR:")) {
+      errorType = "BOT_INITIALIZATION_ERROR";
+    } else if (errorMessage.includes("WHATSAPP_ERROR:")) {
+      errorType = "WHATSAPP_NUMBER_ERROR";
+    } else if (errorMessage.includes("WHATSAPP_VERIFICATION_ERROR:")) {
+      errorType = "WHATSAPP_VERIFICATION_ERROR";
+    } else if (errorMessage.includes("serialize")) {
+      errorType = "WHATSAPP_SESSION_ERROR";
+      errorMessage = "WhatsApp session lost or corrupted - may need to scan QR code again";
+    } else if (errorMessage.includes("Cannot read properties")) {
+      errorType = "WHATSAPP_DOM_ERROR";
+      errorMessage = "WhatsApp Web DOM structure changed or session lost";
+    } else if (errorMessage.includes("Evaluation failed")) {
+      errorType = "WHATSAPP_SCRIPT_ERROR";
+      errorMessage = "WhatsApp Web script execution failed - session may be unstable";
+    }
+
+    const errorDetails = {
+      errorType,
+      originalError: errorMessage,
+      recipient: formattedPhoneNumber,
+      originalRecipient: phoneNumber,
+      timestamp: new Date().toISOString(),
+      troubleshooting: {
+        BOT_INITIALIZATION_ERROR: "Restart the bot service",
+        WHATSAPP_NUMBER_ERROR: "Verify the phone number is registered on WhatsApp",
+        WHATSAPP_VERIFICATION_ERROR: "Check number format and WhatsApp registration",
+        WHATSAPP_SESSION_ERROR: "Scan QR code to re-authenticate",
+        WHATSAPP_DOM_ERROR: "Restart bot - WhatsApp Web may have updated",
+        WHATSAPP_SCRIPT_ERROR: "Restart bot and scan QR code if needed"
+      }[errorType] || "Check bot logs for more details"
+    };
+
+    console.error(`🔥 [BOT] Detailed error info:`, errorDetails);
+    throw new Error(`BOT_SEND_ERROR: ${JSON.stringify(errorDetails)}`);
   }
 };
 
