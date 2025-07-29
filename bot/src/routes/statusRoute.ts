@@ -1,5 +1,5 @@
 import express, { Response } from 'express';
-import { fallbackNumber } from './changeFallbackNumberRoute';
+import { getFallbackNumber } from '../utils/fallbackUtils';
 import { client } from '../config/whatsAppClient';
 
 const router = express.Router();
@@ -16,7 +16,7 @@ router.get('/', (req, res: Response) => {
     rootFolder: __dirname,
     port: process.env.PORT || 7260,
     uptime: `${Math.floor(uptime / 1000)} seconds`,
-    fallbackNumber,
+    fallbackNumber: getFallbackNumber(),
     QrCode: baseUrl + '/qr-code',
     client: clientData,
   });

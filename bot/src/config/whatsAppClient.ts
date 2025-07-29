@@ -12,6 +12,7 @@ import { sendMessage } from "../helpers/helpers";
 import { app, BOT_ID, SESSION_PATH } from "..";
 import { getGroupDetails } from "../helpers/groupHelper";
 import nodemailer from "nodemailer";
+import { isSmtpConfigured, getSmtpConfig, logSmtpStatus } from "../utils/smtpUtils";
 import dotenv from "dotenv";
 import path from "path";
 import { getFallbackNumber } from "../utils/fallbackUtils";
@@ -25,6 +26,9 @@ export async function initializeClient() {
   try {
     console.log(`🚀 Initializing WhatsApp client for bot: ${BOT_ID}`);
     console.log(`📂 Using session path: ${SESSION_PATH}`);
+    
+    // Log SMTP configuration status
+    logSmtpStatus();
 
     // Determine the correct Chrome executable path based on the operating system
     let chromeExecutablePath;
@@ -116,30 +120,31 @@ export function appendListeners(client: Client) {
         console.error("Error sending QR code to endpoint:", error);
       }
 
-      // Send email with QR code link if not already sent
-      if (!emailSent) {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS,
-          },
-        });
-
-        const rootFolderName = path.basename(path.resolve(__dirname, "../../"));
-        const mailOptions = {
-          from: process.env.GMAIL_USER,
-          to: process.env.MAIL_RECIPIENT,
-          subject: "WhatsApp QR Code",
-          text: `Scan the QR code using the following link: ${baseUrl}/qr-code\nRoot folder: ${rootFolderName}`,
-        };
-
+            // Send email with QR code link if SMTP is configured and not already sent
+      if (!emailSent && isSmtpConfigured()) {
         try {
+          const smtpConfig = getSmtpConfig()!;
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: smtpConfig.user,
+              pass: smtpConfig.pass,
+            },
+          });
+
+          const rootFolderName = path.basename(path.resolve(__dirname, "../../"));
+          const mailOptions = {
+            from: smtpConfig.user,
+            to: smtpConfig.recipient,
+            subject: "WhatsApp QR Code",
+            text: `Scan the QR code using the following link: ${baseUrl}/qr-code\nRoot folder: ${rootFolderName}`,
+          };
+
           await transporter.sendMail(mailOptions);
-          console.log("Email sent with QR code link");
+          console.log("✅ Email sent with QR code link");
           emailSent = true;
         } catch (error) {
-          console.error("Error sending email:", error);
+          console.error("❌ Error sending email:", error);
         }
       }
     });
