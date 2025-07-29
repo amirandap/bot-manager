@@ -68,10 +68,35 @@ export function setBotProxyRoutes(app: Router) {
   /**
    * @swagger
    * /api/bots/qr-code:
-   *   post:
-   *     summary: Get QR code for WhatsApp authentication
+   *   get:
+   *     summary: Get QR code for WhatsApp authentication (GET)
    *     tags: [Bot Proxy - Core]
-   *     description: Get QR code for WhatsApp bot authentication. Returns HTML page with QR code.
+   *     description: Get QR code for WhatsApp bot authentication using query parameter. Returns HTML page with QR code.
+   *     parameters:
+   *       - in: query
+   *         name: botId
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Unique bot identifier
+   *         example: "whatsapp-bot-1234567890"
+   *     responses:
+   *       200:
+   *         description: QR code HTML page
+   *         content:
+   *           text/html:
+   *             schema:
+   *               type: string
+   *       400:
+   *         description: Bot ID is required
+   *       404:
+   *         description: Bot not found or QR code not available
+   *       500:
+   *         description: Bot not responding or server error
+   *   post:
+   *     summary: Get QR code for WhatsApp authentication (POST)
+   *     tags: [Bot Proxy - Core]
+   *     description: Get QR code for WhatsApp bot authentication using request body. Returns HTML page with QR code.
    *     requestBody:
    *       required: true
    *       content:
@@ -98,7 +123,18 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
+  // Support both GET and POST for QR code endpoint
+  app.get(
+    "/api/bots/qr-code",
+    botProxyController.getBotQRCode.bind(botProxyController)
+  );
   app.post(
+    "/api/bots/qr-code",
+    botProxyController.getBotQRCode.bind(botProxyController)
+  );
+
+  // Add GET route for QR code (with query parameter)
+  app.get(
     "/api/bots/qr-code",
     botProxyController.getBotQRCode.bind(botProxyController)
   );

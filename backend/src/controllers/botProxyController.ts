@@ -120,14 +120,20 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/qr-code - Get QR code (returns HTML)
+  // GET/POST /api/bots/qr-code - Get QR code (returns HTML)
   public async getBotQRCode(req: Request, res: Response): Promise<void> {
     try {
-      const { botId } = req.body;
+      // Support both GET (query parameter) and POST (request body)
+      const botId = req.method === 'GET' ? req.query.botId as string : req.body.botId;
+      
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        const errorMessage = req.method === 'GET' 
+          ? "Bot ID is required as query parameter (?botId=your-bot-id)" 
+          : "Bot ID is required in request body";
+        res.status(400).json({ error: errorMessage });
         return;
       }
+      
       const result = await this.forwardRequest(botId, "/qr-code", "GET");
       res.send(result); // Send HTML directly
     } catch (error) {
