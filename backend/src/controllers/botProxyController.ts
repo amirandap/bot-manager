@@ -172,6 +172,27 @@ export class BotProxyController {
     }
   }
 
+  // GET /api/bots/:id/status - Get bot status using route parameter
+  public async getBotStatusById(req: Request, res: Response): Promise<void> {
+    try {
+      const botId = req.params.id;
+      
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required in URL path" });
+        return;
+      }
+      
+      const result = await this.forwardRequest(botId, "/status", "GET");
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting bot status:", error);
+      res.status(500).json({
+        error: "Failed to get bot status",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
   // POST /api/bots/qr-code/update - Update QR code (internal use)
   public async updateBotQRCode(req: Request, res: Response): Promise<void> {
     try {
