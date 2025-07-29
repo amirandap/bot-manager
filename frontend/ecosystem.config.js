@@ -9,7 +9,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 5,
       env: {
-        NODE_ENV: "development",
+        NODE_ENV: "production",
         PORT: 7260,
         NEXT_PUBLIC_API_BASE_URL: "http://localhost:3001",
       },
