@@ -10,14 +10,14 @@ module.exports = {
       min_uptime: "10s",
       max_memory_restart: "1G",
       env: {
-        NODE_ENV: "production",
+        NODE_ENV: "development",
         PORT: 3001,
         SERVER_HOST: "0.0.0.0",
-        FRONTEND_URL: "https://wapi.softgrouprd.com",
+        FRONTEND_URL: "http://localhost:7260",
         BOT_CONFIG_PATH: "../config/bots.json",
-        DEFAULT_BOT_HOST: "0.0.0.0",
-        CHROME_PATH: "/usr/bin/google-chrome",
-        LOG_LEVEL: "info"
+        DEFAULT_BOT_HOST: "localhost",
+        CHROME_PATH: "/snap/bin/chromium",
+        LOG_LEVEL: "debug"
       },
       error_file: "/home/linuxuser/bot-manager/logs/bot-manager-backend-error.log",
       out_file: "/home/linuxuser/bot-manager/logs/bot-manager-backend-out.log",
