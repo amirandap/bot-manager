@@ -13,23 +13,13 @@ export function setBotProxyRoutes(app: Router) {
 
   /**
    * @swagger
-   * /api/bots/status:
-   *   post:
+   * /api/bots/{id}/status:
+   *   get:
    *     summary: Get bot status
    *     tags: [Bot Proxy - Core]
    *     description: Get current status and information of a specific bot
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [botId]
-   *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
    *     responses:
    *       200:
    *         description: Bot status retrieved successfully
@@ -60,9 +50,9 @@ export function setBotProxyRoutes(app: Router) {
    *       500:
    *         description: Bot not responding or server error
    */
-  app.post(
-    "/api/bots/status",
-    botProxyController.getBotStatus.bind(botProxyController)
+  app.get(
+    "/api/bots/:id/status",
+    botProxyController.getBotStatusById.bind(botProxyController)
   );
 
   /**
@@ -129,23 +119,13 @@ export function setBotProxyRoutes(app: Router) {
 
   /**
    * @swagger
-   * /api/bots/restart:
+   * /api/bots/{id}/restart:
    *   post:
    *     summary: Restart bot
    *     tags: [Bot Proxy - Core]
    *     description: Restart a specific bot instance
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [botId]
-   *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
    *     responses:
    *       200:
    *         description: Bot restarted successfully
@@ -157,29 +137,27 @@ export function setBotProxyRoutes(app: Router) {
    *         description: Bot not responding or server error
    */
   app.post(
-    "/api/bots/restart",
-    botProxyController.restartBot.bind(botProxyController)
+    "/api/bots/:id/restart",
+    botProxyController.restartBotById.bind(botProxyController)
   );
 
   /**
    * @swagger
-   * /api/bots/change-fallback-number:
+   * /api/bots/{id}/change-fallback-number:
    *   post:
    *     summary: Change fallback number
    *     tags: [Bot Proxy - Core]
    *     description: Change the fallback phone number for a bot
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
    *           schema:
    *             type: object
-   *             required: [botId, fallbackNumber]
+   *             required: [fallbackNumber]
    *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
    *               fallbackNumber:
    *                 type: string
    *                 description: New fallback phone number
@@ -195,29 +173,27 @@ export function setBotProxyRoutes(app: Router) {
    *         description: Bot not responding or server error
    */
   app.post(
-    "/api/bots/change-fallback-number",
-    botProxyController.changeFallbackNumber.bind(botProxyController)
+    "/api/bots/:id/change-fallback-number",
+    botProxyController.changeFallbackNumberById.bind(botProxyController)
   );
 
   /**
    * @swagger
-   * /api/bots/change-port:
+   * /api/bots/{id}/change-port:
    *   post:
    *     summary: Change bot port
    *     tags: [Bot Proxy - Core]
    *     description: Change the API port for a bot
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
    *           schema:
    *             type: object
-   *             required: [botId, port]
+   *             required: [port]
    *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
    *               port:
    *                 type: number
    *                 description: New port number
@@ -233,8 +209,8 @@ export function setBotProxyRoutes(app: Router) {
    *         description: Bot not responding or server error
    */
   app.post(
-    "/api/bots/change-port",
-    botProxyController.changePort.bind(botProxyController)
+    "/api/bots/:id/change-port",
+    botProxyController.changePortById.bind(botProxyController)
   );
 
   // ===== MESSAGING OPERATIONS =====
