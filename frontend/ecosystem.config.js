@@ -11,7 +11,11 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 7260,
+        FRONTEND_PORT: 7260,
+        FRONTEND_HOST: "0.0.0.0",
         NEXT_PUBLIC_API_BASE_URL: "http://localhost:3001",
+        BACKEND_PORT: 3001,
+        BOT_PORT_START: 7261
       },
       error_file: "/home/linuxuser/bot-manager/logs/bot-manager-frontend-error.log",
       out_file: "/home/linuxuser/bot-manager/logs/bot-manager-frontend-out.log",
