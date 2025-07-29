@@ -28,8 +28,8 @@ app.use(express.json());
 app.use(cors());
 app.use(morgan("short"));
 
-setBotsRoutes(app);
 setBotProxyRoutes(app);
+setBotsRoutes(app);
 setStatusRoutes(app);
 setDeployRoutes(app);
 
