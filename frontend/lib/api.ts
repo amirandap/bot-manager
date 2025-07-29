@@ -1,15 +1,9 @@
 import type { Bot } from "./types";
 
 // API configuration
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-// Validate API_BASE_URL is set
-if (!API_BASE_URL) {
-  throw new Error(
-    "NEXT_PUBLIC_API_BASE_URL environment variable is required but not set. " +
-      "Please check your .env file or environment configuration."
-  );
-}
+// Use empty string for relative URLs when NEXT_PUBLIC_API_BASE_URL is not set
+// This allows nginx to proxy the requests to the backend
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 // API helpers
 export const api = {

@@ -62,22 +62,18 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
   const handleViewQR = () => {
     if (bot.type === "whatsapp") {
-      // Use unified proxy endpoint for QR code
-      const qrUrl = api.proxy.getQRCode();
-      // Since we need to pass botId in the body, we'll open a form-based approach
-      // or create a temporary URL that handles the POST request
-      // For now, let's create a simple approach using a form
+      // Create a form to POST to the backend proxy
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = qrUrl;
+      form.action = `/api/bots/qr-code`;
       form.target = "_blank";
 
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = "botId";
-      input.value = bot.id;
-      form.appendChild(input);
+      const botIdInput = document.createElement("input");
+      botIdInput.type = "hidden";
+      botIdInput.name = "botId";
+      botIdInput.value = bot.id;
 
+      form.appendChild(botIdInput);
       document.body.appendChild(form);
       form.submit();
       document.body.removeChild(form);

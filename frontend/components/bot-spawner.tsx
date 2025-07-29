@@ -50,7 +50,7 @@ export function BotSpawner({
     apiPort: getNextAvailablePort(),
     phoneNumber: "",
     pushName: "",
-    apiHost: process.env.NEXT_PUBLIC_API_BASE_URL?.replace(":3001", "") || "",
+    apiHost: typeof window !== 'undefined' ? window.location.hostname : "localhost",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [lastCreatedBot, setLastCreatedBot] = useState<Bot | null>(null);
@@ -195,8 +195,7 @@ export function BotSpawner({
         apiPort: getNextAvailablePort(),
         phoneNumber: "",
         pushName: "",
-        apiHost:
-          process.env.NEXT_PUBLIC_API_BASE_URL?.replace(":3001", "") || "",
+        apiHost: typeof window !== 'undefined' ? window.location.hostname : "localhost",
       });
 
       // Call the callback if provided
