@@ -98,16 +98,35 @@ router.post("/", upload.single("file"), async (req, res) => {
           });
 
           if (file) {
-            await sendFileAndMessage(
+            const result = await sendFileAndMessage(
               client,
               phoneNumber,
               { data: file.buffer.toString("base64"), mimetype: file.mimetype },
               formattedMessage
             );
+            
+            // Check if file was sent successfully (even with warnings)
+            if (result.status === "success") {
+              if (result.warning) {
+                console.warn(`⚠️ [BOT_ROUTE] File sent with warning to ${phoneNumber}: ${result.warning}`);
+              }
+              messagesSent.push(phoneNumber);
+            } else {
+              throw new Error(`File send failed: ${result.message || 'Unknown error'}`);
+            }
           } else {
-            await sendMessage(client, phoneNumber, formattedMessage);
+            const result = await sendMessage(client, phoneNumber, formattedMessage);
+            
+            // Check if message was sent successfully (even with warnings)
+            if (result.status === "success") {
+              if (result.warning) {
+                console.warn(`⚠️ [BOT_ROUTE] Message sent with warning to ${phoneNumber}: ${result.warning}`);
+              }
+              messagesSent.push(phoneNumber);
+            } else {
+              throw new Error(`Message send failed: ${result.message || 'Unknown error'}`);
+            }
           }
-          messagesSent.push(phoneNumber);
         } catch (error: unknown) {
           console.error(`❌ [BOT_ROUTE] Error sending message to ${number}:`, error);
           

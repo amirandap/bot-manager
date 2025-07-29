@@ -106,14 +106,41 @@ export const sendMessage = async (
     }
 
     console.log(`📤 [BOT] Sending message to verified number: ${formattedPhoneNumber}`);
-    await client.sendMessage(formattedPhoneNumber, message);
-    console.log(`✅ [BOT] Message sent successfully to: "${formattedPhoneNumber}"`);
-    return { 
-      status: "success", 
-      message: "Message sent successfully",
-      recipient: formattedPhoneNumber,
-      timestamp: new Date().toISOString()
-    };
+    
+    let messageResult;
+    let messageSent = false;
+    
+    try {
+      messageResult = await client.sendMessage(formattedPhoneNumber, message);
+      messageSent = true;
+      console.log(`✅ [BOT] Message sent successfully to: "${formattedPhoneNumber}"`);
+      console.log(`📝 [BOT] Message ID: ${messageResult.id?._serialized || 'N/A'}`);
+      
+      return { 
+        status: "success", 
+        message: "Message sent successfully",
+        recipient: formattedPhoneNumber,
+        messageId: messageResult.id?._serialized,
+        timestamp: new Date().toISOString()
+      };
+    } catch (sendError: any) {
+      // If message was sent but serialization failed after, treat as success
+      if (messageSent || (sendError.message && sendError.message.includes("serialize"))) {
+        console.warn(`⚠️ [BOT] Post-send serialization error (message likely sent): ${sendError.message}`);
+        console.log(`✅ [BOT] Treating as successful send despite post-send error`);
+        
+        return { 
+          status: "success", 
+          message: "Message sent successfully (post-send error ignored)",
+          recipient: formattedPhoneNumber,
+          warning: "Post-send serialization error occurred but message was likely delivered",
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // Re-throw if it's a real send error
+      throw sendError;
+    }
   } catch (error: any) {
     console.error(`❌ [BOT] Error sending message to ${formattedPhoneNumber}:`, error);
     
@@ -128,8 +155,8 @@ export const sendMessage = async (
     } else if (errorMessage.includes("WHATSAPP_VERIFICATION_ERROR:")) {
       errorType = "WHATSAPP_VERIFICATION_ERROR";
     } else if (errorMessage.includes("serialize")) {
-      errorType = "WHATSAPP_SESSION_ERROR";
-      errorMessage = "WhatsApp session lost or corrupted - may need to scan QR code again";
+      errorType = "WHATSAPP_SERIALIZATION_ERROR";
+      errorMessage = "WhatsApp post-send serialization error - message likely delivered but session unstable";
     } else if (errorMessage.includes("Cannot read properties")) {
       errorType = "WHATSAPP_DOM_ERROR";
       errorMessage = "WhatsApp Web DOM structure changed or session lost";
@@ -148,6 +175,7 @@ export const sendMessage = async (
         BOT_INITIALIZATION_ERROR: "Restart the bot service",
         WHATSAPP_NUMBER_ERROR: "Verify the phone number is registered on WhatsApp",
         WHATSAPP_VERIFICATION_ERROR: "Check number format and WhatsApp registration",
+        WHATSAPP_SERIALIZATION_ERROR: "Post-send error - message likely delivered, monitor session stability",
         WHATSAPP_SESSION_ERROR: "Scan QR code to re-authenticate",
         WHATSAPP_DOM_ERROR: "Restart bot - WhatsApp Web may have updated",
         WHATSAPP_SCRIPT_ERROR: "Restart bot and scan QR code if needed"
@@ -253,13 +281,43 @@ export const sendFileAndMessage = async (
       `📱 WhatsApp formatted number for file: "${formattedPhoneNumber}"`
     );
 
-    const mimeType = file.mimetype;
-    const media = new MessageMedia(mimeType, file.data, "file.mp4");
-    await client.sendMessage(formattedPhoneNumber, message, { media });
+    let messageResult;
+    let messageSent = false;
 
-    console.log(`✅ File sent successfully to: "${formattedPhoneNumber}"`);
+    try {
+      const mimeType = file.mimetype;
+      const media = new MessageMedia(mimeType, file.data, "file.mp4");
+      messageResult = await client.sendMessage(formattedPhoneNumber, message, { media });
+      messageSent = true;
+      
+      console.log(`✅ File sent successfully to: "${formattedPhoneNumber}"`);
+      console.log(`📝 [BOT] File message ID: ${messageResult.id?._serialized || 'N/A'}`);
 
-    return { status: "success", message: "Message sent successfully" };
+      return { 
+        status: "success", 
+        message: "File and message sent successfully",
+        recipient: formattedPhoneNumber,
+        messageId: messageResult.id?._serialized,
+        timestamp: new Date().toISOString()
+      };
+    } catch (sendError: any) {
+      // If message was sent but serialization failed after, treat as success
+      if (messageSent || (sendError.message && sendError.message.includes("serialize"))) {
+        console.warn(`⚠️ [BOT] Post-send serialization error for file (message likely sent): ${sendError.message}`);
+        console.log(`✅ [BOT] Treating file send as successful despite post-send error`);
+        
+        return { 
+          status: "success", 
+          message: "File and message sent successfully (post-send error ignored)",
+          recipient: formattedPhoneNumber,
+          warning: "Post-send serialization error occurred but file was likely delivered",
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // Re-throw if it's a real send error
+      throw sendError;
+    }
   } catch (error: any) {
     console.error(`❌ Error sending file to ${phoneNumber}:`, error);
     const errorMessage =

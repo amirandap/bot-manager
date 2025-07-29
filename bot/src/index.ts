@@ -13,6 +13,8 @@ import changeFallbackNumberRoute from './routes/changeFallbackNumberRoute';
 import changePortRoute from './routes/changePortRoute';
 import path from 'path';
 import fs from 'fs';
+import axios from 'axios';
+import { setFallbackNumber } from './utils/fallbackUtils';
 
 // Bot configuration from environment variables
 export const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
@@ -40,6 +42,37 @@ console.log(`📱 QR path: ${QR_PATH}`);
 console.log(`📄 Logs path: ${LOGS_PATH}`);
 console.log(`🌐 Port: ${BOT_PORT}`);
 
+// Function to sync configuration with bot manager
+async function syncConfigWithManager(): Promise<void> {
+  try {
+    const managerHost = process.env.MANAGER_HOST || 'localhost';
+    const managerPort = process.env.MANAGER_PORT || '3001';
+    const configUrl = `http://${managerHost}:${managerPort}/api/bots/${BOT_ID}`;
+    
+    console.log(`🔄 Syncing configuration with manager: ${configUrl}`);
+    
+    const response = await axios.get(configUrl, { timeout: 5000 });
+    const botConfig = response.data;
+    
+    console.log(`📋 Received configuration from manager:`, {
+      name: botConfig.name,
+      fallbackNumber: botConfig.fallbackNumber,
+      phoneNumber: botConfig.phoneNumber
+    });
+    
+    // Update fallback number if provided
+    if (botConfig.fallbackNumber) {
+      console.log(`📞 Updating fallback number to: ${botConfig.fallbackNumber}`);
+      setFallbackNumber(botConfig.fallbackNumber);
+    }
+    
+    console.log(`✅ Configuration synced successfully`);
+  } catch (error) {
+    console.warn(`⚠️  Failed to sync configuration with manager:`, error instanceof Error ? error.message : 'Unknown error');
+    console.warn(`🔄 Bot will continue with default/environment configuration`);
+  }
+}
+
 export const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true}));
@@ -61,6 +94,9 @@ const startServer = (initialPort: number) => {
     // Log server start
     const statusLog = path.join(LOGS_PATH, 'status.log');
     fs.appendFileSync(statusLog, `${new Date().toISOString()} - Server Started on port ${currentPort}\n`);
+    
+    // Sync configuration with manager
+    syncConfigWithManager();
     
     console.log('🚀 Initializing WhatsApp client...');
     initializeClient()
