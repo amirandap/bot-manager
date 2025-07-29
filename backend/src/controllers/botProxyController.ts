@@ -148,6 +148,30 @@ export class BotProxyController {
     }
   }
 
+  // GET /api/bots/:id/qr-code - Get QR code using route parameter (returns HTML)
+  public async getBotQRCodeById(req: Request, res: Response): Promise<void> {
+    try {
+      const botId = req.params.id;
+      
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required in URL path" });
+        return;
+      }
+      
+      const result = await this.forwardRequest(botId, "/qr-code", "GET");
+      res.send(result); // Send HTML directly
+    } catch (error) {
+      console.error("Error getting bot QR code:", error);
+      res
+        .status(500)
+        .send(
+          `<h1>Error loading QR code</h1><p>${
+            error instanceof Error ? error.message : "Unknown error"
+          }</p>`
+        );
+    }
+  }
+
   // POST /api/bots/qr-code/update - Update QR code (internal use)
   public async updateBotQRCode(req: Request, res: Response): Promise<void> {
     try {
