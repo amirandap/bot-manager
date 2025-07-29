@@ -101,7 +101,7 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/status - Get bot status (using request body)
+  // POST /api/bots/status - Get bot status
   public async getBotStatus(req: Request, res: Response): Promise<void> {
     try {
       const { botId } = req.body;
@@ -120,22 +120,31 @@ export class BotProxyController {
     }
   }
 
-  // GET /api/bots/:id/status - Get bot status (using route parameter)
-  public async getBotStatusById(req: Request, res: Response): Promise<void> {
+  // GET/POST /api/bots/qr-code - Get QR code (returns HTML)
+  public async getBotQRCode(req: Request, res: Response): Promise<void> {
     try {
-      const botId = req.params.id;
+      // Support both GET (query parameter) and POST (request body)
+      const botId = req.method === 'GET' ? req.query.botId as string : req.body.botId;
+      
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in URL path" });
+        const errorMessage = req.method === 'GET' 
+          ? "Bot ID is required as query parameter (?botId=your-bot-id)" 
+          : "Bot ID is required in request body";
+        res.status(400).json({ error: errorMessage });
         return;
       }
-      const result = await this.forwardRequest(botId, "/status", "GET");
-      res.json(result);
+      
+      const result = await this.forwardRequest(botId, "/qr-code", "GET");
+      res.send(result); // Send HTML directly
     } catch (error) {
-      console.error("Error getting bot status:", error);
-      res.status(500).json({
-        error: "Failed to get bot status",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error("Error getting bot QR code:", error);
+      res
+        .status(500)
+        .send(
+          `<h1>Error loading QR code</h1><p>${
+            error instanceof Error ? error.message : "Unknown error"
+          }</p>`
+        );
     }
   }
 
@@ -187,7 +196,7 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/restart - Restart bot (using request body)
+  // POST /api/bots/restart - Restart bot
   public async restartBot(req: Request, res: Response): Promise<void> {
     try {
       const { botId, ...bodyData } = req.body;
@@ -200,30 +209,6 @@ export class BotProxyController {
         "/restart",
         "POST",
         bodyData
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("Error restarting bot:", error);
-      res.status(500).json({
-        error: "Failed to restart bot",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-  // POST /api/bots/:id/restart - Restart bot (using route parameter)
-  public async restartBotById(req: Request, res: Response): Promise<void> {
-    try {
-      const botId = req.params.id;
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in URL path" });
-        return;
-      }
-      const result = await this.forwardRequest(
-        botId,
-        "/restart",
-        "POST",
-        req.body
       );
       res.json(result);
     } catch (error) {
@@ -262,34 +247,7 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/:id/change-fallback-number - Change fallback number (using route parameter)
-  public async changeFallbackNumberById(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    try {
-      const botId = req.params.id;
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in URL path" });
-        return;
-      }
-      const result = await this.forwardRequest(
-        botId,
-        "/change-fallback-number",
-        "POST",
-        req.body
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("Error changing fallback number:", error);
-      res.status(500).json({
-        error: "Failed to change fallback number",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-    // POST /api/bots/change-port - Change bot port (using request body)
+  // POST /api/bots/change-port - Change bot port
   public async changePort(req: Request, res: Response): Promise<void> {
     try {
       const { botId, ...bodyData } = req.body;
@@ -305,33 +263,9 @@ export class BotProxyController {
       );
       res.json(result);
     } catch (error) {
-      console.error("Error changing bot port:", error);
+      console.error("Error changing port:", error);
       res.status(500).json({
-        error: "Failed to change bot port",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-  // POST /api/bots/:id/change-port - Change bot port (using route parameter)
-  public async changePortById(req: Request, res: Response): Promise<void> {
-    try {
-      const botId = req.params.id;
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in URL path" });
-        return;
-      }
-      const result = await this.forwardRequest(
-        botId,
-        "/change-port",
-        "POST",
-        req.body
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("Error changing bot port:", error);
-      res.status(500).json({
-        error: "Failed to change bot port",
+        error: "Failed to change port",
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
