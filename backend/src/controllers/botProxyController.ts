@@ -137,25 +137,6 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/status - Get bot status
-  public async getBotStatus(req: Request, res: Response): Promise<void> {
-    try {
-      const { botId } = req.body;
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
-        return;
-      }
-      const result = await this.forwardRequest(botId, "/status", "GET");
-      res.json(result);
-    } catch (error) {
-      console.error("Error getting bot status:", error);
-      res.status(500).json({
-        error: "Failed to get bot status",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
   // GET/POST /api/bots/qr-code - Get QR code (returns HTML)
   public async getBotQRCode(req: Request, res: Response): Promise<void> {
     try {
@@ -248,30 +229,6 @@ export class BotProxyController {
       console.error("Error updating bot QR code:", error);
       res.status(500).json({
         error: "Failed to update QR code",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-  // POST /api/bots/restart - Restart bot
-  public async restartBot(req: Request, res: Response): Promise<void> {
-    try {
-      const { botId, ...bodyData } = req.body;
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
-        return;
-      }
-      const result = await this.forwardRequest(
-        botId,
-        "/restart",
-        "POST",
-        bodyData
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("Error restarting bot:", error);
-      res.status(500).json({
-        error: "Failed to restart bot",
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }

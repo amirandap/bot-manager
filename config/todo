@@ -1,0 +1,6 @@
+1. Eliminar el fallback number de ramon
+2. Presentar los groupid en el frontend
+3. Implementar un status del bot subiendo, ready, etc, cuando no este ready para aceptar mensajes, deberia respodner con el status actual
+4. Migrar a pupetter 
+npm warn deprecated puppeteer@18.2.1: < 22.6.4 is no longer supported
+5. Implementar scaneado de QR auto refresh

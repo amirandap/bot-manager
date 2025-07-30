@@ -42,16 +42,15 @@ export const api = {
 
   // Bot Proxy endpoints - unified access to all bot operations
   proxy: {
-    // Core operations
-    getStatus: () => `${API_BASE_URL}/api/bots/status`,
+    // Core operations (ID-based)
+    getBotStatus: (id: string) => `${API_BASE_URL}/api/bots/${id}/status`,
     getQRCode: () => `${API_BASE_URL}/api/bots/qr-code`,
     updateQRCode: () => `${API_BASE_URL}/api/bots/qr-code/update`,
-    restart: () => `${API_BASE_URL}/api/bots/restart`,
     changeFallbackNumber: () =>
       `${API_BASE_URL}/api/bots/change-fallback-number`,
     changePort: () => `${API_BASE_URL}/api/bots/change-port`,
 
-    // Messaging operations
+    // Messaging operations (botId in body)
     sendMessage: () => `${API_BASE_URL}/api/bots/send-message`,
     getGroups: () => `${API_BASE_URL}/api/bots/get-groups`,
     sendPending: () => `${API_BASE_URL}/api/bots/pending`,
