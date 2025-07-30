@@ -13,60 +13,6 @@ export function setBotProxyRoutes(app: Router) {
 
   /**
    * @swagger
-   * /api/bots/status:
-   *   post:
-   *     summary: Get bot status
-   *     tags: [Bot Proxy - Core]
-   *     description: Get current status and information of a specific bot
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [botId]
-   *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
-   *     responses:
-   *       200:
-   *         description: Bot status retrieved successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 status:
-   *                   type: string
-   *                   example: "online"
-   *                 uptime:
-   *                   type: string
-   *                   example: "1234 seconds"
-   *                 fallbackNumber:
-   *                   type: string
-   *                   example: "+1234567890"
-   *                 QrCode:
-   *                   type: string
-   *                   example: "http://localhost:3000/qr-code"
-   *                 client:
-   *                   type: object
-   *                   description: WhatsApp client information
-   *       400:
-   *         description: Bot ID is required
-   *       404:
-   *         description: Bot not found
-   *       500:
-   *         description: Bot not responding or server error
-   */
-  app.post(
-    "/api/bots/status",
-    botProxyController.getBotStatus.bind(botProxyController)
-  );
-
-  /**
-   * @swagger
    * /api/bots/{id}/qr-code:
    *   get:
    *     summary: Get QR code for WhatsApp authentication
@@ -172,40 +118,6 @@ export function setBotProxyRoutes(app: Router) {
   app.get(
     "/api/bots/:id/status",
     botProxyController.getBotStatusById.bind(botProxyController)
-  );
-
-  /**
-   * @swagger
-   * /api/bots/restart:
-   *   post:
-   *     summary: Restart bot
-   *     tags: [Bot Proxy - Core]
-   *     description: Restart a specific bot instance
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required: [botId]
-   *             properties:
-   *               botId:
-   *                 type: string
-   *                 description: Unique bot identifier
-   *                 example: "whatsapp-bot-1234567890"
-   *     responses:
-   *       200:
-   *         description: Bot restarted successfully
-   *       400:
-   *         description: Bot ID is required
-   *       404:
-   *         description: Bot not found
-   *       500:
-   *         description: Bot not responding or server error
-   */
-  app.post(
-    "/api/bots/restart",
-    botProxyController.restartBot.bind(botProxyController)
   );
 
   /**

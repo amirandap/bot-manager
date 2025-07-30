@@ -64,9 +64,9 @@ export default function ApiDocsPage() {
       icon: <Settings className="h-5 w-5" />,
       endpoints: [
         {
-          method: "POST",
-          path: "/api/bots/status",
-          description: "Get bot status (botId in request body)",
+          method: "GET",
+          path: "/api/bots/{id}/status",
+          description: "Get bot operational status by ID",
         },
         {
           method: "POST",
@@ -78,11 +78,6 @@ export default function ApiDocsPage() {
           method: "POST",
           path: "/api/bots/qr-code/update",
           description: "Update QR code (botId in request body)",
-        },
-        {
-          method: "POST",
-          path: "/api/bots/restart",
-          description: "Restart bot (botId in request body)",
         },
         {
           method: "POST",
@@ -364,11 +359,8 @@ export default function ApiDocsPage() {
             <h4 className="font-medium mb-2">Get Bot Status (New Proxy API)</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-                {`curl -X POST "${backendUrl}/api/bots/status" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "botId": "whatsapp-bot-1234567890"
-  }'`}
+                {`curl -X GET "${backendUrl}/api/bots/{bot-id}/status" \\
+  -H "Content-Type: application/json"`}
               </pre>
             </div>
           </div>
@@ -406,14 +398,11 @@ export default function ApiDocsPage() {
           </div>
 
           <div>
-            <h4 className="font-medium mb-2">Restart Bot (New Proxy API)</h4>
+            <h4 className="font-medium mb-2">Restart Bot (Administrative API)</h4>
             <div className="bg-gray-900 text-white p-4 rounded-lg overflow-x-auto">
               <pre className="text-sm">
-                {`curl -X POST "${backendUrl}/api/bots/restart" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "botId": "whatsapp-bot-1234567890"
-  }'`}
+                {`curl -X POST "${backendUrl}/api/bots/{bot-id}/restart" \\
+  -H "Content-Type: application/json"`}
               </pre>
             </div>
           </div>

@@ -41,13 +41,12 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const fetchBotStatus = useCallback(async () => {
     setLoading(true);
     try {
-      // Use unified proxy endpoint with botId in request body
-      const response = await fetch(api.proxy.getStatus(), {
-        method: "POST",
+      // Use GET endpoint with bot ID in URL
+      const response = await fetch(api.proxy.getBotStatus(bot.id), {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ botId: bot.id }),
       });
       if (response.ok) {
         const statusData: BotStatus = await response.json();
