@@ -61,21 +61,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
   const handleViewQR = () => {
     if (bot.type === "whatsapp") {
-      // Create a form to POST to the backend proxy
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = `/api/bots/qr-code`;
-      form.target = "_blank";
-
-      const botIdInput = document.createElement("input");
-      botIdInput.type = "hidden";
-      botIdInput.name = "botId";
-      botIdInput.value = bot.id;
-
-      form.appendChild(botIdInput);
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      // Open QR code in new tab using the correct backend route
+      const qrUrl = `/api/bots/${encodeURIComponent(bot.id)}/qr-code`;
+      window.open(qrUrl, '_blank');
     }
   };
 
