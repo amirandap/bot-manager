@@ -6,6 +6,10 @@ import sendMessageRoute from "../routes/sendMessage";
 import sendToPhoneRoute from "../routes/sendToPhone";
 import sendToGroupRoute from "../routes/sendToGroup";
 import sendBroadcastRoute from "../routes/sendBroadcast";
+import sendImageRoute from "../routes/sendImageRoute";
+import sendDocumentRoute from "../routes/sendDocumentRoute";
+import sendAudioRoute from "../routes/sendAudioRoute";
+import sendVideoRoute from "../routes/sendVideoRoute";
 import pendingRoute from "../routes/pending";
 import followupRoute from "../routes/followUp";
 import receiveImageAndJSONRoute from "../routes/receiveImageAndJson";
@@ -174,6 +178,12 @@ export function appendListeners(client: Client) {
     app.use("/send-to-group", sendToGroupRoute);
     app.use("/send-broadcast", sendBroadcastRoute);
     
+    // Media-specific endpoints
+    app.use("/send-image", sendImageRoute);
+    app.use("/send-document", sendDocumentRoute);
+    app.use("/send-audio", sendAudioRoute);
+    app.use("/send-video", sendVideoRoute);
+    
     // Other endpoints
     app.use("/pending", pendingRoute);
     app.use("/followup", followupRoute);
@@ -195,6 +205,7 @@ export function appendListeners(client: Client) {
 Endpoints available:
 • Legacy: POST /send-message (unified)
 • Specific: POST /send-to-phone, POST /send-to-group, POST /send-broadcast
+• Media: POST /send-image, POST /send-document, POST /send-audio, POST /send-video
 • Other: POST /pending, POST /followup, POST /receive-image-and-json, GET /get-groups`;
     try {
       await sendMessage(client, getFallbackNumber(), message);

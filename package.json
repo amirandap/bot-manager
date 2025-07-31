@@ -15,6 +15,12 @@
     "start:frontend": "cd frontend && npm start",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "clean": "cd backend && rm -rf dist node_modules && cd ../frontend && rm -rf .next node_modules && rm -rf node_modules",
+    "cleanup": "./scripts/maintenance/cleanup.sh",
+    "cleanup:deep": "./scripts/maintenance/cleanup.sh --deep",
+    "cleanup:build": "./scripts/maintenance/cleanup.sh --build",
+    "organize": "./scripts/maintenance/organize-files.sh --full",
+    "test:attachments": "./scripts/testing/test-attachments.sh",
+    "test:verify": "./scripts/testing/verify-refactoring.sh",
     "setup": "./setup.sh"
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ import { cleanAndFormatPhoneNumber } from "../helpers/cleanAndFormatPhoneNumber"
 
 const testCases = [
   // Dominican Republic numbers - the problem cases
-  { input: "18295600987", expected: "+18295600987" },
+  { input: "18298870174", expected: "+18298870174" },
   { input: "18093186486", expected: "+18093186486" },
   { input: "+18296459554", expected: "+18296459554" },
   { input: "8296459554", expected: "+18296459554" },

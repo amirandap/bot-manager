@@ -287,7 +287,7 @@ export function setBotProxyRoutes(app: Router) {
    *               summary: Send to multiple phone numbers
    *               value:
    *                 botId: "whatsapp-bot-1234567890"
-   *                 phoneNumber: ["+1234567890", "+0987654321", "+1122334455"]
+   *                 phoneNumber: ["+1234567890", "+18298870174", "+1122334455"]
    *                 message: "Bulk message to multiple recipients."
    *             group_message:
    *               summary: Send to WhatsApp group
@@ -321,7 +321,7 @@ export function setBotProxyRoutes(app: Router) {
    *                       type: array
    *                       items:
    *                         type: string
-   *                       example: ["+1234567890", "+0987654321"]
+   *                       example: ["+1234567890", "+18298870174"]
    *                     errors:
    *                       type: array
    *                       items:
@@ -416,7 +416,7 @@ export function setBotProxyRoutes(app: Router) {
    *                       description: "Our family group chat"
    *                       participants: 5
    *                       isAdmin: false
-   *                     - id: "0987654321-0987654321@g.us"
+   *                     - id: "18298870174-18298870174@g.us"
    *                       name: "Work Team"
    *                       description: "Team collaboration group"
    *                       participants: 12
