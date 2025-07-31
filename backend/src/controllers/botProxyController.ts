@@ -379,36 +379,80 @@ export class BotProxyController {
   private normalizeMessageData(data: any): any {
     const normalized = { ...data };
     
-    // Detect message type and normalize accordingly
-    if (data.group_id || (typeof data.to === 'string' && data.to.includes('@g.us'))) {
-      // Group message
+    // Unified 'to' field logic - can contain phones, groups, or both
+    const toField = data.to || [];
+    const phoneNumbers = data.phoneNumber || [];
+    const groupId = data.groupId || data.group_id;
+    
+    // Combine all recipients into unified 'to' array
+    let allRecipients: string[] = [];
+    
+    // Add phoneNumber(s) to recipients
+    if (Array.isArray(phoneNumbers)) {
+      allRecipients.push(...phoneNumbers);
+    } else if (phoneNumbers) {
+      allRecipients.push(phoneNumbers);
+    }
+    
+    // Add to field to recipients  
+    if (Array.isArray(toField)) {
+      allRecipients.push(...toField);
+    } else if (toField) {
+      allRecipients.push(toField);
+    }
+    
+    // Add groupId to recipients
+    if (groupId) {
+      allRecipients.push(groupId);
+    }
+    
+    // Remove duplicates
+    allRecipients = [...new Set(allRecipients)];
+    
+    // Classify recipients
+    const groups = allRecipients.filter(recipient => recipient.includes('@g.us'));
+    const phones = allRecipients.filter(recipient => !recipient.includes('@g.us'));
+    
+    // Determine message type and structure
+    if (groups.length > 0 && phones.length > 0) {
+      // HYBRID: Both groups and individual numbers
+      normalized.messageType = 'HYBRID';
+      normalized.to = allRecipients;
+      console.log(`🔄 [BACKEND] Detected HYBRID message to ${phones.length} phones + ${groups.length} groups`);
+      
+    } else if (groups.length > 0) {
+      // GROUP ONLY
       normalized.messageType = 'GROUP';
-      normalized.group_id = data.group_id || data.to;
-      // Remove individual recipient fields for group messages
-      delete normalized.to;
-      delete normalized.phoneNumber;
-      console.log(`🏢 [BACKEND] Detected GROUP message to: ${normalized.group_id}`);
+      if (groups.length === 1) {
+        normalized.group_id = groups[0];
+        normalized.to = undefined; // Clear to avoid confusion in bot
+      } else {
+        normalized.to = groups; // Multiple groups
+      }
+      console.log(`🏢 [BACKEND] Detected GROUP message to ${groups.length} group(s)`);
       
-    } else if (Array.isArray(data.to) || Array.isArray(data.phoneNumber)) {
-      // Multiple recipients (broadcast)
+    } else if (phones.length > 1) {
+      // MULTIPLE PHONES (broadcast)
       normalized.messageType = 'BROADCAST';
-      const recipients = data.to || data.phoneNumber;
-      normalized.to = recipients; // Use 'to' as the standard field for bot
-      delete normalized.phoneNumber; // Remove phoneNumber to avoid confusion
-      console.log(`📢 [BACKEND] Detected BROADCAST message to ${recipients.length} recipients`);
+      normalized.to = phones;
+      console.log(`📢 [BACKEND] Detected BROADCAST message to ${phones.length} recipients`);
       
-    } else if (data.to || data.phoneNumber) {
-      // Single recipient
+    } else if (phones.length === 1) {
+      // SINGLE PHONE
       normalized.messageType = 'INDIVIDUAL';
-      normalized.to = data.to || data.phoneNumber; // Use 'to' as the standard field
-      delete normalized.phoneNumber; // Remove phoneNumber to avoid confusion
-      console.log(`👤 [BACKEND] Detected INDIVIDUAL message to: ${normalized.to}`);
+      normalized.to = phones[0];
+      console.log(`👤 [BACKEND] Detected INDIVIDUAL message to: ${phones[0]}`);
       
     } else {
-      // No valid recipient found
+      // NO VALID RECIPIENTS
       normalized.messageType = 'UNKNOWN';
-      console.warn(`⚠️ [BACKEND] No valid recipient found in message data`);
+      console.warn(`⚠️ [BACKEND] No valid recipients found in message data`);
     }
+    
+    // Clean up old fields to avoid confusion
+    delete normalized.phoneNumber;
+    delete normalized.groupId;
+    delete normalized.group_id;
     
     return normalized;
   }
