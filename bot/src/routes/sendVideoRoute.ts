@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import { client } from "../config/whatsAppClient";
-import { sendVideoMessage } from "../helpers/mediaHelpers.js";
+import { sendVideoMessage } from "../helpers/mediaHelpers";
 import ErrorHandler from "./sendMessage/errorHandler";
 
 const router = express.Router();
