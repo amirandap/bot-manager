@@ -1,6 +1,7 @@
 import { Client } from "whatsapp-web.js";
 import { formatMessage, sendFileAndMessage, sendMessage } from "../../helpers/helpers";
 import { ErrorObject } from "./types";
+import { shouldSendFallback } from "../../utils/errorHandler";
 
 /**
  * Handles individual phone number message sending
@@ -65,10 +66,20 @@ export default class PhoneMessageHandler {
           }
         }
       } catch (error: unknown) {
-        console.error(`❌ [BOT_ROUTE] Error sending message to ${number}:`, error);
-        
         let errorType = "UNKNOWN_ERROR";
         let errorMessage = error instanceof Error ? error.message : "Unknown error";
+        
+        // Use standardized error validation to determine if fallback should be sent
+        const sendFallback = shouldSendFallback(error, 'PHONE_MESSAGE', number);
+        
+        if (!sendFallback) {
+          // Post-send error - message was likely delivered successfully
+          messagesSent.push(number);
+          console.log(`✅ [BOT_ROUTE] Treating as successful send despite post-send error`);
+          continue; // Skip error reporting for session errors
+        }
+        
+        console.error(`❌ [BOT_ROUTE] Critical error sending message to ${number}:`, error);
         
         // Parse structured error from helper
         if (errorMessage.startsWith("BOT_SEND_ERROR:")) {

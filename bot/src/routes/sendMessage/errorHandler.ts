@@ -1,6 +1,7 @@
 import { Client } from "whatsapp-web.js";
 import { sendErrorMessage } from "../../helpers/helpers";
 import { SendMessageRequestBody } from "./types";
+import { logWhatsAppError } from "../../utils/errorHandler";
 
 /**
  * Handles error processing and reporting
@@ -29,34 +30,39 @@ Errors: ${JSON.stringify(errors)}
   ): Promise<{ errorType: string; errorMessage: string; errorDetails: any }> {
     console.error("❌ [BOT_ROUTE] Critical error in /send-message endpoint:", error);
     
-    let reason = "Unknown reason";
-    let errorType = "CRITICAL_ERROR";
+    // Use standardized error validation
+    const validation = logWhatsAppError(error, 'CRITICAL_ERROR', 'send-message endpoint');
     
+    let reason = "Unknown reason";
     if (error instanceof Error) {
       reason = error.message;
-      
-      // Categorize critical errors
-      if (reason.includes("Client not initialized")) {
-        errorType = "CLIENT_NOT_INITIALIZED";
-      } else if (reason.includes("Cannot read properties")) {
-        errorType = "SESSION_CORRUPTED";
-      } else if (reason.includes("Evaluation failed")) {
-        errorType = "WHATSAPP_SESSION_LOST";
-      }
     }
     
     const errorDetails = {
       endpoint: "/send-message",
-      errorType,
+      errorType: validation.errorType,
       error: reason,
       payload: requestBody,
       timestamp: new Date().toISOString(),
+      isPostSendError: validation.isPostSendError,
+      shouldIgnore: validation.shouldIgnore,
+      description: validation.description,
       troubleshooting: {
         CLIENT_NOT_INITIALIZED: "Restart bot service",
-        SESSION_CORRUPTED: "Scan QR code to re-authenticate",
+        SESSION_CORRUPTED: "Scan QR code to re-authenticate", 
+        SESSION_DISCONNECTED: "Re-scan QR code",
+        SESSION_CLOSED: "Restart bot and re-authenticate",
         WHATSAPP_SESSION_LOST: "Re-scan QR code",
-        CRITICAL_ERROR: "Check bot logs and restart if necessary"
-      }[errorType]
+        EVALUATION_ERROR: "Browser context lost - restart bot",
+        PUPPETEER_ERROR: "Browser automation error - restart bot",
+        NOT_AUTHENTICATED: "Scan QR code to authenticate",
+        INVALID_RECIPIENT: "Check recipient format",
+        INVALID_GROUP: "Verify group exists and bot is member",
+        RATE_LIMITED: "Wait and retry - reduce sending frequency",
+        CLIENT_NOT_READY: "Wait for client initialization",
+        CRITICAL_ERROR: "Check bot logs and restart if necessary",
+        UNKNOWN_ERROR: "Check logs for more details"
+      }[validation.errorType] || "Check bot logs and restart if necessary"
     };
     
     console.error(`🔥 [BOT_ROUTE] Critical error details:`, errorDetails);
@@ -64,7 +70,7 @@ Errors: ${JSON.stringify(errors)}
     const errorMessage: string = `
 🚨 Critical Error in /send-message
 
-Error Type: ${errorType}
+Error Type: ${validation.errorType}
 Payload: ${JSON.stringify(requestBody, null, 2)}
 Error: ${reason}
 Timestamp: ${new Date().toISOString()}
@@ -77,6 +83,6 @@ Troubleshooting: ${errorDetails.troubleshooting}
       console.error("❌ [BOT_ROUTE] Failed to send error message to fallback:", fallbackError);
     }
     
-    return { errorType, errorMessage, errorDetails };
+    return { errorType: validation.errorType, errorMessage, errorDetails };
   }
 }

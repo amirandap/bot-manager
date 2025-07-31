@@ -50,7 +50,12 @@ const options = {
       {
         name: "Bot Proxy - Messaging",
         description:
-          "Unified proxy endpoints for bot messaging operations (send messages, groups, pending, etc.)",
+          "Unified proxy endpoints for bot messaging operations with smart endpoint routing and enhanced error handling",
+      },
+      {
+        name: "Error Handling",
+        description:
+          "Standardized error handling system with post-send error detection and fallback prevention",
       },
     ],
     components: {
@@ -129,6 +134,19 @@ const options = {
           type: "object",
           required: ["message"],
           properties: {
+            message: {
+              type: "string",
+              description: "Message content to send",
+              example: "Hello, this is a test message!",
+            },
+            to: {
+              oneOf: [
+                { type: "string" },
+                { type: "array", items: { type: "string" } }
+              ],
+              description: "Recipients - can be phone numbers and/or group IDs. Supports unified addressing for hybrid messaging.",
+              example: ["1234567890@c.us", "987654321@g.us"],
+            },
             phoneNumber: {
               oneOf: [
                 { type: "string" },
@@ -137,14 +155,17 @@ const options = {
               description: "Phone number(s) to send message to",
               example: "+1234567890",
             },
-            message: {
-              type: "string",
-              description: "Message content to send",
-              example: "Hello, this is a test message!",
+            groupId: {
+              oneOf: [
+                { type: "string" },
+                { type: "array", items: { type: "string" } }
+              ],
+              description: "WhatsApp group ID(s) to send message to",
+              example: "1234567890@g.us",
             },
             group_id: {
               type: "string",
-              description: "WhatsApp group ID (alternative to phoneNumber)",
+              description: "WhatsApp group ID (alternative to phoneNumber, legacy support)",
               example: "1234567890@g.us",
             },
             group_name: {
@@ -174,21 +195,81 @@ const options = {
                 sent: {
                   type: "array",
                   items: { type: "string" },
-                  description: "Successfully sent phone numbers",
+                  description: "Successfully sent recipients (phone numbers and/or group IDs)",
                 },
                 errors: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      phoneNumber: { type: "string" },
+                      recipient: { type: "string" },
                       error: { type: "string" },
+                      errorType: { 
+                        type: "string",
+                        enum: ["SESSION_CORRUPTED", "CRITICAL_ERROR", "VALIDATION_ERROR"],
+                        description: "Type of error encountered - SESSION_CORRUPTED errors are treated as post-send and ignored"
+                      },
                     },
                   },
-                  description: "Failed phone numbers with error details",
+                  description: "Failed recipients with error details and type classification",
                 },
               },
             },
+            messageType: {
+              type: "string",
+              enum: ["INDIVIDUAL", "GROUP", "HYBRID", "BROADCAST", "UNKNOWN"],
+              description: "Type of message based on recipients - HYBRID for mixed phone/group sends"
+            },
+            endpoint: {
+              type: "string",
+              enum: ["/send-to-phone", "/send-to-group", "/send-broadcast", "/send-message"],
+              description: "Bot endpoint used for optimal routing based on recipient types"
+            },
+            requestId: {
+              type: "number",
+              description: "Unique request identifier for tracking and debugging"
+            },
+            timestamp: {
+              type: "string",
+              format: "date-time",
+              description: "ISO timestamp of the request"
+            }
+          },
+        },
+        ErrorResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              example: false,
+            },
+            error: {
+              type: "string",
+              description: "Error message",
+              example: "Failed to send message",
+            },
+            errorType: {
+              type: "string",
+              enum: ["BACKEND_ERROR", "BOT_ERROR", "CONNECTION_ERROR", "REQUEST_SETUP_ERROR", "VALIDATION_ERROR", "UNKNOWN_ERROR"],
+              description: "Categorized error type for better handling and debugging"
+            },
+            details: {
+              type: "string",
+              description: "Detailed error message with prefix indicating source (BACKEND_ERROR, BOT_ERROR, etc.)",
+            },
+            requestId: {
+              type: "number",
+              description: "Unique request identifier for tracking"
+            },
+            timestamp: {
+              type: "string",
+              format: "date-time",
+              description: "ISO timestamp of the error"
+            },
+            troubleshooting: {
+              type: "string",
+              description: "Contextual troubleshooting guidance based on error type"
+            }
           },
         },
         PM2Status: {
