@@ -1,5 +1,6 @@
 import { Client } from "whatsapp-web.js";
 import { ErrorObject } from "./types";
+import { shouldSendFallback } from "../../utils/errorHandler";
 
 /**
  * Handles group message sending
@@ -40,18 +41,28 @@ export default class GroupMessageHandler {
         const reason = error instanceof Error ? error.message : "Unknown error";
         const errorStack = error instanceof Error ? error.stack : "No stack trace";
         
-        console.error(`❌ [BOT] Error sending message to group ${groupId}:`);
-        console.error(`   Error Type: ${typeof error}`);
-        console.error(`   Error Message: ${reason}`);
-        console.error(`   Error Stack: ${errorStack}`);
-        console.error(`   Full Error Object:`, error);
+        // Use standardized error validation to determine if fallback should be sent
+        const sendFallback = shouldSendFallback(error, 'GROUP_MESSAGE', groupId);
         
-        errors.push({
-          phoneNumber: groupId,
-          error: reason,
-          errorType: "GROUP_SEND_ERROR",
-          timestamp: new Date().toISOString()
-        });
+        if (!sendFallback) {
+          // Post-send error - message was likely delivered successfully
+          messagesSent.push(groupId);
+          console.log(`✅ [BOT] Treating as successful send despite post-send error`);
+        } else {
+          // Critical error - actual delivery failure
+          console.error(`❌ [BOT] Critical error sending message to group ${groupId}:`);
+          console.error(`   Error Type: ${typeof error}`);
+          console.error(`   Error Message: ${reason}`);
+          console.error(`   Error Stack: ${errorStack}`);
+          console.error(`   Full Error Object:`, error);
+          
+          errors.push({
+            phoneNumber: groupId,
+            error: reason,
+            errorType: "GROUP_SEND_ERROR",
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     }
 
