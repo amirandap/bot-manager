@@ -17,28 +17,41 @@ export default class GroupMessageHandler {
     for (const groupId of groups) {
       try {
         console.log(`🏢 [BOT] Sending to group: ${groupId}`);
+        console.log(`🔍 [BOT] Message content: "${message}"`);
+        console.log(`📁 [BOT] Has file attachment: ${!!file}`);
         
+        let sendResult;
         if (file) {
-          await client?.sendMessage(
+          console.log(`📎 [BOT] Sending file to group: ${file.originalname} (${file.mimetype})`);
+          sendResult = await client?.sendMessage(
             groupId,
             { data: file.buffer.toString("base64"), mimetype: file.mimetype },
             { caption: message }
           );
         } else {
-          await client?.sendMessage(groupId, message);
+          console.log(`💬 [BOT] Sending text message to group`);
+          sendResult = await client?.sendMessage(groupId, message);
         }
         
+        console.log(`🔍 [BOT] Send result:`, sendResult);
         messagesSent.push(groupId);
         console.log(`✅ [BOT] Group message sent successfully to: ${groupId}`);
       } catch (error: unknown) {
         const reason = error instanceof Error ? error.message : "Unknown error";
+        const errorStack = error instanceof Error ? error.stack : "No stack trace";
+        
+        console.error(`❌ [BOT] Error sending message to group ${groupId}:`);
+        console.error(`   Error Type: ${typeof error}`);
+        console.error(`   Error Message: ${reason}`);
+        console.error(`   Error Stack: ${errorStack}`);
+        console.error(`   Full Error Object:`, error);
+        
         errors.push({
           phoneNumber: groupId,
           error: reason,
           errorType: "GROUP_SEND_ERROR",
           timestamp: new Date().toISOString()
         });
-        console.error(`❌ [BOT] Error sending message to group ${groupId}:`, error);
       }
     }
 

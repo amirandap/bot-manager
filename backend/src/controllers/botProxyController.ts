@@ -285,7 +285,7 @@ export class BotProxyController {
     }
   }
 
-  // POST /api/bots/send-message - Send WhatsApp message (with message type detection and normalization)
+  // POST /api/bots/send-message - Send WhatsApp message (with automatic endpoint routing)
   public async sendMessage(req: Request, res: Response): Promise<void> {
     const requestId = Date.now();
     
@@ -303,12 +303,13 @@ export class BotProxyController {
         return;
       }
 
-      // Normalize message data for different types of sends
-      const bodyData = this.normalizeMessageData(rawBodyData);
+      // Normalize message data and determine optimal endpoint
+      const { endpoint, bodyData, messageType } = this.determineOptimalEndpoint(rawBodyData);
       
       console.log(`📋 [BACKEND] Request ${requestId} details:`, {
         botId,
-        messageType: bodyData.messageType,
+        messageType,
+        endpoint,
         originalData: rawBodyData,
         normalizedData: bodyData,
         hasFile: !!req.file
@@ -316,7 +317,7 @@ export class BotProxyController {
 
       const result = await this.forwardRequest(
         botId,
-        "/send-message",
+        endpoint,
         "POST",
         bodyData,
         req.file
@@ -326,7 +327,8 @@ export class BotProxyController {
       res.json({
         success: true,
         result,
-        messageType: bodyData.messageType,
+        messageType,
+        endpoint,
         requestId,
         timestamp: new Date().toISOString()
       });
@@ -375,16 +377,14 @@ export class BotProxyController {
     }
   }
 
-  // Helper method to normalize different message data formats
-  private normalizeMessageData(data: any): any {
-    const normalized = { ...data };
-    
+  // Helper method to determine optimal endpoint and normalize data
+  private determineOptimalEndpoint(data: any): { endpoint: string; bodyData: any; messageType: string } {
     // Unified 'to' field logic - can contain phones, groups, or both
     const toField = data.to || [];
     const phoneNumbers = data.phoneNumber || [];
     const groupId = data.groupId || data.group_id;
     
-    // Combine all recipients into unified 'to' array
+    // Combine all recipients into unified array
     let allRecipients: string[] = [];
     
     // Add phoneNumber(s) to recipients
@@ -413,48 +413,53 @@ export class BotProxyController {
     const groups = allRecipients.filter(recipient => recipient.includes('@g.us'));
     const phones = allRecipients.filter(recipient => !recipient.includes('@g.us'));
     
-    // Determine message type and structure
+    // Determine optimal endpoint and format data
     if (groups.length > 0 && phones.length > 0) {
-      // HYBRID: Both groups and individual numbers
-      normalized.messageType = 'HYBRID';
-      normalized.to = allRecipients;
-      console.log(`🔄 [BACKEND] Detected HYBRID message to ${phones.length} phones + ${groups.length} groups`);
+      // HYBRID: Use broadcast endpoint
+      console.log(`🔄 [BACKEND] HYBRID message → /send-broadcast (${phones.length} phones + ${groups.length} groups)`);
+      return {
+        endpoint: "/send-broadcast",
+        bodyData: { 
+          to: allRecipients,
+          message: data.message
+        },
+        messageType: "HYBRID"
+      };
       
     } else if (groups.length > 0) {
-      // GROUP ONLY
-      normalized.messageType = 'GROUP';
-      if (groups.length === 1) {
-        normalized.group_id = groups[0];
-        normalized.to = undefined; // Clear to avoid confusion in bot
-      } else {
-        normalized.to = groups; // Multiple groups
-      }
-      console.log(`🏢 [BACKEND] Detected GROUP message to ${groups.length} group(s)`);
+      // GROUP ONLY: Use group-specific endpoint
+      console.log(`🏢 [BACKEND] GROUP message → /send-to-group (${groups.length} group(s))`);
+      return {
+        endpoint: "/send-to-group",
+        bodyData: {
+          groupId: groups.length === 1 ? groups[0] : groups,
+          message: data.message
+        },
+        messageType: "GROUP"
+      };
       
-    } else if (phones.length > 1) {
-      // MULTIPLE PHONES (broadcast)
-      normalized.messageType = 'BROADCAST';
-      normalized.to = phones;
-      console.log(`📢 [BACKEND] Detected BROADCAST message to ${phones.length} recipients`);
-      
-    } else if (phones.length === 1) {
-      // SINGLE PHONE
-      normalized.messageType = 'INDIVIDUAL';
-      normalized.to = phones[0];
-      console.log(`👤 [BACKEND] Detected INDIVIDUAL message to: ${phones[0]}`);
+    } else if (phones.length >= 1) {
+      // PHONE(S): Use phone-specific endpoint
+      console.log(`� [BACKEND] PHONE message → /send-to-phone (${phones.length} phone(s))`);
+      return {
+        endpoint: "/send-to-phone",
+        bodyData: {
+          phoneNumber: phones.length === 1 ? phones[0] : phones,
+          message: data.message,
+          discorduserid: data.discorduserid // Pass through if exists
+        },
+        messageType: phones.length === 1 ? "INDIVIDUAL" : "BROADCAST"
+      };
       
     } else {
-      // NO VALID RECIPIENTS
-      normalized.messageType = 'UNKNOWN';
-      console.warn(`⚠️ [BACKEND] No valid recipients found in message data`);
+      // NO VALID RECIPIENTS: Fallback to legacy endpoint
+      console.warn(`⚠️ [BACKEND] UNKNOWN message → /send-message (fallback)`);
+      return {
+        endpoint: "/send-message",
+        bodyData: data,
+        messageType: "UNKNOWN"
+      };
     }
-    
-    // Clean up old fields to avoid confusion
-    delete normalized.phoneNumber;
-    delete normalized.groupId;
-    delete normalized.group_id;
-    
-    return normalized;
   }
 
   // POST /api/bots/get-groups - Get WhatsApp groups

@@ -3,6 +3,9 @@
 import { Client, GroupChat, LocalAuth } from "whatsapp-web.js";
 import qrTerminal from "qrcode";
 import sendMessageRoute from "../routes/sendMessage";
+import sendToPhoneRoute from "../routes/sendToPhone";
+import sendToGroupRoute from "../routes/sendToGroup";
+import sendBroadcastRoute from "../routes/sendBroadcast";
 import pendingRoute from "../routes/pending";
 import followupRoute from "../routes/followUp";
 import receiveImageAndJSONRoute from "../routes/receiveImageAndJson";
@@ -163,7 +166,15 @@ export function appendListeners(client: Client) {
   });
 
   client.on("ready", async () => {
+    // Legacy unified endpoint (for backward compatibility)
     app.use("/send-message", sendMessageRoute);
+    
+    // New specific endpoints (recommended)
+    app.use("/send-to-phone", sendToPhoneRoute);
+    app.use("/send-to-group", sendToGroupRoute);
+    app.use("/send-broadcast", sendBroadcastRoute);
+    
+    // Other endpoints
     app.use("/pending", pendingRoute);
     app.use("/followup", followupRoute);
     app.use("/receive-image-and-json", receiveImageAndJSONRoute);
@@ -180,7 +191,11 @@ export function appendListeners(client: Client) {
     );
     const message = `Whatsapp client initialized. Current groups:
     ${groups.map((group) => `Group: ${group.name}, ID: ${group.id}`).join("\n")}
-    Endpoints available: POST /send-message, POST /pending, POST /followup, POST /receive-image-and-json, GET /get-groups`;
+    
+Endpoints available:
+• Legacy: POST /send-message (unified)
+• Specific: POST /send-to-phone, POST /send-to-group, POST /send-broadcast
+• Other: POST /pending, POST /followup, POST /receive-image-and-json, GET /get-groups`;
     try {
       await sendMessage(client, getFallbackNumber(), message);
     } catch (error: unknown) {
