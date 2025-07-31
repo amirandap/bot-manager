@@ -109,6 +109,14 @@ logs/
 # Temporary folders
 tmp/
 temp/
+*.tmp
+*.temp
+
+# Backup files
+*.backup*
+*.bak
+*.old
+backend/backups/
 
 # Lock files (optional - some teams prefer to commit these)
 # package-lock.json

@@ -153,7 +153,7 @@ The system automatically selects the optimal bot endpoint based on recipient typ
 ```typescript
 // Phone numbers only
 {
-  "phoneNumber": ["+1234567890", "+0987654321"]
+  "phoneNumber": ["+1234567890", "+18298870174"]
 } 
 // → Routes to: /send-to-phone
 

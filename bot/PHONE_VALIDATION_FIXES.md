@@ -33,7 +33,7 @@
 Entrada: "18296459554" → Salida: "+18296459554" ✅
 Entrada: "8296459554"  → Salida: "+18296459554" ✅
 Entrada: "+18296459554" → Salida: "+18296459554" ✅
-Entrada: "18295600987" → Salida: "+18295600987" ✅
+Entrada: "18298870174" → Salida: "+18298870174" ✅
 Entrada: "18093186486" → Salida: "+18093186486" ✅
 ```
 
@@ -129,7 +129,7 @@ Ejemplo de logs para debugging:
 
 1. **Probar** los números que estaban fallando:
 
-   - `18295600987`
+   - `18298870174`
    - `18093186486`
    - `+18296459554`
    - `8296459554`

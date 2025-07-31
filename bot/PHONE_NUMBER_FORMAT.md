@@ -6,7 +6,7 @@ El bot está fallando al enviar mensajes a números de teléfono dominicanos por
 
 ### Números que fallan:
 
-- `18295600987` (sin el prefijo +)
+- `18298870174` (sin el prefijo +)
 - `18093186486` (sin el prefijo +)
 
 ## Formato Esperado por WhatsApp Web.js
@@ -19,8 +19,8 @@ La librería `whatsapp-web.js` espera números de teléfono en el formato:
 
 ### Ejemplos:
 
-- ✅ Correcto: `18295600987@c.us`
-- ❌ Incorrecto: `+18295600987@c.us`
+- ✅ Correcto: `18298870174@c.us`
+- ❌ Incorrecto: `+18298870174@c.us`
 
 ## Lógica de Formateo Mejorada
 
@@ -59,16 +59,16 @@ const formattedPhoneNumber = `${whatsappNumber.trim()}@c.us`;
 
 | Entrada        | Procesado      | WhatsApp Format    |
 | -------------- | -------------- | ------------------ |
-| `18295600987`  | `+18295600987` | `18295600987@c.us` |
-| `8295600987`   | `+18295600987` | `18295600987@c.us` |
-| `+18295600987` | `+18295600987` | `18295600987@c.us` |
+| `18298870174`  | `+18298870174` | `18298870174@c.us` |
+| `8298870174`   | `+18298870174` | `18298870174@c.us` |
+| `+18298870174` | `+18298870174` | `18298870174@c.us` |
 | `18093186486`  | `+18093186486` | `18093186486@c.us` |
 | `8093186486`   | `+18093186486` | `18093186486@c.us` |
 
 ## Número Fallback
 
-- **Antes**: `18295600987`
-- **Después**: `+18295600987`
+- **Antes**: `18298870174`
+- **Después**: `+18298870174`
 
 ## Funciones Actualizadas
 
@@ -83,13 +83,13 @@ const formattedPhoneNumber = `${whatsappNumber.trim()}@c.us`;
 Ahora todas las funciones incluyen logging detallado:
 
 ```
-🔍 Processing phone number: "18295600987"
-🧹 Cleaned number: "18295600987"
-🇩🇴 Dominican number detected, adding +1: "+18295600987"
-📞 Final formatted number: "+18295600987"
+🔍 Processing phone number: "18298870174"
+🧹 Cleaned number: "18298870174"
+🇩🇴 Dominican number detected, adding +1: "+18298870174"
+📞 Final formatted number: "+18298870174"
 ✅ Number validation: VALID
-📱 WhatsApp formatted number: "18295600987@c.us"
-✅ Message sent successfully to: "18295600987@c.us"
+📱 WhatsApp formatted number: "18298870174@c.us"
+✅ Message sent successfully to: "18298870174@c.us"
 ```
 
 ## Validación Mejorada
@@ -103,4 +103,4 @@ Ahora todas las funciones incluyen logging detallado:
 
 1. **Probar** con los números que estaban fallando
 2. **Verificar** logs del bot para confirmar el formateo correcto
-3. **Actualizar** variable de entorno `FALLBACKNUMBER` a `+18295600987`
+3. **Actualizar** variable de entorno `FALLBACKNUMBER` a `+18298870174`
