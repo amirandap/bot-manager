@@ -47,8 +47,30 @@ export async function initializeClient() {
       chromeExecutablePath =
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     } else if (process.platform === "linux") {
-      // Linux
-      chromeExecutablePath = "/usr/bin/google-chrome";
+      // Linux - prioritize snap chromium if available
+      const possiblePaths = [
+        "/snap/bin/chromium",        // Snap chromium (most common)
+        "/usr/bin/google-chrome",    // Traditional Chrome
+        "/usr/bin/chromium-browser", // Traditional Chromium
+        "/usr/bin/chromium"          // Alternative Chromium
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(path)) {
+            chromeExecutablePath = path;
+            console.log(`🔍 Found browser at: ${path}`);
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+      
+      if (!chromeExecutablePath) {
+        chromeExecutablePath = "/usr/bin/google-chrome";
+      }
     } else if (process.platform === "win32") {
       // Windows
       chromeExecutablePath =
@@ -60,6 +82,58 @@ export async function initializeClient() {
 
     console.log(`🌐 Using Chrome executable: ${chromeExecutablePath}`);
 
+    // Optimize args based on the browser type
+    let browserArgs = [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process",
+      "--disable-gpu",
+      // Memory optimization arguments
+      "--memory-pressure-off",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "--disable-features=TranslateUI,VizDisplayCompositor",
+      "--disable-ipc-flooding-protection",
+      "--disable-background-networking",
+      "--disable-default-apps",
+      "--disable-extensions",
+      "--disable-plugins",
+      "--disable-sync",
+      "--disable-translate",
+      "--hide-scrollbars",
+      "--mute-audio",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-update",
+      "--disable-hang-monitor",
+      "--disable-prompt-on-repost",
+      "--disable-web-security",
+      "--ignore-certificate-errors",
+      "--ignore-ssl-errors",
+      "--ignore-certificate-errors-spki-list",
+      "--disable-infobars"
+    ];
+
+    // Additional optimizations for snap chromium
+    if (chromeExecutablePath.includes('/snap/')) {
+      console.log(`🔧 Applying snap-specific optimizations`);
+      browserArgs = [
+        ...browserArgs,
+        "--disable-seccomp-filter-sandbox",
+        "--disable-namespace-sandbox",
+        "--disable-software-rasterizer",
+        "--disable-background-media-suspend",
+        "--disable-notifications",
+        "--disable-desktop-notifications",
+        "--disable-permissions-api",
+        "--disable-presentation-api"
+      ];
+    }
+
     client = new Client({
       authStrategy: new LocalAuth({
         dataPath: SESSION_PATH,
@@ -67,16 +141,7 @@ export async function initializeClient() {
       }),
       puppeteer: {
         headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--no-first-run",
-          "--no-zygote",
-          "--single-process",
-          "--disable-gpu",
-        ],
+        args: browserArgs,
         executablePath: chromeExecutablePath,
       },
     });
