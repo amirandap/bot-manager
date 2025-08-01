@@ -21,7 +21,7 @@ module.exports = {
         FRONTEND_URL: "http://localhost:7260",
         BOT_CONFIG_PATH: "./config/bots.json",
         DEFAULT_BOT_HOST: "localhost",
-        CHROME_PATH: "/snap/bin/chromium",
+        CHROME_PATH: "/usr/bin/google-chrome-stable",
         LOG_LEVEL: "info",
         HEALTH_CHECK_ENABLED: "true",
         DEV_MODE: "false",

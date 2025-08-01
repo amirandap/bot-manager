@@ -86,9 +86,31 @@ export class BotStatusController {
         endpoint: "/status",
         method: "GET"
       });
+      
+      // Check if the result indicates an error
+      if (result && typeof result === 'object' && 'error' in result && result.error) {
+        // Bot is not reachable or returned an error, but don't crash the backend
+        res.status(503).json({
+          error: true,
+          botId: botId,
+          status: result.status || 'offline',
+          message: result.message || 'Bot is not responding',
+          code: result.code || 'BOT_UNREACHABLE',
+          timestamp: result.timestamp || new Date().toISOString()
+        });
+        return;
+      }
+      
+      // Bot responded successfully
       res.json(result);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("get bot status", error, res);
+      // This should rarely happen now, but keep as fallback
+      console.error(`Unexpected error in getBotStatusById:`, error);
+      res.status(500).json({
+        error: true,
+        message: `Failed to get bot status: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 
