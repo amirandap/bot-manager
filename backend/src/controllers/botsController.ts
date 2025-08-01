@@ -137,8 +137,8 @@ export class BotsController {
 
   public async spawnBot(req: Request, res: Response): Promise<void> {
     try {
-      const { botId } = req.params;
-      const bot = this.configService.getBotById(botId);
+      const { id } = req.params;
+      const bot = this.configService.getBotById(id);
 
       if (!bot) {
         res.status(404).json({ error: "Bot not found" });
@@ -146,12 +146,12 @@ export class BotsController {
       }
 
       // Start the bot using the BotSpawnerService
-      const success = await this.botSpawnerService.startBot(botId);
+      const success = await this.botSpawnerService.startBot(id);
 
       if (success) {
-        res.status(200).json({ message: "Bot started successfully", botId });
+        res.status(200).json({ message: "Bot started successfully", botId: id });
       } else {
-        res.status(500).json({ error: "Failed to start bot", botId });
+        res.status(500).json({ error: "Failed to start bot", botId: id });
       }
     } catch (error) {
       console.error("Error starting bot:", error);
@@ -161,8 +161,8 @@ export class BotsController {
 
   public async killBot(req: Request, res: Response): Promise<void> {
     try {
-      const { botId } = req.params;
-      const bot = this.configService.getBotById(botId);
+      const { id } = req.params;
+      const bot = this.configService.getBotById(id);
 
       if (!bot) {
         res.status(404).json({ error: "Bot not found" });
@@ -170,12 +170,12 @@ export class BotsController {
       }
 
       // Stop the bot process using the BotSpawnerService
-      const success = await this.botSpawnerService.stopBot(botId);
+      const success = await this.botSpawnerService.stopBot(id);
 
       if (success) {
-        res.status(200).json({ message: "Bot stopped successfully", botId });
+        res.status(200).json({ message: "Bot stopped successfully", botId: id });
       } else {
-        res.status(500).json({ error: "Failed to stop bot", botId });
+        res.status(500).json({ error: "Failed to stop bot", botId: id });
       }
     } catch (error) {
       console.error("Error stopping bot:", error);

@@ -318,25 +318,33 @@ export class BotSpawnerService {
     // Load bot environment defaults from bot folder .env
     const botEnvDefaults = this.loadBotEnvironmentDefaults();
 
-    // Determine the correct Chrome executable path based on the operating system
+    // Determine the correct Chrome executable path with proper precedence:
+    // 1. Use CHROME_PATH from bot/.env if it exists
+    // 2. Use system CHROME_PATH environment variable if set
+    // 3. Use platform-specific defaults as fallback
     let chromeExecutablePath;
 
-    if (process.env.CHROME_PATH) {
+    if (botEnvDefaults.CHROME_PATH) {
+      // Priority 1: Use Chrome path from bot/.env configuration
+      chromeExecutablePath = botEnvDefaults.CHROME_PATH;
+      console.log(`🎯 Using Chrome path from bot/.env: ${chromeExecutablePath}`);
+    } else if (process.env.CHROME_PATH) {
+      // Priority 2: Use system environment variable
       chromeExecutablePath = process.env.CHROME_PATH;
+      console.log(`🎯 Using Chrome path from system env: ${chromeExecutablePath}`);
     } else if (process.platform === "darwin") {
-      // macOS
-      chromeExecutablePath =
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+      // Priority 3: Platform-specific defaults
+      chromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+      console.log(`🎯 Using macOS default Chrome path: ${chromeExecutablePath}`);
     } else if (process.platform === "linux") {
-      // Linux - use Google Chrome as the reliable option for WhatsApp Web
       chromeExecutablePath = "/usr/bin/google-chrome-stable";
+      console.log(`🎯 Using Linux default Chrome path: ${chromeExecutablePath}`);
     } else if (process.platform === "win32") {
-      // Windows
-      chromeExecutablePath =
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+      chromeExecutablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+      console.log(`🎯 Using Windows default Chrome path: ${chromeExecutablePath}`);
     } else {
-      // Default fallback
       chromeExecutablePath = "/usr/bin/google-chrome-stable";
+      console.log(`🎯 Using fallback Chrome path: ${chromeExecutablePath}`);
     }
 
     // Create isolated environment for bot (no system env pollution)
@@ -346,7 +354,12 @@ export class BotSpawnerService {
       USER: process.env.USER || "botuser",
       PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
       
-      // Bot-specific configuration (hardcoded, no system env conflicts)
+      // Bot environment defaults (from bot/.env) - Load FIRST so they can be overridden
+      ...Object.fromEntries(
+        Object.entries(botEnvDefaults).map(([key, value]) => [key, String(value)])
+      ),
+      
+      // Bot-specific configuration (hardcoded, no system env conflicts) - These override defaults
       BOT_ID: botId,
       BOT_NAME: botConfig.name,
       BOT_PORT: botConfig.apiPort.toString(),
@@ -354,12 +367,7 @@ export class BotSpawnerService {
       BOT_TYPE: botConfig.type || "whatsapp",
       BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
       NODE_ENV: "production",
-      CHROME_PATH: chromeExecutablePath,
-      
-      // Bot environment defaults (from bot/.env) - ensure all values are strings
-      ...Object.fromEntries(
-        Object.entries(botEnvDefaults).map(([key, value]) => [key, String(value)])
-      ),
+      // Note: CHROME_PATH is now preserved from botEnvDefaults and not overridden
     };        console.log(`📦 PM2 Configuration:`);
         console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
         console.log(`   - Interpreter: ${path.join(this.botDirectory, "node_modules/.bin/ts-node")}`);
@@ -373,7 +381,8 @@ export class BotSpawnerService {
         console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
         console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
         console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
-        console.log(`   - CHROME_PATH: ${botEnv.CHROME_PATH}`);
+        console.log(`   - CHROME_PATH: ${botEnvDefaults.CHROME_PATH || chromeExecutablePath}`);
+        console.log(`   - Total env variables: ${Object.keys(botEnv).length}`);
 
         // Check if ts-node exists
         const tsNodePath = path.join(this.botDirectory, "node_modules/.bin/ts-node");
@@ -667,20 +676,38 @@ export class BotSpawnerService {
           return;
         }
 
-        pm2.restart(pm2ServiceId, (err) => {
-          pm2.disconnect();
-
-          if (err) {
-            console.error(
-              `❌ Error starting bot ${botId} (PM2: ${pm2ServiceId}):`,
-              err
-            );
-            resolve(false);
+        // First, check if the process exists
+        pm2.describe(pm2ServiceId, (describeErr, processDescription) => {
+          if (describeErr || !processDescription || processDescription.length === 0) {
+            console.log(`⚠️  Process ${pm2ServiceId} not found in PM2. Auto-creating...`);
+            pm2.disconnect();
+            
+            // Process doesn't exist, create it automatically
+            this.startBotWithPM2(botId, bot).then(() => {
+              console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) created and started successfully`);
+              resolve(true);
+            }).catch((createError) => {
+              console.error(`❌ Failed to auto-create bot ${botId}:`, createError);
+              resolve(false);
+            });
           } else {
-            console.log(
-              `✅ Bot ${botId} (PM2: ${pm2ServiceId}) started successfully`
-            );
-            resolve(true);
+            // Process exists, restart it
+            pm2.restart(pm2ServiceId, (restartErr) => {
+              pm2.disconnect();
+
+              if (restartErr) {
+                console.error(
+                  `❌ Error starting bot ${botId} (PM2: ${pm2ServiceId}):`,
+                  restartErr
+                );
+                resolve(false);
+              } else {
+                console.log(
+                  `✅ Bot ${botId} (PM2: ${pm2ServiceId}) started successfully`
+                );
+                resolve(true);
+              }
+            });
           }
         });
       });

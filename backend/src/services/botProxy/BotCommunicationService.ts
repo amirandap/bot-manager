@@ -121,9 +121,15 @@ export class BotCommunicationService {
             url: url
           });
           
-          throw new Error(
-            `BOT_ERROR: Bot API returned ${error.response.status} - ${JSON.stringify(error.response.data)}`
-          );
+          // Return a structured error response instead of throwing
+          return {
+            error: true,
+            status: 'bot_error',
+            message: `Bot API returned ${error.response.status} - ${error.response.statusText}`,
+            code: `HTTP_${error.response.status}`,
+            data: error.response.data,
+            timestamp: new Date().toISOString()
+          };
         } else if (error.request) {
           // The request was made but no response was received
           console.error(`🔌 [CONNECTION_ERROR] Bot not responding:`, {
@@ -132,16 +138,39 @@ export class BotCommunicationService {
             code: error.code
           });
           
-          throw new Error(`CONNECTION_ERROR: Cannot connect to bot at ${url} - ${error.code || 'Unknown error'}`);
+          // Return a structured error response instead of throwing
+          return {
+            error: true,
+            status: 'offline',
+            message: `Cannot connect to bot at ${url}`,
+            code: error.code || 'CONNECTION_REFUSED',
+            timestamp: new Date().toISOString()
+          };
         } else {
           // Something happened in setting up the request
           console.error(`⚙️ [REQUEST_SETUP_ERROR] Request configuration error:`, error.message);
-          throw new Error(`REQUEST_SETUP_ERROR: ${error.message}`);
+          
+          // Return a structured error response instead of throwing
+          return {
+            error: true,
+            status: 'config_error',
+            message: `Request configuration error: ${error.message}`,
+            code: 'REQUEST_SETUP_ERROR',
+            timestamp: new Date().toISOString()
+          };
         }
       }
       
       console.error(`🔥 [UNKNOWN_ERROR] Unexpected error:`, error);
-      throw new Error(`UNKNOWN_ERROR: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      
+      // Return a structured error response instead of throwing
+      return {
+        error: true,
+        status: 'unknown_error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'UNKNOWN_ERROR',
+        timestamp: new Date().toISOString()
+      };
     }
   }
 }

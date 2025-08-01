@@ -102,7 +102,13 @@ export async function initializeClient() {
       return;
     }
   } catch (error) {
-    console.error("Error initializing client:", error);
+    console.error("❌ CRITICAL ERROR: Failed to initialize WhatsApp client:", error);
+    console.error("🛑 Bot cannot continue without a working browser.");
+    console.error("🔧 Please check Chrome/Chromium installation and CHROME_PATH environment variable");
+    console.error("⚠️  Bot initialization failed - stopping this instance gracefully");
+    
+    // Throw error to be handled by the calling function instead of forcing exit
+    throw new Error(`WhatsApp client initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
