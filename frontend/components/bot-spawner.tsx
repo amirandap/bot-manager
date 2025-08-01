@@ -408,7 +408,7 @@ export function BotSpawner({
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">{lastCreatedBot.type}</Badge>
+                <Badge variant="secondary">{lastCreatedBot.type || "Unknown"}</Badge>
                 <span className="font-medium">{lastCreatedBot.name}</span>
               </div>
               <div className="text-sm text-gray-600">
