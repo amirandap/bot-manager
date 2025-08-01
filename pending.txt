@@ -1,2 +1,2 @@
 1. Mejor status del bot, bootingup, ready, waiting for qr code, etc...
-2. 
+2. creo que necesitamos identificar las diferentes etapas del startup del bot, para poder proveer un status real del bot, especialmente cuando falla algo de su proceso, se quede en ese proceso, no hacemos nada en continuar si hubo un fallo y el bot no levantara correctamente,  lo que probablemente es lo que pasa con este bot, que aunque se muestra online, no tiene codigo qr

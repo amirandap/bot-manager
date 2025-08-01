@@ -60,11 +60,120 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
     }
   }, [bot.id]);
 
-  const handleViewQR = () => {
+  const handleViewQR = async () => {
     const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";
     if (safeType === "whatsapp") {
-      // Open QR code in new tab using GET with bot ID in URL
-      window.open(`/api/bots/${bot.id}/qr-code`, '_blank');
+      try {
+        // Get QR code data with JSON response
+        const response = await fetch(`/api/bots/${bot.id}/qr-code`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const qrData = await response.json();
+        
+        if (response.ok && qrData.success) {
+          if (qrData.status === 'available') {
+            // QR code is available, display it in a new window
+            const qrWindow = window.open('', '_blank', 'width=400,height=500');
+            if (qrWindow) {
+              qrWindow.document.write(`
+                <html>
+                  <head>
+                    <title>WhatsApp QR Code</title>
+                    <style>
+                      body { 
+                        font-family: Arial, sans-serif; 
+                        padding: 20px; 
+                        text-align: center; 
+                        background-color: #f5f5f5;
+                      }
+                      .container {
+                        background: white;
+                        padding: 30px;
+                        border-radius: 10px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        max-width: 350px;
+                        margin: 0 auto;
+                      }
+                      .qr-image {
+                        max-width: 280px;
+                        border: 2px solid #25D366;
+                        border-radius: 10px;
+                        margin: 20px 0;
+                      }
+                      .expires {
+                        color: #666;
+                        font-size: 12px;
+                        margin: 10px 0;
+                      }
+                      .button {
+                        background-color: #25D366;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        margin: 5px;
+                        font-size: 14px;
+                      }
+                      .button:hover {
+                        background-color: #1ea952;
+                      }
+                      .button.secondary {
+                        background-color: #6c757d;
+                      }
+                      .button.secondary:hover {
+                        background-color: #5a6268;
+                      }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="container">
+                      <h2 style="color: #25D366; margin-bottom: 10px;">📱 Scan QR Code</h2>
+                      <p style="color: #333; margin-bottom: 20px;">
+                        Scan this QR code with your WhatsApp mobile app
+                      </p>
+                      <img src="data:image/png;base64,${qrData.qrCode}" alt="QR Code" class="qr-image" />
+                      <div class="expires">
+                        Generated: ${new Date(qrData.generatedAt).toLocaleString()}<br>
+                        Expires in: ${qrData.expiresIn} minute(s)
+                      </div>
+                      <button class="button" onclick="window.location.reload()">
+                        🔄 Refresh QR Code
+                      </button>
+                      <button class="button secondary" onclick="window.close()">
+                        ✕ Close
+                      </button>
+                    </div>
+                  </body>
+                </html>
+              `);
+            }
+          } else if (qrData.status === 'connected') {
+            alert(`✅ Bot Already Connected\n\nThis WhatsApp bot is already connected.\nPhone: ${qrData.phoneNumber || 'Unknown'}`);
+          }
+        } else {
+          // Handle different error states
+          let message = 'QR Code not available';
+          
+          if (qrData.status === 'expired') {
+            message = `⏰ QR Code Expired\n\n${qrData.message}\n\nPlease restart the bot to generate a new QR code.`;
+          } else if (qrData.status === 'not_available') {
+            message = `⚠️ ${qrData.message}\n\nPossible reasons:\n${qrData.reasons?.join('\n• ') || 'Unknown'}`;
+          } else {
+            message = qrData.message || 'Unknown error occurred';
+          }
+          
+          alert(message);
+        }
+      } catch (error) {
+        console.error('Error fetching QR code:', error);
+        alert('❌ Failed to fetch QR code. Please try again.');
+      }
     }
   };
 
