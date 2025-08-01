@@ -27,8 +27,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const getBotIcon = (type: string | undefined) => {
-    switch (type?.toLowerCase()) {
+  const getBotIcon = (type?: string) => {
+    const safeType = typeof type === "string" ? type.toLowerCase() : "";
+    switch (safeType) {
       case "discord":
         return <MessageCircle className="h-5 w-5" />;
       case "whatsapp":
@@ -60,7 +61,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   }, [bot.id]);
 
   const handleViewQR = () => {
-    if (bot.type === "whatsapp") {
+    const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";
+    if (safeType === "whatsapp") {
       // Open QR code in new tab using GET with bot ID in URL
       window.open(`/api/bots/${bot.id}/qr-code`, '_blank');
     }
@@ -88,10 +90,10 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
           <div className="flex items-center gap-2">
             <Badge
               variant={
-                bot.type.toLowerCase() === "discord" ? "default" : "outline"
+                (typeof bot.type === "string" && bot.type.toLowerCase() === "discord") ? "default" : "outline"
               }
             >
-              {bot.type}
+              {bot.type || "Unknown"}
             </Badge>
             <Badge
               variant={bot.isExternal ? "secondary" : "default"}
@@ -182,7 +184,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             Refresh Status
           </Button>
 
-          {bot.type === "whatsapp" && (
+          {(typeof bot.type === "string" && bot.type.toLowerCase() === "whatsapp") && (
             <Button
               variant="outline"
               size="sm"

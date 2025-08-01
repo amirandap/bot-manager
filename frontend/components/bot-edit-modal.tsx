@@ -219,7 +219,7 @@ export default function BotEditModal({
             <div className="text-sm text-muted-foreground">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <strong>Type:</strong> {bot.type}
+                  <strong>Type:</strong> {bot.type || "Unknown"}
                 </div>
                 <div>
                   <strong>Status:</strong>{" "}
