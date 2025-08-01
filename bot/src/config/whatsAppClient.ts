@@ -37,54 +37,13 @@ export async function initializeClient() {
     // Log SMTP configuration status
     logSmtpStatus();
 
-    // Determine the correct Chrome executable path based on the operating system
-    let chromeExecutablePath;
-
-    if (process.env.CHROME_PATH) {
-      chromeExecutablePath = process.env.CHROME_PATH;
-    } else if (process.platform === "darwin") {
-      // macOS
-      chromeExecutablePath =
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    } else if (process.platform === "linux") {
-      // Linux - prioritize Google Chrome over Chromium for better WhatsApp compatibility
-      const possiblePaths = [
-        "/usr/bin/google-chrome",    // Google Chrome (best for WhatsApp)
-        "/usr/bin/google-chrome-stable", // Alternative Chrome path
-        "/usr/bin/chromium-browser", // Traditional Chromium
-        "/usr/bin/chromium",         // Alternative Chromium
-        "/snap/bin/chromium"         // Snap chromium (fallback)
-      ];
-      
-      for (const path of possiblePaths) {
-        try {
-          const fs = require('fs');
-          if (fs.existsSync(path)) {
-            chromeExecutablePath = path;
-            console.log(`🔍 Found browser at: ${path}`);
-            break;
-          }
-        } catch (e) {
-          // Continue to next path
-        }
-      }
-      
-      if (!chromeExecutablePath) {
-        chromeExecutablePath = "/usr/bin/google-chrome";
-      }
-    } else if (process.platform === "win32") {
-      // Windows
-      chromeExecutablePath =
-        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-    } else {
-      // Default fallback
-      chromeExecutablePath = "/usr/bin/google-chrome";
-    }
+    // Use Chrome executable path from environment variable
+    const chromeExecutablePath = process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
 
     console.log(`🌐 Using Chrome executable: ${chromeExecutablePath}`);
 
-    // Optimize args based on the browser type and WhatsApp Web requirements
-    let browserArgs = [
+    // Optimized browser arguments for WhatsApp Web
+    const browserArgs = [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
@@ -93,13 +52,11 @@ export async function initializeClient() {
       "--no-zygote",
       "--single-process",
       "--disable-gpu",
-      // Memory optimization arguments
       "--memory-pressure-off",
       "--disable-background-timer-throttling",
       "--disable-backgrounding-occluded-windows",
       "--disable-renderer-backgrounding",
       "--disable-features=TranslateUI,VizDisplayCompositor",
-      "--disable-ipc-flooding-protection",
       "--disable-background-networking",
       "--disable-default-apps",
       "--disable-extensions",
@@ -116,37 +73,13 @@ export async function initializeClient() {
       "--ignore-certificate-errors",
       "--ignore-ssl-errors",
       "--ignore-certificate-errors-spki-list",
-      "--disable-infobars"
+      "--disable-infobars",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-notifications",
+      "--disable-desktop-notifications",
+      "--disable-permissions-api",
+      "--autoplay-policy=no-user-gesture-required"
     ];
-
-    // Chrome-specific optimizations for WhatsApp Web
-    if (chromeExecutablePath.includes('google-chrome')) {
-      console.log(`🔧 Applying Google Chrome optimizations for WhatsApp Web`);
-      browserArgs = [
-        ...browserArgs,
-        "--disable-blink-features=AutomationControlled", // Hide automation detection
-        "--disable-features=VizDisplayCompositor",        // Better rendering
-        "--force-device-scale-factor=1",                  // Consistent scaling
-        "--disable-notifications",                        // No system notifications
-        "--disable-desktop-notifications",                // No desktop notifications
-        "--disable-permissions-api",                      // Skip permission requests
-        "--autoplay-policy=no-user-gesture-required"     // Allow media autoplay
-      ];
-    } else {
-      // Chromium-specific optimizations (fallback)
-      console.log(`🔧 Applying Chromium optimizations`);
-      browserArgs = [
-        ...browserArgs,
-        "--disable-seccomp-filter-sandbox",
-        "--disable-namespace-sandbox",
-        "--disable-software-rasterizer",
-        "--disable-background-media-suspend",
-        "--disable-notifications",
-        "--disable-desktop-notifications",
-        "--disable-permissions-api",
-        "--disable-presentation-api"
-      ];
-    }
 
     client = new Client({
       authStrategy: new LocalAuth({

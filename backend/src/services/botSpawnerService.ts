@@ -328,15 +328,15 @@ export class BotSpawnerService {
       chromeExecutablePath =
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     } else if (process.platform === "linux") {
-      // Linux
-      chromeExecutablePath = "/snap/bin/chromium";
+      // Linux - use Google Chrome as the reliable option for WhatsApp Web
+      chromeExecutablePath = "/usr/bin/google-chrome-stable";
     } else if (process.platform === "win32") {
       // Windows
       chromeExecutablePath =
         "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
     } else {
       // Default fallback
-      chromeExecutablePath = "/snap/bin/chromium";
+      chromeExecutablePath = "/usr/bin/google-chrome-stable";
     }
 
     // Create isolated environment for bot (no system env pollution)
