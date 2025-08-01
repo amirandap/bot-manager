@@ -47,12 +47,13 @@ export async function initializeClient() {
       chromeExecutablePath =
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     } else if (process.platform === "linux") {
-      // Linux - prioritize snap chromium if available
+      // Linux - prioritize Google Chrome over Chromium for better WhatsApp compatibility
       const possiblePaths = [
-        "/snap/bin/chromium",        // Snap chromium (most common)
-        "/usr/bin/google-chrome",    // Traditional Chrome
+        "/usr/bin/google-chrome",    // Google Chrome (best for WhatsApp)
+        "/usr/bin/google-chrome-stable", // Alternative Chrome path
         "/usr/bin/chromium-browser", // Traditional Chromium
-        "/usr/bin/chromium"          // Alternative Chromium
+        "/usr/bin/chromium",         // Alternative Chromium
+        "/snap/bin/chromium"         // Snap chromium (fallback)
       ];
       
       for (const path of possiblePaths) {
@@ -82,7 +83,7 @@ export async function initializeClient() {
 
     console.log(`🌐 Using Chrome executable: ${chromeExecutablePath}`);
 
-    // Optimize args based on the browser type
+    // Optimize args based on the browser type and WhatsApp Web requirements
     let browserArgs = [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -118,9 +119,22 @@ export async function initializeClient() {
       "--disable-infobars"
     ];
 
-    // Additional optimizations for snap chromium
-    if (chromeExecutablePath.includes('/snap/')) {
-      console.log(`🔧 Applying snap-specific optimizations`);
+    // Chrome-specific optimizations for WhatsApp Web
+    if (chromeExecutablePath.includes('google-chrome')) {
+      console.log(`🔧 Applying Google Chrome optimizations for WhatsApp Web`);
+      browserArgs = [
+        ...browserArgs,
+        "--disable-blink-features=AutomationControlled", // Hide automation detection
+        "--disable-features=VizDisplayCompositor",        // Better rendering
+        "--force-device-scale-factor=1",                  // Consistent scaling
+        "--disable-notifications",                        // No system notifications
+        "--disable-desktop-notifications",                // No desktop notifications
+        "--disable-permissions-api",                      // Skip permission requests
+        "--autoplay-policy=no-user-gesture-required"     // Allow media autoplay
+      ];
+    } else {
+      // Chromium-specific optimizations (fallback)
+      console.log(`🔧 Applying Chromium optimizations`);
       browserArgs = [
         ...browserArgs,
         "--disable-seccomp-filter-sandbox",
