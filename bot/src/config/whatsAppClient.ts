@@ -170,6 +170,17 @@ export function appendListeners(client: Client) {
   });
 
   client.on("ready", async () => {
+    console.log("✅ WhatsApp client is ready and authenticated!");
+    
+    // Clear QR code since we're now connected
+    try {
+      await fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
+        method: "POST",
+      });
+    } catch (error) {
+      console.log("Note: Could not clear QR code (this is normal)");
+    }
+
     // Legacy unified endpoint (for backward compatibility)
     app.use("/send-message", sendMessageRoute);
     
@@ -217,5 +228,29 @@ Endpoints available:
 
   client.on("error", (error) => {
     console.log(error);
+  });
+
+  client.on("disconnected", (reason) => {
+    console.log(`❌ WhatsApp client disconnected: ${reason}`);
+    // Clear QR code on disconnection so a new one can be generated
+    try {
+      fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
+        method: "POST",
+      });
+    } catch (error) {
+      console.log("Note: Could not clear QR code on disconnect");
+    }
+  });
+
+  client.on("auth_failure", (message) => {
+    console.error(`❌ Authentication failed: ${message}`);
+    // Clear QR code on auth failure so a new one can be generated
+    try {
+      fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
+        method: "POST",
+      });
+    } catch (error) {
+      console.log("Note: Could not clear QR code on auth failure");
+    }
   });
 }

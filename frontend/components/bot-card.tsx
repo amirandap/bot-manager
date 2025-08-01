@@ -61,9 +61,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
   const handleViewQR = () => {
     if (bot.type === "whatsapp") {
-      // Open QR code in new tab using the correct backend route
-      const qrUrl = `/api/bots/${encodeURIComponent(bot.id)}/qr-code`;
-      window.open(qrUrl, '_blank');
+      // Open QR code in new tab using GET with bot ID in URL
+      window.open(`/api/bots/${bot.id}/qr-code`, '_blank');
     }
   };
 
