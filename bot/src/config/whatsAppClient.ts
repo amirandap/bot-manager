@@ -23,6 +23,7 @@ import { isSmtpConfigured, getSmtpConfig, logSmtpStatus } from "../utils/smtpUti
 import dotenv from "dotenv";
 import path from "path";
 import { getFallbackNumber } from "../utils/fallbackUtils";
+import { botLifecycle, BotLifecycleState } from "../utils/botLifecycleTracker";
 
 dotenv.config();
 
@@ -33,6 +34,9 @@ export async function initializeClient() {
   try {
     console.log(`🚀 Initializing WhatsApp client for bot: ${BOT_ID}`);
     console.log(`📂 Using session path: ${SESSION_PATH}`);
+    
+    // Set initial lifecycle state
+    botLifecycle.setState(BotLifecycleState.INITIALIZING, 'Starting WhatsApp client initialization');
     
     // Log SMTP configuration status
     logSmtpStatus();
@@ -80,7 +84,10 @@ export async function initializeClient() {
       "--disable-permissions-api",
       "--autoplay-policy=no-user-gesture-required"
     ];
-
+    
+    // Update lifecycle state before creating client
+    botLifecycle.markBrowserLaunching();
+    
     client = new Client({
       authStrategy: new LocalAuth({
         dataPath: SESSION_PATH,
@@ -92,13 +99,20 @@ export async function initializeClient() {
         executablePath: chromeExecutablePath,
       },
     });
+    
     console.log("Initializing client...");
+    
+    // Update lifecycle state before initializing
+    botLifecycle.markWaitingForQR();
+    
     await client?.initialize();
     console.log("Client is ready!");
 
     // Check if the client is already authenticated
     if (client.info) {
       console.log("Client is already authenticated", client.info);
+      botLifecycle.markConnected();
+      botLifecycle.markReady();
       return;
     }
   } catch (error) {
@@ -106,6 +120,18 @@ export async function initializeClient() {
     console.error("🛑 Bot cannot continue without a working browser.");
     console.error("🔧 Please check Chrome/Chromium installation and CHROME_PATH environment variable");
     console.error("⚠️  Bot initialization failed - stopping this instance gracefully");
+    
+    // Update lifecycle state to reflect the error
+    if (error instanceof Error) {
+      if (error.message.includes('browser') || error.message.includes('puppeteer') || 
+          error.message.includes('chrome') || error.message.includes('executable')) {
+        botLifecycle.markBrowserError(error);
+      } else {
+        botLifecycle.markError(error);
+      }
+    } else {
+      botLifecycle.markError(new Error(String(error)));
+    }
     
     // Throw error to be handled by the calling function instead of forcing exit
     throw new Error(`WhatsApp client initialization failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -116,8 +142,14 @@ export function appendListeners(client: Client) {
   if (!client) {
     throw new Error("Client not initialized");
   }
+  
+  // QR code event
   client.on("qr", async (qr) => {
     console.log("Scan the QR code with your phone:");
+    
+    // Update lifecycle state - QR code is ready for scanning
+    botLifecycle.markQRReady();
+    
     qrTerminal.toString(
       qr,
       { type: "terminal", small: true },
@@ -187,69 +219,58 @@ export function appendListeners(client: Client) {
     }
   });
 
-  client.on("ready", async () => {
-    console.log("✅ WhatsApp client is ready and authenticated!");
+  // Client ready event
+  client.on("ready", () => {
+    console.log("Client is ready!");
     
-    // Clear QR code since we're now connected
-    try {
-      await fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
-        method: "POST",
-      });
-    } catch (error) {
-      console.log("Note: Could not clear QR code (this is normal)");
-    }
-
-    // Legacy unified endpoint (for backward compatibility)
-    app.use("/send-message", sendMessageRoute);
+    // Update lifecycle state
+    botLifecycle.markConnected();
+    botLifecycle.markReady();
     
-    // New specific endpoints (recommended)
-    app.use("/send-to-phone", sendToPhoneRoute);
-    app.use("/send-to-group", sendToGroupRoute);
-    app.use("/send-broadcast", sendBroadcastRoute);
-    
-    // Media-specific endpoints
-    app.use("/send-image", sendImageRoute);
-    app.use("/send-document", sendDocumentRoute);
-    app.use("/send-audio", sendAudioRoute);
-    app.use("/send-video", sendVideoRoute);
-    
-    // Other endpoints
+    // Initialize routes
+    app.use("/sendMessage", sendMessageRoute);
+    app.use("/sendToPhone", sendToPhoneRoute);
+    app.use("/sendToGroup", sendToGroupRoute);
+    app.use("/sendBroadcast", sendBroadcastRoute);
+    app.use("/sendImage", sendImageRoute);
+    app.use("/sendDocument", sendDocumentRoute);
+    app.use("/sendAudio", sendAudioRoute);
+    app.use("/sendVideo", sendVideoRoute);
     app.use("/pending", pendingRoute);
     app.use("/followup", followupRoute);
-    app.use("/receive-image-and-json", receiveImageAndJSONRoute);
-    app.use("/confirmation", confirmationRoute);
-    app.use("/get-groups", getGroupsRoute);
+    app.use("/receiveImageAndJSON", receiveImageAndJSONRoute);
+    app.use("/confirm", confirmationRoute);
+    app.use("/getGroups", getGroupsRoute);
 
-    // Send group chats list with initial message along with current endpoints
-    const chats = await client.getChats();
-    const groupChats = chats.filter((chat) =>
-      chat.id._serialized.endsWith("@g.us")
-    ) as GroupChat[];
-    const groups = await Promise.all(
-      groupChats.map((group) => getGroupDetails(group))
-    );
-    const message = `Whatsapp client initialized. Current groups:
-    ${groups.map((group) => `Group: ${group.name}, ID: ${group.id}`).join("\n")}
-    
-Endpoints available:
-• Legacy: POST /send-message (unified)
-• Specific: POST /send-to-phone, POST /send-to-group, POST /send-broadcast
-• Media: POST /send-image, POST /send-document, POST /send-audio, POST /send-video
-• Other: POST /pending, POST /followup, POST /receive-image-and-json, GET /get-groups`;
-    try {
-      await sendMessage(client, getFallbackNumber(), message);
-    } catch (error: unknown) {
-      console.error("Error sending initial message:", error);
-    }
-    console.log(message);
+    // Clear any QR code that might be cached
+    const baseUrl = process.env.BASE_URL || "http://localhost:2343";
+    fetch(`${baseUrl}/qr-code/clear`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).catch((error) => {
+      console.error("Error clearing QR code:", error);
+    });
   });
 
   client.on("error", (error) => {
     console.log(error);
+    // Update lifecycle state based on error type
+    if (error.toString().includes('browser') || error.toString().includes('puppeteer')) {
+      botLifecycle.markBrowserError(error);
+    } else if (error.toString().includes('connection') || error.toString().includes('network')) {
+      botLifecycle.markConnectionError(error);
+    } else {
+      botLifecycle.markError(error);
+    }
   });
 
   client.on("disconnected", (reason) => {
     console.log(`❌ WhatsApp client disconnected: ${reason}`);
+    // Update lifecycle state
+    botLifecycle.markDisconnected(reason);
+    
     // Clear QR code on disconnection so a new one can be generated
     try {
       fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
@@ -262,6 +283,9 @@ Endpoints available:
 
   client.on("auth_failure", (message) => {
     console.error(`❌ Authentication failed: ${message}`);
+    // Update lifecycle state
+    botLifecycle.markAuthenticationError(new Error(message));
+    
     // Clear QR code on auth failure so a new one can be generated
     try {
       fetch(`${process.env.BASE_URL || "http://localhost:2343"}/qr-code/clear`, {
