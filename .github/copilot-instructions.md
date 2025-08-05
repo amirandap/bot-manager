@@ -48,6 +48,37 @@ This is a WhatsApp/Discord bot manager built with TypeScript, featuring:
 - Configuration hot-reload
 - Direct API communication with bot instances
 
+## Build and Deploy Commands
+
+Instead of using helper scripts, prefer using these direct commands:
+
+### Building components
+```bash
+# Build the bot component
+cd bot && npm run build
+
+# Build the frontend component
+cd frontend && npm run build
+
+# Build the backend component
+cd backend && npm run build
+```
+
+### Restarting services
+```bash
+# Restart a specific bot instance
+pm2 reload wabot-[port]
+
+# Restart the backend
+pm2 reload bot-manager-backend
+
+# Restart the frontend
+pm2 reload bot-manager-frontend
+
+# Restart all services
+pm2 reload all
+```
+
 When suggesting code changes, ensure they:
 
 1. Maintain the existing architecture patterns
@@ -55,3 +86,4 @@ When suggesting code changes, ensure they:
 3. Are compatible with the monorepo structure
 4. Support the auto-sync functionality
 5. Handle errors gracefully
+6. Avoid using custom scripts - prefer direct commands
