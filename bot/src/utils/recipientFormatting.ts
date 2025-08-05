@@ -30,24 +30,30 @@ export function formatRecipient(recipient: string): string {
  * Separate phone numbers and group IDs from a list of recipients
  * Enhanced version from recipientProcessor
  * @param recipients Array of phone numbers and/or group IDs
- * @returns Object with separated phoneNumbers and groupIds arrays
+ * @returns Object with separated phoneNumbers and groups arrays
  */
-export function separateRecipientsType(recipients: string[]): {
+export function separateRecipients(recipients: string[]): {
   phoneNumbers: string[];
-  groupIds: string[];
+  groups: string[];
 } {
   const phoneNumbers: string[] = [];
-  const groupIds: string[] = [];
+  const groups: string[] = [];
 
   recipients.forEach(recipient => {
     if (recipient.includes('@g.us')) {
-      groupIds.push(recipient);
+      groups.push(recipient);
     } else {
       phoneNumbers.push(recipient);
     }
   });
 
-  return { phoneNumbers, groupIds };
+  // eslint-disable-next-line no-console
+  console.log(
+    `📋 [FORMATTER] Processing ${groups.length} groups and ` +
+    `${phoneNumbers.length} phone numbers`,
+  );
+
+  return { phoneNumbers, groups };
 }
 
 /**
@@ -73,4 +79,17 @@ export function isValidRecipient(recipient: string): boolean {
   // Phone number validation (basic)
   const phoneRegex = /^[+]?[1-9]\d{6,14}$/;
   return phoneRegex.test(recipient.replace(/\s+/g, ''));
+}
+
+/**
+ * Format phone number for WhatsApp (without @c.us suffix)
+ * @param phoneNumber Raw phone number
+ * @returns Formatted phone number for WhatsApp
+ */
+export function formatPhoneForWhatsApp(phoneNumber: string): string {
+  const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(phoneNumber);
+  const whatsappNumber = cleanedPhoneNumber.startsWith('+')
+    ? cleanedPhoneNumber.slice(1)
+    : cleanedPhoneNumber;
+  return whatsappNumber.trim();
 }
