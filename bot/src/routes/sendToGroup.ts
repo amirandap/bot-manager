@@ -3,7 +3,7 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import GroupMessageHandler from "./sendMessage/groupMessageHandler";
-import ErrorHandler from "./sendMessage/errorHandler";
+import MessageErrorHandler from "../utils/messageErrorHandler";
 import { SendMessageRequestBody } from "./sendMessage/types";
 
 const router = express.Router();
@@ -87,7 +87,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await ErrorHandler.sendErrorReport(client, req.body, results.errors);
+      await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-to-group");
     }
 
     const statusCode = results.errors.length === 0 ? 200 : 
@@ -108,10 +108,11 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
     
-    const { errorType, errorDetails } = await ErrorHandler.handleCriticalError(
+    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
       client,
       error,
-      req.body
+      req.body,
+      "/send-to-group"
     );
     
     return res.status(500).json({
