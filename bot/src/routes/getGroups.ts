@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable max-len */
 import express from "express";
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 import { GroupChat } from "whatsapp-web.js";
 import { getGroupDetails } from "../helpers/groupHelper";
 
@@ -10,6 +10,8 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     console.log("GET /get-groups: Request received");
+    
+    const client = getClient();
 
     if (!client) {
       console.log("GET /get-groups: Client not initialized");
@@ -25,7 +27,7 @@ router.get("/", async (req, res) => {
     const chats = await client.getChats();
     console.log(`GET /get-groups: ${chats.length} chats fetched`);
 
-    const groupChats = chats.filter((chat) =>
+    const groupChats = chats.filter((chat: any) =>
       chat.id._serialized.endsWith("@g.us")
     ) as GroupChat[];
     console.log(`GET /get-groups: ${groupChats.length} group chats found`);

@@ -7,7 +7,7 @@ import {
   fetchUserData,
   sendErrorMessage,
 } from "../helpers/helpers";
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 
 const router = express.Router();
 
@@ -18,6 +18,15 @@ router.post("/", async (req: Request, res: Response) => {
     message: string;
   };
   console.log("Payload recibido en /confirmation: ", req.body);
+  
+  const client = getClient();
+  
+  if (!client) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "WhatsApp client not ready"
+    });
+  }
 
   let userData;
   let finalPhoneNumber = phoneNumber;

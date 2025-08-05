@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 import { sendErrorMessage, sendImageAndMessage } from "../helpers/helpers";
 import { Participant } from "../types/types";
 import express from "express";
@@ -7,6 +7,15 @@ import express from "express";
 const router = express.Router();
 
 router.post("/", async (req, res) => {
+  const client = getClient();
+  
+  if (!client) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "WhatsApp client not ready"
+    });
+  }
+  
   try {
     const { participant } = req.body as { participant: Participant };
     console.log("Payload recibido en /receiveImageAndJson: ", req.body);
