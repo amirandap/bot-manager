@@ -1,16 +1,12 @@
 import { fetchUserData } from "../helpers/helpers";
+import { BaseMessageRequestBody } from "../types/types";
 
 /**
  * Generic recipient processor for all message types
  * Processes and normalizes recipients from various sources
  */
 export default class RecipientProcessor {
-  static async processRecipients(body: {
-    discorduserid?: string;
-    phoneNumber?: string | string[];
-    to?: string | string[];
-    group_id?: string;
-  }): Promise<{
+  static async processRecipients(body: BaseMessageRequestBody): Promise<{
     groups: string[];
     phoneNumbers: string[];
   }> {
