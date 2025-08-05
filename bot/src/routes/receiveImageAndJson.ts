@@ -1,8 +1,9 @@
 /* eslint-disable max-len */
-import { getClient } from "../config/clientExporter";
-import { sendErrorMessage, sendImageAndMessage } from "../helpers/helpers";
-import { Participant } from "../types/types";
-import express from "express";
+import { getClient } from '../config/clientExporter';
+import { sendImageMessage } from '../helpers/mediaHelpers';
+import { sendErrorMessage } from '../utils/errorMessaging';
+import { Participant } from '../types/types';
+import express from 'express';
 
 const router = express.Router();
 
@@ -31,9 +32,17 @@ router.post("/", async (req, res) => {
 
     const text = `Saludos ${name}, felicidades en tu P${rank}, sube tu historia a Instagram y recuerda etiquetar a @gpesportsrd y @entrandoapits. ¡Buena suerte en tu próxima carrera!`;
 
-    // sendImageAndMessage will handle phone number cleaning internally
-    await sendImageAndMessage(client, phone, image, `image_${name}`, text);
-    return res.status(200).send({ message: "Message sent successfully" });
+    // Use new sendImageMessage which handles URL images
+    const result = await sendImageMessage(client, [phone], image, text);
+    
+    if (result.messagesSent.length > 0) {
+      return res.status(200).send({ 
+        message: 'Message sent successfully',
+        messagesSent: result.messagesSent.length,
+      });
+    } else {
+      throw new Error('Failed to send image message');
+    }
   } catch (error) {
     console.error("Error sending the message:", error);
     let reason = "Unknown reason";

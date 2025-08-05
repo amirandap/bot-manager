@@ -1,13 +1,12 @@
 /* eslint-disable max-len */
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import express from "express";
-import {
-  sendMessage,
-  fetchUserData,
-  sendErrorMessage,
-} from "../helpers/helpers";
-import { getClient } from "../config/clientExporter";
+import express from 'express';
+import { sendTextWithErrorHandling } from '../utils/messageHandler';
+import { fetchUserData } from '../utils/userDataService';
+import { createPersonalizedMessage } from '../utils/messageFormatter';
+import MessageErrorHandler from '../utils/messageErrorHandler';
+import { getClient } from '../config/clientExporter';
 
 const router = express.Router();
 
@@ -38,11 +37,12 @@ router.post("/", async (req: Request, res: Response) => {
       if (userData) {
         const { celular, full_name } = userData;
         finalPhoneNumber = celular;
-        const firstName = full_name.split(" ")[0]; // Extract the first name
-        newMessage = `Saludos ${firstName}, como estas? ${message.replace(
-          /-/g,
-          " "
-        )}`;
+        const firstName = full_name.split(' ')[0]; // Extract the first name
+        newMessage = createPersonalizedMessage(
+          message.replace(/-/g, ' '),
+          userData,
+          'Saludos',
+        );
       } else {
         console.error("Discord user ID not found: ", discorduserid);
         return res.status(404).send({ error: "Discord user ID not found" });
@@ -62,29 +62,46 @@ router.post("/", async (req: Request, res: Response) => {
   }
 
   try {
-    // sendMessage will handle cleaning internally, no need for validation here
-    await sendMessage(client, finalPhoneNumber, newMessage);
-    return res.send({ message: "Message sent successfully" });
-  } catch (error: unknown) {
-    console.error("Error sending the message:", error);
-    let reason = "Unknown reason";
-    if (error instanceof Error) {
-      reason = error?.message && error.message;
-    }
-    let errorMessage: string = `
-Error en /confirmation
+    // Use new centralized message handler
+    const result = await sendTextWithErrorHandling(
+      client,
+      [finalPhoneNumber],
+      newMessage,
+    );
 
-${userData ? userData.full_name : ""}
-www.instagram.com/${userData ? userData.instagram : ""}
-${finalPhoneNumber}
-${discorduserid}
-Error: ${reason}
-`;
-    // Note: Phone number validation errors will be handled by sendMessage helper
-    await sendErrorMessage(client, errorMessage);
-    return res
-      .status(500)
-      .send({ error: `Error sending message: ${reason}`, errorMessage });
+    if (result.success) {
+      return res.send({ 
+        message: 'Message sent successfully',
+        messagesSent: result.messagesSent.length,
+      });
+    } else {
+      // If there were errors, handle them
+      await MessageErrorHandler.sendErrorReport(
+        client,
+        { discorduserid, phoneNumber, message, userData },
+        result.errors,
+        'confirmation-endpoint',
+      );
+      
+      return res.status(500).send({ 
+        error: 'Error sending message',
+        details: result.errors,
+      });
+    }
+  } catch (error: unknown) {
+    const reason = error instanceof Error ? error.message : 'Unknown reason';
+    
+    // Handle critical errors
+    await MessageErrorHandler.handleCriticalError(
+      client,
+      error,
+      { discorduserid, phoneNumber, message, userData },
+      'confirmation-endpoint',
+    );
+    
+    return res.status(500).send({ 
+      error: `Error sending message: ${reason}`,
+    });
   }
 });
 

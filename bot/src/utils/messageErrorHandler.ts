@@ -1,6 +1,6 @@
-import { Client } from "whatsapp-web.js";
-import { sendErrorMessage } from "../helpers/helpers";
-import { logWhatsAppError } from "./errorHandler";
+import { Client } from 'whatsapp-web.js';
+import { sendErrorMessage } from './errorMessaging';
+import { logWhatsAppError } from './errorHandler';
 
 /**
  * Generic error handler for message sending operations
