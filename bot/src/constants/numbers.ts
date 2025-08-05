@@ -1,5 +1,5 @@
 // eslint-disable-next-line max-len, node/no-process-env
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 dotenv.config();
 
 export const DEFAULT_FALLBACK_PHONE_NUMBER =

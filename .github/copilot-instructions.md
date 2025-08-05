@@ -32,6 +32,9 @@ This is a WhatsApp/Discord bot manager built with TypeScript, featuring:
 - Use proper TypeScript interfaces and types
 - Follow the existing service-based architecture
 - Use the established error handling patterns
+- **NEVER create or use .sh scripts** - always execute commands directly in terminal
+- Use direct npm/pm2/git commands instead of shell scripts
+- Prefer built-in VS Code terminal over custom automation scripts
 
 ## API Structure
 
@@ -49,6 +52,8 @@ This is a WhatsApp/Discord bot manager built with TypeScript, featuring:
 - Direct API communication with bot instances
 
 ## Build and Deploy Commands
+
+**IMPORTANT: Never use custom .sh scripts. Always use direct commands.**
 
 Instead of using helper scripts, prefer using these direct commands:
 
@@ -79,6 +84,21 @@ pm2 reload bot-manager-frontend
 pm2 reload all
 ```
 
+### Development workflow
+```bash
+# Start development servers
+cd frontend && npm run dev
+cd backend && npm run dev
+cd bot && npm run dev
+
+# Check logs
+pm2 logs bot-manager-backend
+pm2 logs wabot-[port]
+
+# Monitor services
+pm2 monit
+```
+
 When suggesting code changes, ensure they:
 
 1. Maintain the existing architecture patterns
@@ -86,4 +106,5 @@ When suggesting code changes, ensure they:
 3. Are compatible with the monorepo structure
 4. Support the auto-sync functionality
 5. Handle errors gracefully
-6. Avoid using custom scripts - prefer direct commands
+6. **NEVER use custom .sh scripts - always prefer direct terminal commands**
+7. Use npm/pm2/git commands directly instead of wrapper scripts

@@ -1,6 +1,10 @@
-import fs from 'fs';
-import path from 'path';
-import { LOGS_PATH, BOT_ID } from '..';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Get paths from environment or create them
+const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
+const DATA_ROOT = path.join(__dirname, '../../../../data');
+const LOGS_PATH = path.join(DATA_ROOT, 'logs', BOT_ID);
 
 // Define lifecycle states for better tracking
 export enum BotLifecycleState {
@@ -43,6 +47,11 @@ class BotLifecycleTracker {
   private stateFile: string;
   
   constructor() {
+    // Ensure logs directory exists
+    if (!fs.existsSync(LOGS_PATH)) {
+      fs.mkdirSync(LOGS_PATH, { recursive: true });
+    }
+    
     this.stateFile = path.join(LOGS_PATH, 'lifecycle-state.json');
     this.loadState();
   }
@@ -411,3 +420,6 @@ class BotLifecycleTracker {
 
 // Singleton instance
 export const botLifecycle = new BotLifecycleTracker();
+
+// Export BOT_ID for use in other modules
+export { BOT_ID };
