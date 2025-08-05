@@ -56,34 +56,25 @@ router.post("/", upload.single("file"), async (req, res) => {
   try {
     console.log(`🖼️ [BOT] Image message request ${requestId} received`);
     
+    // Validate file upload
+    const fileValidation = RequestValidator.validateFileUpload(
+      req, 
+      res, 
+      "Image", 
+      ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    );
+    if (!fileValidation.isValid) return;
+
+    // Validate recipients
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
+
     const { to, message } = req.body;
-    const file = req.file;
+    const file = fileValidation.file!; // Safe to use ! because validation passed
 
-    // Validation
-    if (!file) {
-      console.error(`❌ [BOT] Request ${requestId}: Image file is required`);
-      return res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: Image file is required",
-        acceptedTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-        maxSize: "16MB",
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (!to) {
-      console.error(`❌ [BOT] Request ${requestId}: 'to' field is required`);
-      return res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Normalize recipients to array
-    const recipients = Array.isArray(to) ? to : [to];
+    // Process recipients
+    const { groups, phoneNumbers } = RecipientProcessor.processSimpleRecipients(to);
+    const recipients = [...groups, ...phoneNumbers];
     const caption = message || '';
 
     console.log(`🖼️ [BOT] Request ${requestId}: Sending image to ${recipients.length} recipient(s)`);
@@ -102,17 +93,13 @@ router.post("/", upload.single("file"), async (req, res) => {
       await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-image");
     }
 
-    const statusCode = results.errors.length === 0 ? 200 : 
-                      results.messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    const statusCode = RequestValidator.getResponseStatus(results.errors, results.messagesSent);
+    const response = RequestValidator.buildResponse(results.messagesSent, results.errors);
 
     console.log(`✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`);
 
     return res.status(statusCode).json({
-      success: results.errors.length === 0,
-      messagesSent: results.messagesSent,
-      errors: results.errors,
-      totalSent: results.messagesSent.length,
-      totalErrors: results.errors.length,
+      ...response,
       fileInfo: {
         name: file.originalname,
         size: file.size,

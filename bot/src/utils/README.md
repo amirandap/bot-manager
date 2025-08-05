@@ -76,9 +76,13 @@ const statusCode = RequestValidator.getResponseStatus(errors, messagesSent);
 ```
 
 ### `messageTypes.ts`
-Tipos TypeScript reutilizables para operaciones de mensajes.
+~~Tipos TypeScript reutilizables para operaciones de mensajes.~~ 
 
-**Tipos disponibles:**
+**⚠️ MOVIDO A `/types/types.ts`**
+
+Los tipos de mensajes ahora están centralizados en el archivo principal de tipos del proyecto para evitar duplicación.
+
+**Tipos disponibles en `/types/types.ts`:**
 - `BaseMessageRequestBody` - Estructura base para requests
 - `SendMessageRequestBody` - Para mensajes de texto
 - `MediaMessageRequestBody` - Para mensajes con media
@@ -86,6 +90,11 @@ Tipos TypeScript reutilizables para operaciones de mensajes.
 - `ProcessingResult` - Resultado de procesamiento
 - `SendResponse` - Respuesta estándar
 - `MediaSendResponse` - Respuesta para media con info de archivo
+
+**Uso:**
+```typescript
+import { SendResponse, MediaMessageRequestBody } from "../types/types";
+```
 
 ## Rutas Actualizadas
 

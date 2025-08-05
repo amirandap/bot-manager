@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { SendResponse } from "../types/types";
 
 /**
  * Generic request validator for message endpoints
@@ -78,13 +79,7 @@ export default class RequestValidator {
   /**
    * Builds standardized response object
    */
-  static buildResponse(messagesSent: string[], errors: any[]): {
-    success: boolean;
-    messagesSent: string[];
-    errors: any[];
-    totalSent: number;
-    totalErrors: number;
-  } {
+  static buildResponse(messagesSent: string[], errors: any[]): SendResponse {
     return {
       success: errors.length === 0,
       messagesSent,
