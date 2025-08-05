@@ -1,8 +1,8 @@
 /* eslint-disable max-len */
-import { getClient } from '../config/clientExporter';
-import { sendImageMessage } from '../helpers/mediaHelpers';
-import { sendErrorMessage } from '../utils/errorMessaging';
-import { Participant } from '../types/types';
+import { getClient } from '../../config/clientExporter';
+import { sendImageMessage } from '../../helpers/mediaHelpers';
+import { sendErrorMessage } from '../../utils/errorMessaging';
+import { Participant } from '../../types/types';
 import express from 'express';
 
 const router = express.Router();

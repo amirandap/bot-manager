@@ -190,3 +190,89 @@ export function shouldSendFallback(error: any, context: string, recipient?: stri
   const validation = logWhatsAppError(error, context, recipient);
   return !validation.shouldIgnore;
 }
+
+/**
+ * Enhanced error categorization from legacy helpers.ts
+ * Provides detailed error analysis and troubleshooting guidance
+ */
+export interface DetailedErrorAnalysis {
+  errorType: string;
+  errorMessage: string;
+  originalError: string;
+  recipient?: string;
+  originalRecipient?: string;
+  timestamp: string;
+  troubleshooting: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+}
+
+/**
+ * Categorize and analyze errors with detailed troubleshooting information
+ * This function migrates the advanced error categorization from helpers.ts
+ */
+export function categorizeError(
+  error: any, 
+  recipient?: string, 
+  originalRecipient?: string
+): DetailedErrorAnalysis {
+  let errorType = 'UNKNOWN_ERROR';
+  let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'MEDIUM';
+
+  // Enhanced categorization based on error patterns
+  if (errorMessage.includes('BOT_ERROR:')) {
+    errorType = 'BOT_INITIALIZATION_ERROR';
+    severity = 'CRITICAL';
+  } else if (errorMessage.includes('WHATSAPP_ERROR:')) {
+    errorType = 'WHATSAPP_NUMBER_ERROR';
+    severity = 'HIGH';
+  } else if (errorMessage.includes('WHATSAPP_VERIFICATION_ERROR:')) {
+    errorType = 'WHATSAPP_VERIFICATION_ERROR';
+    severity = 'HIGH';
+  } else if (errorMessage.includes('serialize')) {
+    errorType = 'WHATSAPP_SERIALIZATION_ERROR';
+    errorMessage = 'WhatsApp post-send serialization error - message likely delivered but session unstable';
+    severity = 'LOW'; // Message was likely delivered
+  } else if (errorMessage.includes('Cannot read properties')) {
+    errorType = 'WHATSAPP_DOM_ERROR';
+    errorMessage = 'WhatsApp Web DOM structure changed or session lost';
+    severity = 'MEDIUM';
+  } else if (errorMessage.includes('Evaluation failed')) {
+    errorType = 'WHATSAPP_SCRIPT_ERROR';
+    errorMessage = 'WhatsApp Web script execution failed - session may be unstable';
+    severity = 'MEDIUM';
+  } else if (errorMessage.includes('Target closed')) {
+    errorType = 'BROWSER_TARGET_CLOSED';
+    errorMessage = 'Browser session closed unexpectedly';
+    severity = 'HIGH';
+  } else if (errorMessage.includes('Session closed')) {
+    errorType = 'SESSION_CLOSED';
+    errorMessage = 'WhatsApp Web session terminated';
+    severity = 'HIGH';
+  }
+
+  // Get troubleshooting guidance
+  const troubleshootingGuides: Record<string, string> = {
+    BOT_INITIALIZATION_ERROR: 'Restart the bot service - client not initialized properly',
+    WHATSAPP_NUMBER_ERROR: 'Verify the phone number is registered on WhatsApp',
+    WHATSAPP_VERIFICATION_ERROR: 'Check number format and WhatsApp registration status',
+    WHATSAPP_SERIALIZATION_ERROR: 'Post-send error - message likely delivered, monitor session stability',
+    WHATSAPP_SESSION_ERROR: 'Scan QR code to re-authenticate WhatsApp Web',
+    WHATSAPP_DOM_ERROR: 'Restart bot - WhatsApp Web may have updated its interface',
+    WHATSAPP_SCRIPT_ERROR: 'Restart bot and scan QR code if connection issues persist',
+    BROWSER_TARGET_CLOSED: 'Restart bot service - browser session terminated unexpectedly',
+    SESSION_CLOSED: 'Restart bot and re-authenticate WhatsApp Web session',
+    UNKNOWN_ERROR: 'Check bot logs for more details and restart bot if necessary',
+  };
+
+  return {
+    errorType,
+    errorMessage,
+    originalError: error instanceof Error ? error.message : String(error),
+    recipient,
+    originalRecipient,
+    timestamp: new Date().toISOString(),
+    troubleshooting: troubleshootingGuides[errorType] || troubleshootingGuides.UNKNOWN_ERROR,
+    severity,
+  };
+}

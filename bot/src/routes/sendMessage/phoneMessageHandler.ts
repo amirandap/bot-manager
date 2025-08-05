@@ -1,106 +1,95 @@
-import { Client } from "whatsapp-web.js";
-import { formatMessage, sendFileAndMessage, sendMessage } from "../../helpers/helpers";
-import { ErrorObject } from "./types";
-import { shouldSendFallback } from "../../utils/errorHandler";
+import { Client } from 'whatsapp-web.js';
+import { 
+  sendTextMessage, 
+  sendDocumentMessage,
+} from '../../helpers/mediaHelpers';
+import { ErrorObject } from './types';
 
 /**
  * Handles individual phone number message sending
  */
 export default class PhoneMessageHandler {
-  static async sendToPhones(
+  public static async sendToPhones(
     client: Client | null,
     phoneNumbers: string[],
     message: string,
-    file?: Express.Multer.File
+    file?: Express.Multer.File,
   ): Promise<{ messagesSent: string[]; errors: ErrorObject[] }> {
     const messagesSent: string[] = [];
     const errors: ErrorObject[] = [];
 
+    if (!client) {
+      errors.push({
+        phoneNumber: 'ALL',
+        error: 'WhatsApp client not initialized',
+        errorType: 'CLIENT_NOT_INITIALIZED',
+        timestamp: new Date().toISOString(),
+      });
+      return { messagesSent, errors };
+    }
+
     for (const number of phoneNumbers) {
       try {
-        console.log(number, "NUMBER");
-        
-        const { phoneNumber, formattedMessage } = formatMessage(message, {
-          full_name: "",
-          celular: number,
-          user_id: 0,
-          username: "",
-          nickname: "",
-          email: "",
-          user_discord_id: "",
-          youtube_id: "",
-          individualID: 0,
-          individual_id: 0,
-          SubmissionId: 0,
-          instagram: "",
-        });
-
         if (file) {
-          const result = await sendFileAndMessage(
+          // Use new document message sender
+          const result = await sendDocumentMessage(
             client,
-            phoneNumber,
-            { data: file.buffer.toString("base64"), mimetype: file.mimetype },
-            formattedMessage
+            [number],
+            file,
+            message,
           );
           
-          // Check if file was sent successfully (even with warnings)
-          if (result.status === "success") {
-            if (result.warning) {
-              console.warn(`⚠️ [BOT_ROUTE] File sent with warning to ${phoneNumber}: ${result.warning}`);
-            }
-            messagesSent.push(phoneNumber);
-          } else {
-            throw new Error(`File send failed: ${result.message || 'Unknown error'}`);
+          if (result.messagesSent.length > 0) {
+            messagesSent.push(...result.messagesSent);
+          }
+          
+          if (result.errors.length > 0) {
+            // Convert MediaResult errors to ErrorObject format
+            const convertedErrors = result.errors.map(err => ({
+              phoneNumber: err.recipient,
+              error: err.error,
+              errorType: err.errorType,
+              timestamp: err.timestamp,
+            }));
+            errors.push(...convertedErrors);
           }
         } else {
-          const result = await sendMessage(client, phoneNumber, formattedMessage);
+          // Use new text message sender
+          const result = await sendTextMessage(
+            client,
+            [number],
+            message,
+          );
           
-          // Check if message was sent successfully (even with warnings)
-          if (result.status === "success") {
-            if (result.warning) {
-              console.warn(`⚠️ [BOT_ROUTE] Message sent with warning to ${phoneNumber}: ${result.warning}`);
-            }
-            messagesSent.push(phoneNumber);
-          } else {
-            throw new Error(`Message send failed: ${result.message || 'Unknown error'}`);
+          if (result.messagesSent.length > 0) {
+            messagesSent.push(...result.messagesSent);
+          }
+          
+          if (result.errors.length > 0) {
+            // Convert MediaResult errors to ErrorObject format
+            const convertedErrors = result.errors.map(err => ({
+              phoneNumber: err.recipient,
+              error: err.error,
+              errorType: err.errorType,
+              timestamp: err.timestamp,
+            }));
+            errors.push(...convertedErrors);
           }
         }
       } catch (error: unknown) {
-        let errorType = "UNKNOWN_ERROR";
-        let errorMessage = error instanceof Error ? error.message : "Unknown error";
-        
-        // Use standardized error validation to determine if fallback should be sent
-        const sendFallback = shouldSendFallback(error, 'PHONE_MESSAGE', number);
-        
-        if (!sendFallback) {
-          // Post-send error - message was likely delivered successfully
-          messagesSent.push(number);
-          console.log(`✅ [BOT_ROUTE] Treating as successful send despite post-send error`);
-          continue; // Skip error reporting for session errors
-        }
-        
-        console.error(`❌ [BOT_ROUTE] Critical error sending message to ${number}:`, error);
-        
-        // Parse structured error from helper
-        if (errorMessage.startsWith("BOT_SEND_ERROR:")) {
-          try {
-            const errorData = JSON.parse(errorMessage.replace("BOT_SEND_ERROR: ", ""));
-            errorType = errorData.errorType;
-            errorMessage = errorData.originalError;
-          } catch (parseError) {
-            console.error(`❌ [BOT_ROUTE] Failed to parse error data:`, parseError);
-          }
-        }
+        // Critical errors that couldn't be handled by the new message functions
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : 'Unknown error';
         
         const errorDetails = {
           phoneNumber: number,
           error: errorMessage,
-          errorType,
-          timestamp: new Date().toISOString()
+          errorType: 'CRITICAL_ERROR',
+          timestamp: new Date().toISOString(),
         };
         
         errors.push(errorDetails);
-        console.error(`🔥 [BOT_ROUTE] Detailed error for ${number}:`, errorDetails);
       }
     }
 

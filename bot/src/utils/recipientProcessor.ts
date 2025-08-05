@@ -1,4 +1,4 @@
-import { fetchUserData } from "../helpers/helpers";
+import { fetchUserData } from './userDataService';
 import { BaseMessageRequestBody } from "../types/types";
 
 /**

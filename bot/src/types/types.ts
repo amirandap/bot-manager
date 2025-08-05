@@ -12,6 +12,25 @@ export type Participant = {
     rank: number;
 }
 
+// User data interface from external API
+export interface User {
+  user_id: number;
+  full_name: string;
+  username: string;
+  nickname: string;
+  email: string;
+  user_discord_id: string;
+  hearratelink?: string | null;
+  youtube_id: string;
+  iracing_id?: string | null;
+  ea_ccount?: string | null;
+  individualID: number;
+  individual_id: number;
+  SubmissionId: number;
+  instagram: string;
+  celular: string;
+}
+
 // =================
 // MESSAGE TYPES
 // =================
