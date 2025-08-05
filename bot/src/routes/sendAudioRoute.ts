@@ -3,7 +3,9 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendAudioMessage } from "../helpers/mediaHelpers";
-import ErrorHandler from "./sendMessage/errorHandler";
+import MessageErrorHandler from "../utils/messageErrorHandler";
+import RequestValidator from "../utils/requestValidator";
+import RecipientProcessor from "../utils/recipientProcessor";
 
 const router = express.Router();
 const upload = multer({ 
@@ -56,34 +58,25 @@ router.post("/", upload.single("file"), async (req, res) => {
   try {
     console.log(`🎵 [BOT] Audio message request ${requestId} received`);
     
+    // Validate file upload
+    const fileValidation = RequestValidator.validateFileUpload(
+      req, 
+      res, 
+      "Audio", 
+      ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/m4a", "audio/aac", "audio/opus"]
+    );
+    if (!fileValidation.isValid) return;
+
+    // Validate recipients
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
+
     const { to, message } = req.body;
-    const file = req.file;
+    const file = fileValidation.file!; // Safe to use ! because validation passed
 
-    // Validation
-    if (!file) {
-      console.error(`❌ [BOT] Request ${requestId}: Audio file is required`);
-      return res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: Audio file is required",
-        acceptedTypes: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/m4a", "audio/aac", "audio/opus"],
-        maxSize: "16MB",
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (!to) {
-      console.error(`❌ [BOT] Request ${requestId}: 'to' field is required`);
-      return res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
-        requestId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Normalize recipients to array
-    const recipients = Array.isArray(to) ? to : [to];
+    // Process recipients
+    const { groups, phoneNumbers } = RecipientProcessor.processSimpleRecipients(to);
+    const recipients = [...groups, ...phoneNumbers];
 
     console.log(`🎵 [BOT] Request ${requestId}: Sending audio to ${recipients.length} recipient(s)`);
     console.log(`📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(file.size / 1024).toFixed(2)}KB)`);
@@ -98,20 +91,16 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await ErrorHandler.sendErrorReport(client, req.body, results.errors);
+      await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-audio");
     }
 
-    const statusCode = results.errors.length === 0 ? 200 : 
-                      results.messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    const statusCode = RequestValidator.getResponseStatus(results.errors, results.messagesSent);
+    const response = RequestValidator.buildResponse(results.messagesSent, results.errors);
 
     console.log(`✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`);
 
     return res.status(statusCode).json({
-      success: results.errors.length === 0,
-      messagesSent: results.messagesSent,
-      errors: results.errors,
-      totalSent: results.messagesSent.length,
-      totalErrors: results.errors.length,
+      ...response,
       fileInfo: {
         name: file.originalname,
         size: file.size,
@@ -124,10 +113,11 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
     
-    const { errorType, errorDetails } = await ErrorHandler.handleCriticalError(
+    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
       client,
       error,
-      req.body
+      req.body,
+      "/send-audio"
     );
     
     return res.status(500).json({

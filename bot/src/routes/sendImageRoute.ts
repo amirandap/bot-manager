@@ -3,7 +3,9 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendImageMessage } from "../helpers/mediaHelpers";
-import ErrorHandler from "./sendMessage/errorHandler";
+import MessageErrorHandler from "../utils/messageErrorHandler";
+import RequestValidator from "../utils/requestValidator";
+import RecipientProcessor from "../utils/recipientProcessor";
 
 const router = express.Router();
 const upload = multer({ 
@@ -97,7 +99,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await ErrorHandler.sendErrorReport(client, req.body, results.errors);
+      await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-image");
     }
 
     const statusCode = results.errors.length === 0 ? 200 : 
@@ -123,10 +125,11 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
     
-    const { errorType, errorDetails } = await ErrorHandler.handleCriticalError(
+    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
       client,
       error,
-      req.body
+      req.body,
+      "/send-image"
     );
     
     return res.status(500).json({
