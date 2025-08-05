@@ -1,4 +1,5 @@
 import { fetchUserData } from './userDataService';
+import { separateRecipients } from './recipientFormatting';
 import { BaseMessageRequestBody } from "../types/types";
 
 /**
