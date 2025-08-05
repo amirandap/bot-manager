@@ -10,9 +10,9 @@ import {
   sendVideoMessage,
 } from "./mediaMessaging";
 import { sendTextMessage } from "./textMessaging";
-import { sendErrorMessage } from "./errorMessaging";
+import { sendErrorMessage } from "./errorHandler";
 import { MediaResult } from "./messageTypes";
-import MessageErrorHandler from "./messageErrorHandler";
+import { MessageErrorHandler } from "./errorHandler";
 import { validateWhatsAppError, ErrorValidationResult } from "./errorHandler";
 import { getFallbackNumber } from "./fallbackUtils";
 

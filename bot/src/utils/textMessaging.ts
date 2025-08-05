@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from 'whatsapp-web.js';
 import { formatRecipient } from './recipientFormatting';
-import { shouldSendFallback } from '../utils/errorHandler';
+import { shouldSendFallback, logWhatsAppError } from './errorHandler';
 import { MediaResult } from './messageTypes';
 
 /**
@@ -62,14 +62,17 @@ export async function sendTextMessage(
         );
         messagesSent.push(recipient);
       } catch (sendError: any) {
-        // Handle post-send serialization errors
-        if (
-          messageSent || 
-          (sendError.message && sendError.message.includes('serialize'))
-        ) {
+        // Use centralized error validation instead of manual checking
+        const validation = logWhatsAppError(
+          sendError,
+          'TEXT_MESSAGE',
+          recipient,
+        );
+        
+        if (messageSent || validation.isPostSendError) {
           // eslint-disable-next-line no-console
           console.warn(
-            `⚠️ [BOT] Post-send serialization error (message likely sent): ` +
+            '⚠️ [BOT] Post-send error (message likely sent): ' +
             `${sendError.message}`,
           );
           messagesSent.push(recipient);
@@ -84,7 +87,10 @@ export async function sendTextMessage(
     } catch (error: any) {
       shouldSendFallback(error, 'TEXT_MESSAGE', recipient);
       // eslint-disable-next-line no-console
-      console.error(`❌ [BOT] Error sending text message to ${recipient}:`, error);
+      console.error(
+        `❌ [BOT] Error sending text message to ${recipient}:`,
+        error,
+      );
       
       errors.push({
         recipient,

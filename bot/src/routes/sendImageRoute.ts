@@ -3,7 +3,7 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendImageMessage } from "../helpers/mediaHelpers";
-import MessageErrorHandler from "../utils/messageErrorHandler";
+import { MessageErrorHandler } from '../utils/errorHandler';
 import RequestValidator from "../utils/requestValidator";
 import RecipientProcessor from "../utils/recipientProcessor";
 

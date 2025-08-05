@@ -18,7 +18,7 @@ export {
 } from '../utils/mediaMessaging';
 
 export { sendTextMessage } from '../utils/textMessaging';
-export { sendErrorMessage } from '../utils/errorMessaging';
+export { sendErrorMessage } from '../utils/errorHandler';
 
 
 
