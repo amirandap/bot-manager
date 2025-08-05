@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable max-len */
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 import {
   User,
   fetchUserData,
@@ -16,6 +16,16 @@ router.post("/", async (req, res) => {
   const { discorduserid, message }: { discorduserid: string; message: string } =
     req.body;
   console.log("Payload recibido en /pending: ", req.body);
+  
+  const client = getClient();
+  
+  if (!client) {
+    return res.status(503).json({ 
+      success: false, 
+      error: "WhatsApp client not ready"
+    });
+  }
+  
   try {
     if (!discorduserid || !message) {
       return res.status(400).send({ error: "Missing parameters" });

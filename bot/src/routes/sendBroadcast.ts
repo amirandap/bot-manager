@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import express from "express";
 import multer from "multer";
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 import GroupMessageHandler from "./sendMessage/groupMessageHandler";
 import PhoneMessageHandler from "./sendMessage/phoneMessageHandler";
 import ErrorHandler from "./sendMessage/errorHandler";
@@ -22,8 +22,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.post("/", upload.single("file"), async (req, res) => {
   const requestId = Date.now();
+  const client = getClient();
   
   try {
+    if (!client) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     console.log(`📢 [BOT] Broadcast message request ${requestId} received`);
     
     const { to, message } = req.body as SendMessageRequestBody & { to: string[] };

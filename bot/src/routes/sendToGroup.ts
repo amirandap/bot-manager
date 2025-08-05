@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import express from "express";
 import multer from "multer";
-import { client } from "../config/whatsAppClient";
+import { getClient } from "../config/clientExporter";
 import GroupMessageHandler from "./sendMessage/groupMessageHandler";
 import ErrorHandler from "./sendMessage/errorHandler";
 import { SendMessageRequestBody } from "./sendMessage/types";
@@ -21,8 +21,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.post("/", upload.single("file"), async (req, res) => {
   const requestId = Date.now();
+  const client = getClient();
   
   try {
+    if (!client) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     console.log(`🏢 [BOT] Group message request ${requestId} received`);
     
     const { groupId, message } = req.body as SendMessageRequestBody & { groupId: string | string[] };
