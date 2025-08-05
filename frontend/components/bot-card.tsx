@@ -49,8 +49,17 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
           "Content-Type": "application/json",
         },
       });
+      
       if (response.ok) {
         const statusData: BotStatus = await response.json();
+        
+        // If we have lifecycle data in the response, use it for status
+        // This prioritizes the bot's own lifecycle state over PM2 status
+        if (statusData.lifecycle && statusData.lifecycle.currentState) {
+          // Override the status with lifecycle state for more detailed status
+          statusData.status = statusData.lifecycle.currentState as BotStatus['status'];
+        }
+        
         setStatus(statusData);
       }
     } catch (error) {
@@ -268,6 +277,44 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
                 )}
                 {status.apiResponseTime && (
                   <div>API Response: {status.apiResponseTime}ms</div>
+                )}
+              </div>
+            )}
+            
+            {/* Bot Lifecycle information */}
+            {status?.lifecycle && (
+              <div className="pt-2 border-t border-gray-200 mt-2">
+                <div className="font-medium text-gray-700">Lifecycle:</div>
+                <div>State: <span className="font-medium">{status.lifecycle.currentState}</span></div>
+                
+                {status.lifecycle.lastStateChange && (
+                  <div className="mt-1">
+                    <div>Changed: {new Date(status.lifecycle.lastStateChange.timestamp).toLocaleTimeString()}</div>
+                    {status.lifecycle.lastStateChange.details && (
+                      <div className="text-gray-500 italic">{status.lifecycle.lastStateChange.details}</div>
+                    )}
+                    {status.lifecycle.lastStateChange.error && (
+                      <div className="text-red-500 font-medium">{status.lifecycle.lastStateChange.error}</div>
+                    )}
+                  </div>
+                )}
+                
+                {status.lifecycle.stateHistory && status.lifecycle.stateHistory.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-blue-500 hover:text-blue-700">State History</summary>
+                    <div className="mt-1 pl-2 border-l-2 border-gray-200 max-h-32 overflow-y-auto">
+                      {status.lifecycle.stateHistory.map((event, idx) => (
+                        <div key={idx} className="mb-1 pb-1 border-b border-gray-100">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{event.state}</span>
+                            <span className="text-gray-400">{new Date(event.timestamp).toLocaleTimeString()}</span>
+                          </div>
+                          {event.details && <div className="text-gray-500 text-xs">{event.details}</div>}
+                          {event.error && <div className="text-red-500 text-xs">{event.error}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
             )}

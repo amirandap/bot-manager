@@ -22,6 +22,7 @@ import nodemailer from "nodemailer";
 import { isSmtpConfigured, getSmtpConfig, logSmtpStatus } from "../utils/smtpUtils";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { getFallbackNumber } from "../utils/fallbackUtils";
 import { botLifecycle, BotLifecycleState } from "../utils/botLifecycleTracker";
 
@@ -37,6 +38,19 @@ export async function initializeClient() {
     
     // Set initial lifecycle state
     botLifecycle.setState(BotLifecycleState.INITIALIZING, 'Starting WhatsApp client initialization');
+    
+    // Update PM2 metrics on initialization
+    if (process.send) {
+      process.send({
+        type: 'process:msg',
+        data: {
+          botStarting: true,
+          botStartTime: new Date().toISOString(),
+          botId: BOT_ID,
+          startupPhase: 'initializing'
+        }
+      });
+    }
     
     // Log SMTP configuration status
     logSmtpStatus();
@@ -145,36 +159,82 @@ export function appendListeners(client: Client) {
   
   // QR code event
   client.on("qr", async (qr) => {
-    console.log("Scan the QR code with your phone:");
+    console.log("📱 Scan the QR code with your phone:");
     
     // Update lifecycle state - QR code is ready for scanning
     botLifecycle.markQRReady();
     
+    // Display QR in terminal
     qrTerminal.toString(
       qr,
       { type: "terminal", small: true },
       (err, qrString) => {
         if (err) {
-          console.error("Error generating QR code:", err);
+          console.error("❌ Error generating terminal QR code:", err);
           return;
         }
         console.log(qrString);
       }
     );
+    
+    // Generate QR code as data URL and store it locally for API access
     qrTerminal.toDataURL(qr, async (err, url) => {
-      // Send QR code to the endpoint
-      const baseUrl = process.env.BASE_URL || "http://localhost:2343";
+      if (err) {
+        console.error("❌ Error generating QR data URL:", err);
+        botLifecycle.markQRError(new Error(`QR generation error: ${err.message}`));
+        return;
+      }
+      
+      const botId = BOT_ID || "unknown-bot-id";
+      const qrCodeBase64 = url.split(",")[1];
+      
       try {
-        await fetch(`${baseUrl}/qr-code`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ qrCode: url.split(",")[1] }),
-        });
-        console.log("QR code sent to endpoint");
+        // Store QR code locally for API access
+        const qrCodeDir = path.join(process.cwd(), '../data/qr-codes');
+        
+        // Ensure the directory exists
+        if (!fs.existsSync(qrCodeDir)) {
+          fs.mkdirSync(qrCodeDir, { recursive: true });
+        }
+        
+        // Save QR code to a file named with the bot ID
+        const qrCodePath = path.join(qrCodeDir, `${botId}.json`);
+        fs.writeFileSync(
+          qrCodePath,
+          JSON.stringify({ 
+            qrCode: qrCodeBase64, 
+            timestamp: new Date().toISOString(),
+            botId: botId
+          }, null, 2)
+        );
+        
+        console.log(`💾 QR code saved locally for bot ID ${botId}`);
+        
+        // Also save as image for convenience
+        const qrImagePath = path.join(qrCodeDir, `${botId}.png`);
+        fs.writeFileSync(
+          qrImagePath,
+          qrCodeBase64,
+          'base64'
+        );
+        
+        // Update PM2 metrics to indicate QR code is available
+        if (process.send) {
+          process.send({
+            type: 'process:msg',
+            data: {
+              qrCodeAvailable: true,
+              qrCodeTimestamp: new Date().toISOString(),
+              botId: botId
+            }
+          });
+        }
       } catch (error) {
-        console.error("Error sending QR code to endpoint:", error);
+        console.error(`❌ Error saving QR code locally:`, error);
+        
+        if (error instanceof Error) {
+          botLifecycle.markQRError(error);
+        }
       }
 
             // Send email with QR code link if SMTP is configured and not already sent
@@ -190,11 +250,12 @@ export function appendListeners(client: Client) {
           });
 
           const rootFolderName = path.basename(path.resolve(__dirname, "../../"));
+          const apiHost = process.env.API_HOST || "http://localhost:3001";
           const mailOptions = {
             from: smtpConfig.user,
             to: smtpConfig.recipient,
-            subject: "WhatsApp QR Code",
-            text: `Scan the QR code using the following link: ${baseUrl}/qr-code\nRoot folder: ${rootFolderName}`,
+            subject: `WhatsApp QR Code - Bot ${BOT_ID}`,
+            text: `Scan the QR code for bot ${BOT_ID}.\nAccess the QR code at: ${apiHost}/api/bots/${botId}/qr-code\nRoot folder: ${rootFolderName}`,
           };
 
           await transporter.sendMail(mailOptions);
@@ -205,6 +266,50 @@ export function appendListeners(client: Client) {
         }
       }
     });
+  });
+  
+  // Add disconnect event handler
+  client.on("disconnected", (reason) => {
+    console.log(`🔌 WhatsApp client disconnected: ${reason}`);
+    botLifecycle.markDisconnected(reason);
+    
+    // Update PM2 metrics for disconnection event
+    if (process.send) {
+      process.send({
+        type: 'process:msg',
+        data: {
+          botConnected: false,
+          botDisconnected: true,
+          disconnectReason: reason,
+          disconnectTimestamp: new Date().toISOString(),
+          botId: BOT_ID
+        }
+      });
+    }
+  });
+  
+  // Add reconnecting event handler
+  client.on("change_state", (state) => {
+    console.log(`📶 WhatsApp client state changed: ${state}`);
+    
+    if (state === 'CONNECTED') {
+      botLifecycle.markConnected();
+    }
+    else if (state === 'OPENING') {
+      botLifecycle.markReconnecting();
+      
+      // Update PM2 metrics for reconnection attempt
+      if (process.send) {
+        process.send({
+          type: 'process:msg',
+          data: {
+            botReconnecting: true,
+            reconnectAttemptTimestamp: new Date().toISOString(),
+            botId: BOT_ID
+          }
+        });
+      }
+    }
   });
 
   client.on("message", async (message) => {
@@ -242,16 +347,46 @@ export function appendListeners(client: Client) {
     app.use("/confirm", confirmationRoute);
     app.use("/getGroups", getGroupsRoute);
 
-    // Clear any QR code that might be cached
-    const baseUrl = process.env.BASE_URL || "http://localhost:2343";
-    fetch(`${baseUrl}/qr-code/clear`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).catch((error) => {
-      console.error("Error clearing QR code:", error);
-    });
+    // Use the botLifecycle to update PM2 metrics
+    botLifecycle.updateMetrics();
+    
+    // Send additional ready metrics
+    if (process.send) {
+      process.send({
+        type: 'process:msg',
+        data: {
+          botConnected: true,
+          botReady: true,
+          botReadyTimestamp: new Date().toISOString(),
+          botId: BOT_ID,
+          qrCodeAvailable: false,
+          apiRoutesInitialized: true,
+          whatsappInfo: client.info ? {
+            phone: client.info.wid ? client.info.wid.user : null,
+            name: client.info.pushname,
+            platform: client.info.platform
+          } : null,
+          memoryUsage: process.memoryUsage()
+        }
+      });
+    }
+    
+    // Delete any stored QR code since we don't need it anymore
+    try {
+      const qrCodeDir = path.join(process.cwd(), '../data/qr-codes');
+      const qrCodePath = path.join(qrCodeDir, `${BOT_ID}.json`);
+      const qrImagePath = path.join(qrCodeDir, `${BOT_ID}.png`);
+      
+      if (fs.existsSync(qrCodePath)) {
+        fs.unlinkSync(qrCodePath);
+      }
+      
+      if (fs.existsSync(qrImagePath)) {
+        fs.unlinkSync(qrImagePath);
+      }
+    } catch (error) {
+      console.error("Error removing QR code files:", error);
+    }
   });
 
   client.on("error", (error) => {

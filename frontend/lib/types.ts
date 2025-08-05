@@ -24,13 +24,29 @@ export interface BotStatus {
   name: string;
   type?: "whatsapp" | "discord"; // Made optional to handle cases where type might be undefined
   status:
+    // Standard states
     | "online"
     | "offline"
     | "stopped"
     | "stopping"
     | "errored"
     | "launching"
-    | "unknown";
+    | "unknown"
+    // Lifecycle states from bot
+    | "initializing"
+    | "browser_launching"
+    | "waiting_for_qr"
+    | "qr_ready"
+    | "qr_scanned"
+    | "authenticating"
+    | "ready"
+    | "connected"
+    | "disconnected"
+    | "reconnecting"
+    | "error_browser"
+    | "error_connection"
+    | "error_authentication"
+    | "error_unknown";
   lastSeen?: string;
   phoneNumber?: string | null;
   pushName?: string | null;
@@ -46,6 +62,22 @@ export interface BotStatus {
   // API connectivity
   apiResponsive?: boolean;
   apiResponseTime?: number; // in milliseconds
+  // Lifecycle information
+  lifecycle?: {
+    currentState: string;
+    lastStateChange?: {
+      timestamp: string;
+      state: string;
+      details?: string;
+      error?: string;
+    };
+    stateHistory?: Array<{
+      timestamp: string;
+      state: string;
+      details?: string;
+      error?: string;
+    }>;
+  };
 }
 
 // Legacy interface for backward compatibility

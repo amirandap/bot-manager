@@ -13,18 +13,47 @@ export default function StatusIndicator({
 }: StatusIndicatorProps) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
+      // Connected states
       case "online":
+      case "ready":
+      case "connected":
         return "bg-green-500";
+        
+      // Initialization states
+      case "initializing":
+      case "browser_launching":
+      case "launching":
+        return "bg-blue-500";
+        
+      // QR code states  
+      case "waiting_for_qr":
+      case "qr_ready":
+        return "bg-purple-500";
+      case "qr_scanned":
+      case "authenticating":
+        return "bg-indigo-400";
+        
+      // Disconnected states
       case "offline":
+      case "disconnected":
         return "bg-gray-400";
+        
+      // Stopping states
       case "stopped":
         return "bg-red-400";
       case "stopping":
         return "bg-yellow-500";
+        
+      // Error states  
       case "errored":
+      case "error_browser":
+      case "error_connection":
+      case "error_authentication":
+      case "error_unknown":
         return "bg-red-500";
-      case "launching":
-        return "bg-blue-500";
+        
+      case "reconnecting":
+        return "bg-yellow-400";
       case "unknown":
         return "bg-gray-300";
       default:
@@ -34,18 +63,55 @@ export default function StatusIndicator({
 
   const getStatusText = (status: string) => {
     switch (status.toLowerCase()) {
+      // Connected states
       case "online":
+      case "ready":
+      case "connected":
         return "Online";
+        
+      // Initialization states
+      case "initializing":
+        return "Initializing";
+      case "browser_launching":
+        return "Launching Browser";
+      case "launching":
+        return "Starting";
+        
+      // QR code states
+      case "waiting_for_qr":
+        return "Waiting for QR";
+      case "qr_ready":
+        return "QR Ready";
+      case "qr_scanned":
+        return "QR Scanned";
+      case "authenticating":
+        return "Authenticating";
+        
+      // Disconnected states
       case "offline":
+      case "disconnected":
         return "Offline";
+        
+      // Stopping states
       case "stopped":
         return "Stopped";
       case "stopping":
         return "Stopping";
+        
+      // Error states
       case "errored":
         return "Error";
-      case "launching":
-        return "Starting";
+      case "error_browser":
+        return "Browser Error";
+      case "error_connection":
+        return "Connection Error";
+      case "error_authentication":
+        return "Auth Error";
+      case "error_unknown":
+        return "Unknown Error";
+        
+      case "reconnecting":
+        return "Reconnecting";
       case "unknown":
         return "Unknown";
       default:
@@ -53,9 +119,15 @@ export default function StatusIndicator({
     }
   };
 
-  const shouldAnimate = ["online", "launching", "stopping"].includes(
-    status.toLowerCase()
-  );
+  const shouldAnimate = [
+    // Connected/active states
+    "online", "ready", "connected",
+    // Initialization states
+    "initializing", "browser_launching", "launching", 
+    // Transition states
+    "waiting_for_qr", "qr_ready", "qr_scanned", "authenticating",
+    "stopping", "reconnecting"
+  ].includes(status.toLowerCase());
 
   return (
     <div className="flex items-center gap-2">

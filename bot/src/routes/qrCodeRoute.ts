@@ -1,46 +1,63 @@
 import { Router } from 'express';
 import { client } from '../config/whatsAppClient';
 import { botLifecycle, BotLifecycleState } from '../utils/botLifecycleTracker';
+import fs from 'fs';
+import path from 'path';
+import { BOT_ID } from '..';
 
 const router = Router();
 
-let qrCodeBase64: string | null = null;
-let qrCodeGeneratedAt: Date | null = null;
-const QR_CODE_EXPIRY_MINUTES = 2; // QR codes typically expire after 2 minutes
+// Convert the state enum to a string for comparison
+function getStateAsString(state: BotLifecycleState): string {
+  return state.toString();
+}
 
-router.post('/', (req, res) => {
-  const { qrCode } = req.body;
-  qrCodeBase64 = qrCode;
-  qrCodeGeneratedAt = new Date();
-  
-  // Update bot lifecycle state
-  botLifecycle.markQRReady();
-  
-  res.status(200).send('QR code received');
-});
+// QR codes typically expire after 2 minutes
+const QR_CODE_EXPIRY_MINUTES = 2; 
 
-router.post('/clear', (req, res) => {
-  qrCodeBase64 = null;
-  qrCodeGeneratedAt = null;
-  
-  // Only update state if not connected (don't change from CONNECTED to WAITING_FOR_QR)
-  const currentState = botLifecycle.getState();
-  if (currentState !== BotLifecycleState.CONNECTED && 
-      currentState !== BotLifecycleState.READY) {
-    botLifecycle.markWaitingForQR();
+// QR code storage location
+const QR_CODE_DIR = path.join(process.cwd(), '../data/qr-codes');
+
+// Helper function to read QR code from file storage
+function getStoredQRCode(): { qrCode: string | null, timestamp: Date | null } {
+  try {
+    // Ensure the directory exists
+    if (!fs.existsSync(QR_CODE_DIR)) {
+      return { qrCode: null, timestamp: null };
+    }
+    
+    const qrFilePath = path.join(QR_CODE_DIR, `${BOT_ID}.json`);
+    
+    if (!fs.existsSync(qrFilePath)) {
+      return { qrCode: null, timestamp: null };
+    }
+    
+    const qrData = JSON.parse(fs.readFileSync(qrFilePath, 'utf-8'));
+    return { 
+      qrCode: qrData.qrCode, 
+      timestamp: new Date(qrData.timestamp) 
+    };
+  } catch (error) {
+    console.error('Error reading QR code from storage:', error);
+    return { qrCode: null, timestamp: null };
   }
-  
-  res.status(200).send('QR code cleared');
-});
+}
 
 router.get('/', (req, res) => {
   const acceptsHTML = req.headers.accept && req.headers.accept.includes('text/html');
   
-  // Get current lifecycle state
+  // Get current lifecycle state and convert to string
   const currentState = botLifecycle.getState();
+  const stateAsString = getStateAsString(currentState);
+  const lifecycleDetails = botLifecycle.getStateDetails();
   
   // Check if client is already connected
-  if (client && client.info && client.info.wid) {
+  if (stateAsString === 'connected' || 
+      stateAsString === 'ready' ||
+      (client && client.info && client.info.wid)) {
+    
+    const phoneNumber = client && client.info && client.info.wid ? client.info.wid.user : 'Unknown';
+    
     if (acceptsHTML) {
       res.status(200).send(`
         <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -49,10 +66,13 @@ router.get('/', (req, res) => {
             This WhatsApp bot is already connected and authenticated.
           </p>
           <p style="font-size: 14px; color: #666;">
-            Phone Number: ${client.info.wid.user}
+            Phone Number: ${phoneNumber}
           </p>
           <p style="font-size: 12px; color: #999;">
             No QR code scan is required.
+          </p>
+          <p style="font-size: 12px; color: #999;">
+            Current State: ${currentState}
           </p>
           <button onclick="window.close();" style="
             background-color: #25D366; 
@@ -70,20 +90,58 @@ router.get('/', (req, res) => {
         success: true,
         status: 'connected',
         lifecycleState: currentState,
+        lifecycleDetails: lifecycleDetails,
         message: 'Bot is already connected to WhatsApp',
-        phoneNumber: client.info.wid.user,
+        phoneNumber: phoneNumber,
+        timestamp: new Date().toISOString()
+      });
+    }
+    return;
+  }
+  
+  // Check if we're in an error state
+  if (stateAsString.startsWith('error_') || stateAsString === 'qr_error') {
+    if (acceptsHTML) {
+      res.status(500).send(`
+        <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+          <h1 style="color: #ff6b6b;">⚠️ Bot Error</h1>
+          <p style="font-size: 16px; color: #333;">
+            The bot is currently in an error state: ${currentState}
+          </p>
+          <p style="font-size: 14px; color: #666;">
+            ${lifecycleDetails.lastStateChange?.details || 'Unknown error'}
+          </p>
+          <button onclick="window.location.reload();" style="
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            margin-top: 20px;
+          ">RETRY</button>
+        </div>
+      `);
+    } else {
+      res.status(500).json({
+        success: false,
+        status: 'error',
+        lifecycleState: currentState,
+        lifecycleDetails: lifecycleDetails,
+        message: 'Bot is in error state',
         timestamp: new Date().toISOString()
       });
     }
     return;
   }
 
-  // Check if QR code is available and not expired
-  if (qrCodeBase64 && qrCodeGeneratedAt) {
+  // Get QR code from storage
+  const { qrCode, timestamp } = getStoredQRCode();
+  
+    // Check if QR code is available and not expired
+  if (qrCode && timestamp) {
     const now = new Date();
-    const minutesSinceGenerated = (now.getTime() - qrCodeGeneratedAt.getTime()) / (1000 * 60);
-    
-    if (minutesSinceGenerated > QR_CODE_EXPIRY_MINUTES) {
+    const minutesSinceGenerated = (now.getTime() - timestamp.getTime()) / (1000 * 60);    if (minutesSinceGenerated > QR_CODE_EXPIRY_MINUTES) {
       // QR code has expired
       if (acceptsHTML) {
         res.status(410).send(`
@@ -112,7 +170,7 @@ router.get('/', (req, res) => {
           status: 'expired',
           lifecycleState: currentState,
           message: `QR code has expired (generated ${Math.floor(minutesSinceGenerated)} minutes ago)`,
-          generatedAt: qrCodeGeneratedAt.toISOString(),
+          generatedAt: timestamp.toISOString(),
           expiryMinutes: QR_CODE_EXPIRY_MINUTES,
           timestamp: new Date().toISOString()
         });
@@ -129,11 +187,11 @@ router.get('/', (req, res) => {
             Scan this QR code with your WhatsApp mobile app
           </p>
           <p style="font-size: 12px; color: #999;">
-            Generated: ${qrCodeGeneratedAt.toLocaleString()}<br>
+            Generated: ${timestamp.toLocaleString()}<br>
             Expires in: ${Math.ceil(QR_CODE_EXPIRY_MINUTES - minutesSinceGenerated)} minute(s)
           </p>
           <div style="margin: 20px 0;">
-            <img src="data:image/png;base64,${qrCodeBase64}" alt="QR Code" style="max-width: 300px; border: 2px solid #ddd; border-radius: 10px;" />
+            <img src="data:image/png;base64,${qrCode}" alt="QR Code" style="max-width: 300px; border: 2px solid #ddd; border-radius: 10px;" />
           </div>
           <button onclick="window.location.reload();" style="
             background-color: #25D366; 
@@ -161,8 +219,8 @@ router.get('/', (req, res) => {
         status: 'available',
         lifecycleState: currentState,
         message: 'QR code is ready for scanning',
-        qrCode: qrCodeBase64,
-        generatedAt: qrCodeGeneratedAt.toISOString(),
+        qrCode: qrCode,
+        generatedAt: timestamp.toISOString(),
         expiresIn: Math.ceil(QR_CODE_EXPIRY_MINUTES - minutesSinceGenerated),
         expiryMinutes: QR_CODE_EXPIRY_MINUTES,
         timestamp: new Date().toISOString()
@@ -212,37 +270,37 @@ router.get('/', (req, res) => {
       // Generate reasons based on lifecycle state
       const reasons = ['QR code has not been generated yet'];
       
-      switch (currentState) {
-        case BotLifecycleState.INITIALIZING:
-          reasons[0] = 'Bot is initializing';
-          reasons.push('Wait for initialization to complete (30-60 seconds)');
-          break;
-        case BotLifecycleState.BROWSER_LAUNCHING:
-          reasons[0] = 'Browser is launching';
-          reasons.push('Wait for browser initialization (30-60 seconds)');
-          break;
-        case BotLifecycleState.WAITING_FOR_QR:
-          reasons[0] = 'Waiting for QR code to be generated';
-          break;
-        case BotLifecycleState.CONNECTED:
-        case BotLifecycleState.READY:
-          reasons[0] = 'Bot is already connected to WhatsApp';
-          reasons.push('No QR code needed');
-          break;
-        case BotLifecycleState.ERROR_BROWSER:
-          reasons[0] = 'Browser initialization failed';
-          reasons.push('Check bot logs for details');
-          break;
-        case BotLifecycleState.ERROR_CONNECTION:
-          reasons[0] = 'Connection error occurred';
-          reasons.push('Check bot logs and network connectivity');
-          break;
-        default:
-          reasons.push(
-            'Bot may be starting up (wait 30-60 seconds)',
-            'WhatsApp Web session is being restored',
-            'QR code has expired and bot is generating a new one'
-          );
+      // Use if/else with string comparison instead of enum for proper type checking
+      if (stateAsString === 'initializing') {
+        reasons[0] = 'Bot is initializing';
+        reasons.push('Wait for initialization to complete (30-60 seconds)');
+      }
+      else if (stateAsString === 'browser_launching') {
+        reasons[0] = 'Browser is launching';
+        reasons.push('Wait for browser initialization (30-60 seconds)');
+      }
+      else if (stateAsString === 'waiting_for_qr') {
+        reasons[0] = 'Waiting for QR code to be generated';
+      }
+      else if (stateAsString === 'connected' || 
+               stateAsString === 'ready') {
+        reasons[0] = 'Bot is already connected to WhatsApp';
+        reasons.push('No QR code needed');
+      }
+      else if (stateAsString === 'error_browser') {
+        reasons[0] = 'Browser initialization failed';
+        reasons.push('Check bot logs for details');
+      }
+      else if (stateAsString === 'error_connection') {
+        reasons[0] = 'Connection error occurred';
+        reasons.push('Check bot logs and network connectivity');
+      }
+      else {
+        reasons.push(
+          'Bot may be starting up (wait 30-60 seconds)',
+          'WhatsApp Web session is being restored',
+          'QR code has expired and bot is generating a new one'
+        );
       }
       
       res.status(404).json({
