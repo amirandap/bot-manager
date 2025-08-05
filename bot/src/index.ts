@@ -1,32 +1,27 @@
-/* eslint-disable no-console */
-/* eslint-disable max-len */
-// eslint-disable-next-line node/no-extraneous-import
-import bodyParser from 'body-parser';
+// Unified WhatsApp bot with improved lifecycle management - Test version
 import express from 'express';
-import cors from 'cors';
-import { SystemError } from './types/types';
-import { appendListeners, client, initializeClient } from './config/whatsAppClient';
-import qrCodeRoute from './routes/qrCodeRoute';
-import statusRoute from './routes/statusRoute';
-import restartRoute from './routes/restartRoute';
-import changeFallbackNumberRoute from './routes/changeFallbackNumberRoute';
-import changePortRoute from './routes/changePortRoute';
-import path from 'path';
-import fs from 'fs';
-import axios from 'axios';
-import { setFallbackNumber } from './utils/fallbackUtils';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as qrTerminal from 'qrcode';
+import { Client, LocalAuth } from 'whatsapp-web.js';
+import { BotLifecycleState, BOT_ID } from './utils/botLifecycleTracker';
+import { getFallbackNumber } from './utils/fallbackUtils';
 
-// Bot configuration from environment variables
-export const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
-export const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
-export const BOT_PORT = parseInt(process.env.BOT_PORT || '3000');
-export const BOT_TYPE = process.env.BOT_TYPE || 'whatsapp';
+// Load environment variables
+dotenv.config();
+
+// Bot configuration from environment variables  
+// BOT_ID is now imported from botLifecycleTracker to avoid circular dependency
+const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
+const BOT_PORT = parseInt(process.env.BOT_PORT || '3000');
+const BOT_TYPE = process.env.BOT_TYPE || 'whatsapp';
 
 // Centralized data paths
-export const DATA_ROOT = path.join(__dirname, '../../data');
-export const SESSION_PATH = path.join(DATA_ROOT, 'sessions', BOT_ID);
-export const QR_PATH = path.join(DATA_ROOT, 'qr-codes');
-export const LOGS_PATH = path.join(DATA_ROOT, 'logs', BOT_ID);
+const DATA_ROOT = path.join(__dirname, '../../../data');
+const SESSION_PATH = path.join(DATA_ROOT, 'sessions', BOT_ID);
+const QR_PATH = path.join(DATA_ROOT, 'qr-codes');
+const LOGS_PATH = path.join(DATA_ROOT, 'logs', BOT_ID);
 
 // Create directories if they don't exist
 [SESSION_PATH, QR_PATH, LOGS_PATH].forEach(dir => {
@@ -42,107 +37,337 @@ console.log(`📱 QR path: ${QR_PATH}`);
 console.log(`📄 Logs path: ${LOGS_PATH}`);
 console.log(`🌐 Port: ${BOT_PORT}`);
 
-// Function to sync configuration with bot manager
-async function syncConfigWithManager(): Promise<void> {
-  try {
-    const managerHost = process.env.MANAGER_HOST || 'localhost';
-    const managerPort = process.env.MANAGER_PORT || '3001';
-    const configUrl = `http://${managerHost}:${managerPort}/api/bots/${BOT_ID}`;
+// Create a unified lifecycle tracker with WhatsApp client integration
+class UnifiedBotLifecycle {
+    private _state: BotLifecycleState = BotLifecycleState.INITIALIZING;
+    private _client: Client | null = null;
+    private _qrCodeData: string | null = null;
+    private _routesInitialized: boolean = false;
     
-    console.log(`🔄 Syncing configuration with manager: ${configUrl}`);
-    
-    const response = await axios.get(configUrl, { timeout: 5000 });
-    const botConfig = response.data;
-    
-    console.log(`📋 Received configuration from manager:`, {
-      name: botConfig.name,
-      fallbackNumber: botConfig.fallbackNumber,
-      phoneNumber: botConfig.phoneNumber
-    });
-    
-    // Update fallback number if provided
-    if (botConfig.fallbackNumber) {
-      console.log(`📞 Updating fallback number to: ${botConfig.fallbackNumber}`);
-      setFallbackNumber(botConfig.fallbackNumber);
+    get state(): BotLifecycleState {
+        return this._state;
     }
     
-    console.log(`✅ Configuration synced successfully`);
-  } catch (error) {
-    console.warn(`⚠️  Failed to sync configuration with manager:`, error instanceof Error ? error.message : 'Unknown error');
-    console.warn(`🔄 Bot will continue with default/environment configuration`);
-  }
+    get client(): Client | null {
+        return this._client;
+    }
+    
+    get isReady(): boolean {
+        return this._state === BotLifecycleState.READY || 
+               this._state === BotLifecycleState.CONNECTED;
+    }
+    
+    get qrCodeData(): string | null {
+        return this._qrCodeData;
+    }
+    
+    setState(state: BotLifecycleState, details?: string): void {
+        const previousState = this._state;
+        this._state = state;
+        
+        console.log(`🔄 Bot state: ${previousState} → ${state}${details ? ` (${details})` : ''}`);
+        logToFile('lifecycle.log', `State changed: ${previousState} → ${state}${details ? ` - ${details}` : ''}`);
+        
+        this.updatePM2Metrics();
+    }
+    
+    setQRCode(qrData: string): void {
+        this._qrCodeData = qrData;
+        this.setState(BotLifecycleState.QR_READY, 'QR code generated and available');
+        
+        // Save QR code as file for API access
+        try {
+            const qrFilePath = path.join(QR_PATH, `${BOT_ID}.json`);
+            fs.writeFileSync(qrFilePath, JSON.stringify({
+                qrCode: qrData,
+                timestamp: new Date().toISOString(),
+                botId: BOT_ID
+            }, null, 2));
+            
+            console.log(`💾 QR code saved: ${qrFilePath}`);
+        } catch (error) {
+            console.error('❌ Error saving QR code:', error);
+        }
+    }
+    
+    clearQRCode(): void {
+        this._qrCodeData = null;
+        // Clean up QR code files
+        try {
+            const qrFilePath = path.join(QR_PATH, `${BOT_ID}.json`);
+            if (fs.existsSync(qrFilePath)) {
+                fs.unlinkSync(qrFilePath);
+                console.log('🗑️ QR code file cleaned up');
+            }
+        } catch (error) {
+            console.error('❌ Error cleaning QR code:', error);
+        }
+    }
+    
+    initializeClient(): void {
+        this.setState(BotLifecycleState.BROWSER_LAUNCHING, 'Starting WhatsApp Web client');
+        
+        try {
+            const chromeExecutablePath = process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
+            console.log(`🌐 Using Chrome: ${chromeExecutablePath}`);
+            
+            // Enhanced browser arguments for better stability
+            const browserArgs = [
+                "--no-sandbox",
+                "--disable-setuid-sandbox", 
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-first-run",
+                "--no-zygote",
+                "--single-process",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+                "--disable-features=TranslateUI,VizDisplayCompositor",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-sync",
+                "--disable-translate",
+                "--hide-scrollbars",
+                "--mute-audio",
+                "--disable-client-side-phishing-detection",
+                "--disable-component-update",
+                "--disable-hang-monitor",
+                "--disable-prompt-on-repost",
+                "--ignore-certificate-errors",
+                "--ignore-ssl-errors",
+                "--ignore-certificate-errors-spki-list",
+                "--disable-infobars",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-notifications",
+                "--disable-desktop-notifications",
+                "--disable-permissions-api",
+                "--autoplay-policy=no-user-gesture-required",
+                "--memory-pressure-off"
+            ];
+            
+            this._client = new Client({
+                authStrategy: new LocalAuth({
+                    dataPath: SESSION_PATH,
+                    clientId: BOT_ID,
+                }),
+                puppeteer: {
+                    headless: true,
+                    args: browserArgs,
+                    executablePath: chromeExecutablePath,
+                    timeout: 60000, // 60 seconds timeout
+                    defaultViewport: null,
+                    ignoreDefaultArgs: ['--disable-extensions'],
+                },
+            });
+            
+            this.setupClientEventListeners();
+            
+            this.setState(BotLifecycleState.WAITING_FOR_QR, 'Client created, waiting for QR');
+            
+            // Add timeout for initialization
+            const initTimeout = setTimeout(() => {
+                console.log('⏰ WhatsApp client initialization timeout');
+                this.setState(BotLifecycleState.ERROR_BROWSER, 'Initialization timeout');
+            }, 120000); // 2 minutes timeout
+            
+            this._client.initialize().then(() => {
+                clearTimeout(initTimeout);
+            }).catch((error) => {
+                clearTimeout(initTimeout);
+                throw error;
+            });
+            
+        } catch (error) {
+            console.error('❌ Error initializing client:', error);
+            this.setState(BotLifecycleState.ERROR_BROWSER, 
+                error instanceof Error ? error.message : 'Browser initialization failed');
+        }
+    }
+    
+    private setupClientEventListeners(): void {
+        if (!this._client) return;
+        
+        // Add error handling for the client itself
+        this._client.on('loading_screen', (percent, message) => {
+            console.log(`📊 Loading: ${percent}% - ${message}`);
+        });
+        
+        // QR Code event - only endpoint that should work during initialization
+        this._client.on('qr', (qr) => {
+            console.log('📱 QR Code received - scan with your phone');
+            
+            // Display in terminal
+            qrTerminal.toString(qr, { type: 'terminal', small: true }, (err, qrString) => {
+                if (!err && qrString) {
+                    console.log(qrString);
+                } else {
+                    console.log('📱 QR code generated (display error, but QR is available via API)');
+                }
+            });
+            
+            // Store QR for API access
+            this.setQRCode(qr);
+        });
+        
+        // Authenticated event
+        this._client.on('authenticated', () => {
+            console.log('🔐 WhatsApp client authenticated successfully');
+            this.setState(BotLifecycleState.AUTHENTICATING, 'Client authenticated');
+        });
+        
+        // Client ready - initialize all API routes
+        this._client.on('ready', () => {
+            console.log('✅ WhatsApp client ready!');
+            this.clearQRCode(); // Remove QR since we're authenticated
+            this.setState(BotLifecycleState.CONNECTED, 'WhatsApp client connected');
+            this.setState(BotLifecycleState.READY, 'Bot fully operational');
+            
+            // TODO: Initialize API routes here when they're fixed
+            console.log('🚀 API routes will be initialized here once fixed');
+        });
+        
+        // Error handling
+        this._client.on('error', (error) => {
+            console.error('❌ WhatsApp client error:', error);
+            this.setState(BotLifecycleState.ERROR_UNKNOWN, error.message);
+        });
+        
+        // Disconnection handling
+        this._client.on('disconnected', (reason) => {
+            console.log(`🔌 WhatsApp client disconnected: ${reason}`);
+            this.setState(BotLifecycleState.DISCONNECTED, reason);
+            this._routesInitialized = false; // Reset routes on disconnect
+        });
+        
+        // Authentication failure
+        this._client.on('auth_failure', (message) => {
+            console.error(`❌ Authentication failed: ${message}`);
+            this.setState(BotLifecycleState.ERROR_AUTHENTICATION, message);
+            this.clearQRCode(); // Clear QR so new one can be generated
+        });
+        
+        // Basic message handling
+        this._client.on('message', async (message) => {
+            try {
+                const chat = await message.getChat();
+                if (message.body.toLowerCase() === 'estamos ready??' && !chat.isGroup) {
+                    await this._client!.sendMessage(message.from, 'Funcionando jefe 👀');
+                }
+            } catch (error) {
+                console.error('Error responding to ready check:', error);
+            }
+        });
+    }
+    
+    updatePM2Metrics(): void {
+        if (process.send) {
+            process.send({
+                type: 'process:msg',
+                data: {
+                    botState: this._state,
+                    botReady: this.isReady,
+                    botId: BOT_ID,
+                    stateTimestamp: new Date().toISOString(),
+                    hasQR: !!this._qrCodeData,
+                    routesReady: this._routesInitialized,
+                    clientConnected: !!this._client && this.isReady
+                }
+            });
+        }
+    }
 }
 
-export const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true}));
-app.use(cors());  
-app.use('/qr-code', qrCodeRoute);
-app.use('/status', statusRoute);
-app.use('/restart', restartRoute);
-app.use('/change-fallback-number', changeFallbackNumberRoute);
-app.use('/change-port', changePortRoute);
+const botLifecycle = new UnifiedBotLifecycle();
 
-const startServer = (initialPort: number) => {
-  let currentPort = initialPort;
+const app = express();
+app.use(express.json());
 
-  const attemptStart = () => app.listen(currentPort, () => {
-    console.log(`✅ ${BOT_NAME} server started on port ${currentPort}`);
-    console.log(`🔗 Status: http://localhost:${currentPort}/status`);
-    console.log(`📱 QR Code: http://localhost:${currentPort}/qr-code`);
-    
-    // Log server start
-    const statusLog = path.join(LOGS_PATH, 'status.log');
-    fs.appendFileSync(statusLog, `${new Date().toISOString()} - Server Started on port ${currentPort}\n`);
-    
-    // Sync configuration with manager
-    syncConfigWithManager();
-    
-    console.log('🚀 Initializing WhatsApp client...');
-    initializeClient()
-      .then(() => {
-        if (client) {
-          appendListeners(client);
-          console.log(`🎉 ${BOT_NAME} fully initialized and ready!`);
-        }
-      })
-      .catch((error) => {
-        console.error('❌ Error initializing WhatsApp client:', error);
-        
-        // Log initialization error
-        const errorLog = path.join(LOGS_PATH, 'errors.log');
-        fs.appendFileSync(errorLog, `${new Date().toISOString()} - Init Error: ${error.message}\n`);
-      });
-  }).on('error', (err: SystemError) => {
-    console.error(`❌ Server error on port ${currentPort}:`, err);
-    
-    if (err.code === 'EADDRINUSE') {
-      console.log(`⚠️  Port ${currentPort} in use, trying ${currentPort + 1}...`);
-      setTimeout(() => {
-        currentPort += 1;
-        attemptStart();
-      }, 1000);
-    } else {
-      // Log other server errors
-      const errorLog = path.join(LOGS_PATH, 'errors.log');
-      fs.appendFileSync(errorLog, `${new Date().toISOString()} - Server Error: ${err.message}\n`);
-    }
-  });
-
-  attemptStart();
+// Log helper function
+const logToFile = (file: string, message: string) => {
+    const logFile = path.join(LOGS_PATH, file);
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logFile, `${timestamp} - ${message}\n`);
 };
 
-// Graceful shutdown
+// ONLY QR Code endpoint - available during initialization
+app.get('/qr-code', (req, res) => {
+    const qrFilePath = path.join(QR_PATH, `${BOT_ID}.json`);
+    
+    if (botLifecycle.qrCodeData) {
+        res.json({ 
+            qr: botLifecycle.qrCodeData, 
+            available: true,
+            state: botLifecycle.state,
+            botId: BOT_ID
+        });
+    } else if (fs.existsSync(qrFilePath)) {
+        try {
+            const qrData = JSON.parse(fs.readFileSync(qrFilePath, 'utf-8'));
+            res.json({ 
+                qr: qrData.qrCode, 
+                available: true,
+                timestamp: qrData.timestamp,
+                state: botLifecycle.state,
+                botId: BOT_ID
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Error reading QR code',
+                state: botLifecycle.state,
+                botId: BOT_ID
+            });
+        }
+    } else {
+        res.status(404).json({ 
+            error: 'QR code not available',
+            message: botLifecycle.isReady ? 'Bot is already authenticated' : 'Bot is initializing',
+            state: botLifecycle.state,
+            botId: BOT_ID
+        });
+    }
+});
+
+// Start server and initialize WhatsApp bot
+const startServer = async () => {
+    try {
+        const server = app.listen(BOT_PORT, () => {
+            console.log(`✅ ${BOT_NAME} server started on port ${BOT_PORT}`);
+            console.log(`📱 QR Code endpoint: http://localhost:${BOT_PORT}/qr-code`);
+            
+            logToFile('status.log', `Server started on port ${BOT_PORT}`);
+            
+            // Initialize WhatsApp client immediately after server starts
+            console.log('🚀 Starting WhatsApp client initialization...');
+            botLifecycle.initializeClient();
+        });
+        
+        server.on('error', (err) => {
+            console.error(`❌ Server error: ${err.message}`);
+            logToFile('errors.log', `Server error: ${err.message}`);
+            botLifecycle.setState(BotLifecycleState.ERROR_UNKNOWN, `Server error: ${err.message}`);
+        });
+        
+        return server;
+    } catch (error) {
+        console.error(`❌ Failed to start server: ${error}`);
+        logToFile('errors.log', `Failed to start server: ${error}`);
+        process.exit(1);
+    }
+};
+
+// Graceful shutdown handlers
 process.on('SIGINT', async () => {
     console.log(`🛑 Gracefully shutting down ${BOT_NAME}...`);
+    logToFile('status.log', 'Graceful shutdown initiated');
+    botLifecycle.setState(BotLifecycleState.STOPPING, 'SIGINT received');
     
-    // Log shutdown
-    const statusLog = path.join(LOGS_PATH, 'status.log');
-    fs.appendFileSync(statusLog, `${new Date().toISOString()} - Graceful Shutdown\n`);
-    
-    if (client) {
+    // Destroy WhatsApp client if it exists
+    if (botLifecycle.client) {
         try {
-            await client.destroy();
+            await botLifecycle.client.destroy();
             console.log('✅ WhatsApp client destroyed');
         } catch (error) {
             console.error('❌ Error destroying client:', error);
@@ -154,14 +379,13 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
     console.log(`🛑 Received SIGTERM, shutting down ${BOT_NAME}...`);
+    logToFile('status.log', 'SIGTERM shutdown initiated');
+    botLifecycle.setState(BotLifecycleState.STOPPING, 'SIGTERM received');
     
-    // Log shutdown
-    const statusLog = path.join(LOGS_PATH, 'status.log');
-    fs.appendFileSync(statusLog, `${new Date().toISOString()} - SIGTERM Shutdown\n`);
-    
-    if (client) {
+    // Destroy WhatsApp client if it exists
+    if (botLifecycle.client) {
         try {
-            await client.destroy();
+            await botLifecycle.client.destroy();
         } catch (error) {
             console.error('❌ Error destroying client:', error);
         }
@@ -170,15 +394,7 @@ process.on('SIGTERM', async () => {
     process.exit(0);
 });
 
-startServer(BOT_PORT);
+// Start the server and initialize bot
+startServer();
 
-process.on('SIGINT', async () => {
-  if (client !== null) {
-    console.log('Closing WhatsApp client...');
-    await client.resetState();
-    await client.logout();
-    await client.destroy();
-  }
-
-  throw new Error('Server shutting down...');
-});
+export { BOT_ID, BOT_NAME, BOT_PORT, SESSION_PATH, QR_PATH, LOGS_PATH };

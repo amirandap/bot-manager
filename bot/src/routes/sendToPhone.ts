@@ -1,32 +1,27 @@
 /* eslint-disable no-console */
 import express from "express";
 import multer from "multer";
-import { client } from "../config/whatsAppClient";
-import PhoneMessageHandler from "./sendMessage/phoneMessageHandler";
-import ErrorHandler from "./sendMessage/errorHandler";
-import { SendMessageRequestBody } from "./sendMessage/types";
+import { getClient } from "../config/clientExporter";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
- * POST /send-to-phone
- * Send message to individual phone number(s)
- * 
- * Body:
- * - phoneNumber: string | string[] (required)
- * - message: string (required)
- * - discorduserid?: string (optional)
- * 
- * File: Optional attachment
- */
 router.post("/", upload.single("file"), async (req, res) => {
-  const requestId = Date.now();
+  const requestId = Date.now().toString(36);
   
   try {
-    console.log(`📞 [BOT] Phone message request ${requestId} received`);
+    const client = getClient();
     
-    const { phoneNumber, message, discorduserid } = req.body as SendMessageRequestBody;
+    if (!client) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const { phoneNumber, message } = req.body;
     const file = req.file;
 
     // Validation
@@ -54,7 +49,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const phoneNumbers = Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
     
     // Validate no groups in phone numbers
-    const invalidRecipients = phoneNumbers.filter(num => num.includes('@g.us'));
+    const invalidRecipients = phoneNumbers.filter((num: string) => num.includes('@g.us'));
     if (invalidRecipients.length > 0) {
       console.error(`❌ [BOT] Request ${requestId}: Group IDs not allowed in phone endpoint`);
       return res.status(400).json({
@@ -68,30 +63,73 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     console.log(`📱 [BOT] Request ${requestId}: Sending to ${phoneNumbers.length} phone(s)`);
 
-    // Send messages using PhoneMessageHandler
-    const results = await PhoneMessageHandler.sendToPhones(
-      client,
-      phoneNumbers,
-      message,
-      file
-    );
+    // Send messages
+    const messagesSent = [];
+    const errors = [];
 
-    // Send error report if needed
-    if (results.errors.length > 0) {
-      await ErrorHandler.sendErrorReport(client, req.body, results.errors);
+    for (const phone of phoneNumbers) {
+      try {
+        const chatId = phone.includes('@c.us') ? phone : `${phone}@c.us`;
+        
+        if (file) {
+          // Send file with message - simplified for now
+          // TODO: Implement proper file handling with MessageMedia
+          await client.sendMessage(chatId, `${message}\n\n[File: ${file.originalname || 'attachment'} - ${file.mimetype}]`);
+        } else {
+          // Send text message
+          await client.sendMessage(chatId, message);
+        }
+        
+        messagesSent.push({
+          phone,
+          chatId,
+          message,
+          hasFile: !!file,
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log(`✅ [BOT] Request ${requestId}: Message sent to ${phone}`);
+        
+      } catch (error) {
+        console.error(`❌ [BOT] Request ${requestId}: Error sending to ${phone}:`, error);
+        errors.push({
+          phone,
+          error: error instanceof Error ? error.message : 'Failed to send message',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
-    const statusCode = results.errors.length === 0 ? 200 : 
-                      results.messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    // Send error report to fallback number if there are errors
+    if (errors.length > 0) {
+      try {
+        const fallbackNumber = process.env.FALLBACK_NUMBER;
+        if (fallbackNumber) {
+          const errorReport = `❌ Error Report - Request ${requestId}\n\n` +
+            `Total errors: ${errors.length}\n` +
+            `Successful sends: ${messagesSent.length}\n\n` +
+            `Errors:\n${errors.map(e => `• ${e.phone}: ${e.error}`).join('\n')}`;
+          
+          const fallbackChatId = fallbackNumber.includes('@c.us') ? fallbackNumber : `${fallbackNumber}@c.us`;
+          await client.sendMessage(fallbackChatId, errorReport);
+          console.log(`📋 [BOT] Request ${requestId}: Error report sent to fallback number`);
+        }
+      } catch (reportError) {
+        console.error(`❌ [BOT] Request ${requestId}: Failed to send error report:`, reportError);
+      }
+    }
 
-    console.log(`✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`);
+    const statusCode = errors.length === 0 ? 200 : 
+                      messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+
+    console.log(`✅ [BOT] Request ${requestId} completed: ${messagesSent.length} sent, ${errors.length} errors`);
 
     return res.status(statusCode).json({
-      success: results.errors.length === 0,
-      messagesSent: results.messagesSent,
-      errors: results.errors,
-      totalSent: results.messagesSent.length,
-      totalErrors: results.errors.length,
+      success: errors.length === 0,
+      messagesSent,
+      errors,
+      totalSent: messagesSent.length,
+      totalErrors: errors.length,
       requestId,
       timestamp: new Date().toISOString()
     });
@@ -99,17 +137,26 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
     
-    const { errorType, errorDetails } = await ErrorHandler.handleCriticalError(
-      client,
-      error,
-      req.body
-    );
+    // Try to send critical error report
+    try {
+      const client = getClient();
+      const fallbackNumber = process.env.FALLBACK_NUMBER;
+      if (client && fallbackNumber) {
+        const criticalErrorReport = `🚨 CRITICAL ERROR - Request ${requestId}\n\n` +
+          `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n` +
+          `Request body: ${JSON.stringify(req.body, null, 2)}`;
+        
+        const fallbackChatId = fallbackNumber.includes('@c.us') ? fallbackNumber : `${fallbackNumber}@c.us`;
+        await client.sendMessage(fallbackChatId, criticalErrorReport);
+      }
+    } catch (reportError) {
+      console.error(`❌ [BOT] Request ${requestId}: Failed to send critical error report:`, reportError);
+    }
     
     return res.status(500).json({
       success: false,
       error: "PHONE_SEND_ERROR: Internal server error",
-      errorType,
-      details: errorDetails.error,
+      details: error instanceof Error ? error.message : 'Unknown error',
       requestId,
       timestamp: new Date().toISOString()
     });

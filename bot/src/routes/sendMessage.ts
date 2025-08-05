@@ -1,76 +1,54 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable max-len */
 import express from "express";
 import multer from "multer";
-import { client } from "../config/whatsAppClient";
-import RecipientProcessor from "./sendMessage/recipientProcessor";
-import GroupMessageHandler from "./sendMessage/groupMessageHandler";
-import PhoneMessageHandler from "./sendMessage/phoneMessageHandler";
-import ErrorHandler from "./sendMessage/errorHandler";
-import RequestValidator from "./sendMessage/requestValidator";
+import { getClient } from "../config/clientExporter";
 
 const router = express.Router();
-
-// Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.post("/", upload.single("file"), async (req, res) => {
+router.post("/", upload.single("media"), async (req, res) => {
   try {
-    // Validate request
-    const validation = RequestValidator.validateRequest(req, res);
-    if (!validation.isValid) {
-      return; // Response already sent by validator
+    const client = getClient();
+    
+    if (!client) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "WhatsApp client not ready" 
+      });
     }
 
-    const { body, file } = validation;
-    const { message } = body!;
-
-    // Process recipients
-    const { groups, phoneNumbers } = await RecipientProcessor.processRecipients(body!);
-
-    // Send messages to groups
-    const groupResults = await GroupMessageHandler.sendToGroups(
-      client,
-      groups,
-      message,
-      file
-    );
-
-    // Send messages to individual phone numbers
-    const phoneResults = await PhoneMessageHandler.sendToPhones(
-      client,
-      phoneNumbers,
-      message,
-      file
-    );
-
-    // Combine results
-    const allMessagesSent = [...groupResults.messagesSent, ...phoneResults.messagesSent];
-    const allErrors = [...groupResults.errors, ...phoneResults.errors];
-
-    // Send error report if needed
-    await ErrorHandler.sendErrorReport(client, body!, allErrors);
-
-    // Build and send response
-    const response = RequestValidator.buildResponse(allMessagesSent, allErrors);
-    const statusCode = RequestValidator.getResponseStatus(allErrors);
-
-    return res.status(statusCode).send(response);
-  } catch (error: unknown) {
-    // Handle critical errors
-    const { errorType, errorDetails } = await ErrorHandler.handleCriticalError(
-      client,
-      error,
-      req.body
-    );
+    const { phone, message } = req.body;
     
-    return res.status(500).json({
-      success: false,
-      error: "Internal server error",
-      errorType,
-      details: errorDetails.error,
-      timestamp: new Date().toISOString()
+    if (!phone || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Phone and message are required" 
+      });
+    }
+
+    // Simple message sending
+    try {
+      const chatId = phone.includes('@c.us') ? phone : `${phone}@c.us`;
+      await client.sendMessage(chatId, message);
+      
+      res.json({ 
+        success: true, 
+        message: "Message sent successfully",
+        to: phone
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to send message' 
+      });
+    }
+
+  } catch (error) {
+    console.error("Critical error in sendMessage route:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
