@@ -1,7 +1,8 @@
 // Re-export all modules for easy importing
-export { default as RecipientProcessor } from "./recipientProcessor";
+// Updated to use centralized utils for RecipientProcessor and RequestValidator
+// ErrorHandler removed - use MessageErrorHandler from utils instead
+export { default as RecipientProcessor } from "../../utils/recipientProcessor";
 export { default as GroupMessageHandler } from "./groupMessageHandler";
 export { default as PhoneMessageHandler } from "./phoneMessageHandler";
-export { default as ErrorHandler } from "./errorHandler";
-export { default as RequestValidator } from "./requestValidator";
+export { default as RequestValidator } from "../../utils/requestValidator";
 export * from "./types";
