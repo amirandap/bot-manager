@@ -4,7 +4,7 @@ import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import GroupMessageHandler from "./sendMessage/groupMessageHandler";
 import PhoneMessageHandler from "./sendMessage/phoneMessageHandler";
-import MessageErrorHandler from "../utils/messageErrorHandler";
+import { MessageErrorHandler } from '../utils/errorHandler';
 import { SendMessageRequestBody } from "./sendMessage/types";
 
 const router = express.Router();

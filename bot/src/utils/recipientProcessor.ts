@@ -1,13 +1,13 @@
 import { fetchUserData } from './userDataService';
 import { separateRecipients } from './recipientFormatting';
-import { BaseMessageRequestBody } from "../types/types";
+import { BaseMessageRequestBody } from '../types/types';
 
 /**
  * Generic recipient processor for all message types
  * Processes and normalizes recipients from various sources
  */
 export default class RecipientProcessor {
-  static async processRecipients(body: BaseMessageRequestBody): Promise<{
+  public static async processRecipients(body: BaseMessageRequestBody): Promise<{
     groups: string[];
     phoneNumbers: string[];
   }> {
@@ -19,7 +19,7 @@ export default class RecipientProcessor {
     let allRecipients: string[] = [];
     
     // Collect all recipients from different sources
-    if (typeof targetNumber === "string") {
+    if (typeof targetNumber === 'string') {
       allRecipients.push(targetNumber);
     } else if (Array.isArray(targetNumber)) {
       allRecipients.push(...targetNumber);
@@ -36,29 +36,24 @@ export default class RecipientProcessor {
     // Remove duplicates
     allRecipients = [...new Set(allRecipients)];
     
-    // Separate groups and phone numbers
-    const groups = allRecipients.filter(recipient => recipient.includes('@g.us'));
-    const phoneNumbers = allRecipients.filter(recipient => !recipient.includes('@g.us'));
-    
-    console.log(`📋 [BOT] Processing ${groups.length} groups and ${phoneNumbers.length} phone numbers`);
+    // Use consolidated function to separate recipients
+    const { phoneNumbers, groups } = separateRecipients(allRecipients);
     
     return { groups, phoneNumbers };
   }
 
   /**
    * Simple recipient processor for basic to/recipients arrays
+   * Uses the consolidated separateRecipients function
    */
-  static processSimpleRecipients(recipients: string | string[]): {
+  public static processSimpleRecipients(recipients: string | string[]): {
     groups: string[];
     phoneNumbers: string[];
   } {
     const allRecipients = Array.isArray(recipients) ? recipients : [recipients];
     
-    // Separate groups and phone numbers
-    const groups = allRecipients.filter(recipient => recipient.includes('@g.us'));
-    const phoneNumbers = allRecipients.filter(recipient => !recipient.includes('@g.us'));
-    
-    console.log(`📋 [BOT] Processing ${groups.length} groups and ${phoneNumbers.length} phone numbers`);
+    // Use consolidated function to separate recipients
+    const { phoneNumbers, groups } = separateRecipients(allRecipients);
     
     return { groups, phoneNumbers };
   }

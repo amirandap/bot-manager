@@ -2,11 +2,11 @@
 import { Request, Response } from 'express';
 
 import express from 'express';
-import { sendTextWithErrorHandling } from '../utils/messageHandler';
-import { fetchUserData } from '../utils/userDataService';
-import { createPersonalizedMessage } from '../utils/messageFormatter';
-import { MessageErrorHandler } from '../utils/errorHandler';
-import { getClient } from '../config/clientExporter';
+import { sendTextWithErrorHandling } from '../../utils/messageHandler';
+import { fetchUserData } from '../../utils/userDataService';
+import { createPersonalizedMessage } from '../../utils/messageFormatter';
+import { MessageErrorHandler } from '../../utils/errorHandler';
+import { getClient } from '../../config/clientExporter';
 
 const router = express.Router();
 

@@ -56,24 +56,3 @@ export async function sendErrorMessage(
     // Don't throw here to avoid infinite error loops
   }
 }
-
-/**
- * Legacy wrapper for compatibility with helpers.ts
- * @deprecated Use sendErrorMessage instead
- */
-export const sendErrorMessageLegacy = async (
-  client: Client | null,
-  message: string,
-): Promise<{ status: string; message: string }> => {
-  try {
-    await sendErrorMessage(client, message);
-    return { status: 'success', message: 'Message sent successfully' };
-  } catch (error: any) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    const errorDetails = error?.response
-      ? error.response.data
-      : { to: getFallbackNumber(), text: errorMessage };
-    throw new Error(`Error sending message: ${JSON.stringify(errorDetails)}`);
-  }
-};

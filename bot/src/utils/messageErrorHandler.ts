@@ -1,17 +1,22 @@
 import { Client } from 'whatsapp-web.js';
 import { sendErrorMessage } from './errorMessaging';
-import { logWhatsAppError } from './errorHandler';
+import { categorizeError, DetailedErrorAnalysis } from './errorHandler';
 
 /**
  * Generic error handler for message sending operations
  * Handles error processing and reporting for any message type
  */
 export default class MessageErrorHandler {
-  static async sendErrorReport(
+  public static async sendErrorReport(
     client: Client | null,
-    requestBody: any,
-    errors: any[],
-    endpoint: string = "message-endpoint"
+    requestBody: Record<string, unknown>,
+    errors: Array<{
+      recipient: string;
+      error: string;
+      errorType: string;
+      timestamp: string;
+    }>,
+    endpoint: string = 'message-endpoint',
   ): Promise<void> {
     if (errors.length > 0) {
       const errorMessage = `
@@ -24,67 +29,58 @@ Errors: ${JSON.stringify(errors)}
     }
   }
 
-  static async handleCriticalError(
+  public static async handleCriticalError(
     client: Client | null,
     error: unknown,
-    requestBody: any,
-    endpoint: string = "message-endpoint"
-  ): Promise<{ errorType: string; errorMessage: string; errorDetails: any }> {
+    requestBody: Record<string, unknown>,
+    endpoint: string = 'message-endpoint',
+  ): Promise<{
+    errorType: string;
+    errorMessage: string;
+    errorDetails: DetailedErrorAnalysis;
+  }> {
+    // eslint-disable-next-line no-console
     console.error(`❌ [BOT_ROUTE] Critical error in ${endpoint}:`, error);
     
-    // Use standardized error validation
-    const validation = logWhatsAppError(error, 'CRITICAL_ERROR', endpoint);
+    // Use standardized error categorization
+    const errorDetails = categorizeError(error, undefined, undefined);
     
-    let reason = "Unknown reason";
+    let reason = 'Unknown reason';
     if (error instanceof Error) {
       reason = error.message;
     }
     
-    const errorDetails = {
-      endpoint,
-      errorType: validation.errorType,
-      error: reason,
-      payload: requestBody,
-      timestamp: new Date().toISOString(),
-      isPostSendError: validation.isPostSendError,
-      shouldIgnore: validation.shouldIgnore,
-      description: validation.description,
-      troubleshooting: {
-        commonCauses: [
-          "WhatsApp client disconnected",
-          "Invalid phone number format",
-          "Rate limiting",
-          "Network connectivity issues"
-        ],
-        suggestedActions: [
-          "Check client connection status",
-          "Verify phone number format",
-          "Wait before retrying",
-          "Check network connectivity"
-        ]
-      }
+    const enhancedErrorDetails: DetailedErrorAnalysis = {
+      ...errorDetails,
+      troubleshooting: errorDetails.troubleshooting + `
+      
+Additional troubleshooting for ${endpoint}:
+- Check WhatsApp client connection status
+- Verify phone number format
+- Wait before retrying (rate limiting)
+- Check network connectivity
+- Monitor session stability`,
     };
     
     // Send critical error report
     const criticalErrorMessage = `
 🚨 CRITICAL ERROR in ${endpoint}
 
-Error Type: ${validation.errorType}
-Description: ${validation.description}
-Should Ignore: ${validation.shouldIgnore}
-Is Post-Send Error: ${validation.isPostSendError}
+Error Type: ${errorDetails.errorType}
+Severity: ${errorDetails.severity}
+Description: ${errorDetails.troubleshooting}
 
 Error Details: ${reason}
 Request Body: ${JSON.stringify(requestBody)}
-Timestamp: ${new Date().toISOString()}
+Timestamp: ${errorDetails.timestamp}
 `;
     
     await sendErrorMessage(client, criticalErrorMessage);
     
     return {
-      errorType: validation.errorType,
+      errorType: errorDetails.errorType,
       errorMessage: criticalErrorMessage,
-      errorDetails
+      errorDetails: enhancedErrorDetails,
     };
   }
 }
