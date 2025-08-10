@@ -6,9 +6,9 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client } from 'whatsapp-web.js';
-import { cleanAndFormatPhoneNumber } from './cleanAndFormatPhoneNumber';
-import { getFallbackNumber } from './fallbackUtils';
+import { Client } from "whatsapp-web.js";
+import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
+import { getFallbackNumber } from "./fallbackUtils";
 import {
   ErrorSeverity,
   ErrorCategory,
@@ -16,7 +16,7 @@ import {
   ErrorHandlerOptions,
   ErrorValidationResult,
   DetailedErrorAnalysis,
-} from '../types/types';
+} from "../types/types";
 
 // ============================================================================
 // ERROR CLASSIFICATION SYSTEM

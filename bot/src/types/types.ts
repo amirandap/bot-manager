@@ -15,30 +15,30 @@ export interface SystemError extends Error {
 
 export enum BotLifecycleState {
   // Startup phases
-  INITIALIZING = 'initializing',
-  BROWSER_LAUNCHING = 'browser_launching',
-  WAITING_FOR_QR = 'waiting_for_qr',
-  QR_READY = 'qr_ready',
-  QR_SCANNED = 'qr_scanned',
-  QR_ERROR = 'qr_error',
-  AUTHENTICATING = 'authenticating',
-  
+  INITIALIZING = "initializing",
+  BROWSER_LAUNCHING = "browser_launching",
+  WAITING_FOR_QR = "waiting_for_qr",
+  QR_READY = "qr_ready",
+  QR_SCANNED = "qr_scanned",
+  QR_ERROR = "qr_error",
+  AUTHENTICATING = "authenticating",
+
   // Runtime states
-  READY = 'ready',
-  CONNECTED = 'connected',
-  DISCONNECTED = 'disconnected',
-  RECONNECTING = 'reconnecting',
-  LOADING = 'loading',
-  
+  READY = "ready",
+  CONNECTED = "connected",
+  DISCONNECTED = "disconnected",
+  RECONNECTING = "reconnecting",
+  LOADING = "loading",
+
   // Error states
-  ERROR_BROWSER = 'error_browser',
-  ERROR_CONNECTION = 'error_connection',
-  ERROR_AUTHENTICATION = 'error_authentication',
-  ERROR_UNKNOWN = 'error_unknown',
-  
+  ERROR_BROWSER = "error_browser",
+  ERROR_CONNECTION = "error_connection",
+  ERROR_AUTHENTICATION = "error_authentication",
+  ERROR_UNKNOWN = "error_unknown",
+
   // Shutdown states
-  STOPPING = 'stopping',
-  STOPPED = 'stopped'
+  STOPPING = "stopping",
+  STOPPED = "stopped",
 }
 
 export interface LifecycleEvent {
@@ -53,28 +53,28 @@ export interface LifecycleEvent {
 // =================
 
 export enum ErrorSeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
 }
 
 export enum ErrorCategory {
   // WhatsApp specific
-  SESSION_ERROR = 'SESSION_ERROR',
-  AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
-  RATE_LIMIT_ERROR = 'RATE_LIMIT_ERROR',
-  RECIPIENT_ERROR = 'RECIPIENT_ERROR',
+  SESSION_ERROR = "SESSION_ERROR",
+  AUTHENTICATION_ERROR = "AUTHENTICATION_ERROR",
+  RATE_LIMIT_ERROR = "RATE_LIMIT_ERROR",
+  RECIPIENT_ERROR = "RECIPIENT_ERROR",
 
   // Technical
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  BROWSER_ERROR = 'BROWSER_ERROR',
-  SERIALIZATION_ERROR = 'SERIALIZATION_ERROR',
+  NETWORK_ERROR = "NETWORK_ERROR",
+  BROWSER_ERROR = "BROWSER_ERROR",
+  SERIALIZATION_ERROR = "SERIALIZATION_ERROR",
 
   // Application
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  SYSTEM_ERROR = 'SYSTEM_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+  VALIDATION_ERROR = "VALIDATION_ERROR",
+  SYSTEM_ERROR = "SYSTEM_ERROR",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
 export interface WhatsAppError extends Error {
@@ -109,7 +109,7 @@ export interface DetailedErrorAnalysis {
   originalRecipient?: string;
   timestamp: string;
   troubleshooting: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 }
 
 export interface CriticalErrorDetails {
@@ -147,7 +147,7 @@ export interface CountryConfig {
 // MESSAGE TYPES
 // =================
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO';
+export type MessageType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "VIDEO";
 
 export interface MediaResult {
   messagesSent: string[];
