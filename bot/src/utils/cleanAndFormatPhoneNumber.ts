@@ -1,5 +1,5 @@
-import { getFallbackNumber } from './fallbackUtils';
-import { PhoneNumberResult, CountryConfig } from '../types/types';
+import { getFallbackNumber } from "./fallbackUtils";
+import { PhoneNumberResult, CountryConfig } from "../types/types";
 
 const PHONE_CONSTRAINTS = {
   MIN_LENGTH: 10,
@@ -112,7 +112,7 @@ function createResult(
 }
 
 export function cleanAndFormatPhoneNumber(
-  phoneNumber: string,
+  phoneNumber: string
 ): PhoneNumberResult {
   console.log(`🔍 Processing phone number: "${phoneNumber}"`);
 

@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as dotenv from "dotenv";
 import * as qrTerminal from "qrcode";
 import { Client, LocalAuth } from "whatsapp-web.js";
-import { BotLifecycleState, BOT_ID } from './utils/botLifecycleTracker';
+import { BotLifecycleState, BOT_ID } from "./utils/botLifecycleTracker";
 import { getFallbackNumber } from "./utils/fallbackUtils";
 import { WhatsAppErrorHandler } from "./utils/errorHandler";
 

@@ -3,7 +3,7 @@ import { Client, MessageMedia } from "whatsapp-web.js";
 import { formatRecipient } from "./recipientFormatting";
 import { WhatsAppErrorHandler } from "./errorHandler";
 import { createMessageMedia, createMessageMediaFromUrl } from "./mediaUtils";
-import { MediaResult } from '../types/types';
+import { MediaResult } from "../types/types";
 
 /**
  * Media messaging utilities

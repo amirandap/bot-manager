@@ -2,23 +2,19 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client } from 'whatsapp-web.js';
+import { Client } from "whatsapp-web.js";
 import {
   sendImageMessage,
   sendDocumentMessage,
   sendAudioMessage,
   sendVideoMessage,
-} from './mediaMessaging';
-import { sendTextMessage } from './textMessaging';
-import { sendErrorMessage, shouldSendFallback } from './errorHandler';
-import { MessageErrorHandler } from './errorHandler';
-import { validateWhatsAppError } from './errorHandler';
-import { getFallbackNumber } from './fallbackUtils';
-import {
-  MediaResult,
-  MessageHandlerResult,
-  MessageType,
-} from '../types/types';
+} from "./mediaMessaging";
+import { sendTextMessage } from "./textMessaging";
+import { sendErrorMessage, shouldSendFallback } from "./errorHandler";
+import { MessageErrorHandler } from "./errorHandler";
+import { validateWhatsAppError } from "./errorHandler";
+import { getFallbackNumber } from "./fallbackUtils";
+import { MediaResult, MessageHandlerResult, MessageType } from "../types/types";
 
 /**
  * Unified message handler that integrates error handling and fallback mechanisms

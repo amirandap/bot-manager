@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client } from 'whatsapp-web.js';
-import { formatRecipient } from './recipientFormatting';
-import { shouldSendFallback, logWhatsAppError } from './errorHandler';
-import { MediaResult } from '../types/types';
+import { Client } from "whatsapp-web.js";
+import { formatRecipient } from "./recipientFormatting";
+import { shouldSendFallback, logWhatsAppError } from "./errorHandler";
+import { MediaResult } from "../types/types";
 
 /**
  * Text messaging utilities
@@ -19,7 +19,7 @@ import { MediaResult } from '../types/types';
 export async function sendTextMessage(
   client: Client,
   recipients: string[],
-  message: string,
+  message: string
 ): Promise<MediaResult> {
   const messagesSent: string[] = [];
   const errors: Array<{
@@ -36,17 +36,17 @@ export async function sendTextMessage(
       console.log(`📤 [BOT] Sending text message to: ${formattedRecipient}`);
 
       // Verify number exists on WhatsApp (for phone numbers only)
-      if (!recipient.includes('@g.us')) {
+      if (!recipient.includes("@g.us")) {
         try {
           const numberId = await client.getNumberId(formattedRecipient);
           if (!numberId) {
             throw new Error(
-              `Number ${formattedRecipient} is not registered on WhatsApp`,
+              `Number ${formattedRecipient} is not registered on WhatsApp`
             );
           }
         } catch (verifyError) {
           throw new Error(
-            `WHATSAPP_VERIFICATION_ERROR: ${verifyError.message}`,
+            `WHATSAPP_VERIFICATION_ERROR: ${verifyError.message}`
           );
         }
       }
@@ -58,44 +58,44 @@ export async function sendTextMessage(
         messageSent = true;
         // eslint-disable-next-line no-console
         console.log(
-          `✅ [BOT] Text message sent successfully to: ${formattedRecipient}`,
+          `✅ [BOT] Text message sent successfully to: ${formattedRecipient}`
         );
         messagesSent.push(recipient);
       } catch (sendError: any) {
         // Use centralized error validation instead of manual checking
         const validation = logWhatsAppError(
           sendError,
-          'TEXT_MESSAGE',
-          recipient,
+          "TEXT_MESSAGE",
+          recipient
         );
-        
+
         if (messageSent || validation.isPostSendError) {
           // eslint-disable-next-line no-console
           console.warn(
-            '⚠️ [BOT] Post-send error (message likely sent): ' +
-            `${sendError.message}`,
+            "⚠️ [BOT] Post-send error (message likely sent): " +
+              `${sendError.message}`
           );
           messagesSent.push(recipient);
           // eslint-disable-next-line no-console
           console.log(
-            '✅ [BOT] Treating text send as successful despite post-send error',
+            "✅ [BOT] Treating text send as successful despite post-send error"
           );
           continue;
         }
         throw sendError;
       }
     } catch (error: any) {
-      shouldSendFallback(error, 'TEXT_MESSAGE', recipient);
+      shouldSendFallback(error, "TEXT_MESSAGE", recipient);
       // eslint-disable-next-line no-console
       console.error(
         `❌ [BOT] Error sending text message to ${recipient}:`,
-        error,
+        error
       );
-      
+
       errors.push({
         recipient,
-        error: error.message || 'Unknown error',
-        errorType: 'TEXT_SEND_ERROR',
+        error: error.message || "Unknown error",
+        errorType: "TEXT_SEND_ERROR",
         timestamp: new Date().toISOString(),
       });
     }
