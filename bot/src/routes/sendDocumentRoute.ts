@@ -179,7 +179,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       success: false,
       error: "DOCUMENT_SEND_ERROR: Internal server error",
       errorType,
-      details: errorDetails.error,
+      details: errorDetails.troubleshooting,
       requestId,
       timestamp: new Date().toISOString(),
     });

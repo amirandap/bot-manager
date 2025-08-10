@@ -432,7 +432,11 @@ export function validateWhatsAppError(error: any): ErrorValidationResult {
     shouldIgnore: whatsappError.isPostSend,
     errorType: whatsappError.category,
     isPostSendError: whatsappError.isPostSend,
-    description: whatsappError.metadata?.description || "No description",
+    description:
+      whatsappError.metadata?.description &&
+      typeof whatsappError.metadata.description === "string"
+        ? whatsappError.metadata.description
+        : "No description",
   };
 }
 
@@ -458,7 +462,11 @@ export function logWhatsAppError(
     shouldIgnore: whatsappError.isPostSend,
     errorType: whatsappError.category,
     isPostSendError: whatsappError.isPostSend,
-    description: whatsappError.metadata?.description || "No description",
+    description:
+      whatsappError.metadata?.description &&
+      typeof whatsappError.metadata.description === "string"
+        ? whatsappError.metadata.description
+        : "No description",
   };
 }
 
@@ -525,7 +533,11 @@ export function categorizeError(
       whatsappError.message,
     recipient,
     originalRecipient,
-    timestamp: whatsappError.metadata?.timestamp || new Date().toISOString(),
+    timestamp:
+      whatsappError.metadata?.timestamp &&
+      typeof whatsappError.metadata.timestamp === "string"
+        ? whatsappError.metadata.timestamp
+        : new Date().toISOString(),
     troubleshooting:
       troubleshootingGuides[whatsappError.category] ||
       troubleshootingGuides[ErrorCategory.UNKNOWN_ERROR],

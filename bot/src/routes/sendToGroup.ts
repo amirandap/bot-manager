@@ -91,7 +91,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     if (results.errors.length > 0) {
       // Transform errors to match expected format
       const transformedErrors = results.errors.map((error) => ({
-        recipient: error.phoneNumber, // phoneNumber is used as groupId for groups
+        recipient: error.recipient, // Use recipient instead of phoneNumber
         error: error.error,
         errorType: error.errorType,
         timestamp: error.timestamp,
@@ -139,7 +139,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       success: false,
       error: "GROUP_SEND_ERROR: Internal server error",
       errorType,
-      details: errorDetails.error,
+      details: errorDetails.troubleshooting,
       requestId,
       timestamp: new Date().toISOString(),
     });

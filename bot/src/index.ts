@@ -5,9 +5,13 @@ import * as fs from "fs";
 import * as dotenv from "dotenv";
 import * as qrTerminal from "qrcode";
 import { Client, LocalAuth } from "whatsapp-web.js";
-import { BotLifecycleState, BOT_ID } from "./utils/botLifecycleTracker";
+import { BotLifecycleState } from "./types/types";
+import { BOT_ID } from "./utils/botLifecycleTracker";
 import { getFallbackNumber } from "./utils/fallbackUtils";
 import { WhatsAppErrorHandler } from "./utils/errorHandler";
+import messageRoutes from "./routes/unified/messageRoutes";
+import sendToPhoneRoute from "./routes/sendToPhone";
+import { setClient } from "./config/clientExporter";
 
 // Load environment variables
 dotenv.config();
@@ -319,11 +323,10 @@ class UnifiedBotLifecycle {
       this.setState(BotLifecycleState.CONNECTED, "WhatsApp client connected");
       this.setState(BotLifecycleState.READY, "Bot fully operational");
 
-      // TODO: Initialize API routes here when they're fixed
-      console.log("🚀 API routes will be initialized here once fixed");
-    });
-
-    // Error handling
+      // Initialize API routes now that client is ready
+      this.initializeApiRoutes();
+      console.log("🚀 API routes initialized successfully");
+    }); // Error handling
     this._client.on("error", (error) => {
       this.handleBotError(error, "CLIENT_ERROR").catch(console.error);
     });
@@ -375,6 +378,34 @@ class UnifiedBotLifecycle {
           clientConnected: !!this._client && this.isReady,
         },
       });
+    }
+  }
+
+  /**
+   * Initialize API routes when client is ready
+   */
+  public initializeApiRoutes(): void {
+    if (this._routesInitialized || !this._client) {
+      return;
+    }
+
+    try {
+      // Set the client for the route handlers
+      setClient(this._client);
+
+      // Register unified message routes
+      app.use("/api", messageRoutes);
+
+      // Register migrated individual routes (temporary during migration)
+      app.use("/send-to-phone", sendToPhoneRoute);
+
+      this._routesInitialized = true;
+      console.log("✅ API routes initialized successfully");
+
+      logToFile("status.log", "API routes initialized");
+    } catch (error) {
+      console.error("❌ Error initializing API routes:", error);
+      logToFile("errors.log", `Error initializing API routes: ${error}`);
     }
   }
 }
