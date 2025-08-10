@@ -16,5 +16,11 @@ export { BotStateManager } from "./BotStateManager";
 export { APIServerService } from "./APIServerService";
 export { DirectoryManagerService } from "./DirectoryManagerService";
 
+// Moved from utils
+export { botLifecycle } from "./BotLifecycleService";
+export * from "./UserDataService";
+export * from "./MediaMessagingService";
+export * from "./SMTPService";
+
 // Export types
 export type { ClientEventCallbacks } from "./WhatsAppClientService";
