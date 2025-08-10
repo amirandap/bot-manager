@@ -102,14 +102,27 @@ export class MessageRoutingService {
   }
 
   /**
+   * Separate recipients into groups and phone numbers
+   * Consistent implementation matching bot utilities
+   */
+  private separateRecipients(recipients: string[]): {
+    groups: string[];
+    phones: string[];
+  } {
+    const groups = recipients.filter(recipient => recipient.includes('@g.us'));
+    const phones = recipients.filter(recipient => !recipient.includes('@g.us'));
+    
+    return { groups, phones };
+  }
+
+  /**
    * Determine endpoint for text-only messages (existing logic)
    */
   private determineTextMessageEndpoint(data: any): EndpointRoutingResult {
     const allRecipients = this.normalizeRecipients(data);
     
-    // Classify recipients
-    const groups = allRecipients.filter(recipient => recipient.includes('@g.us'));
-    const phones = allRecipients.filter(recipient => !recipient.includes('@g.us'));
+    // Use consistent recipient separation logic
+    const { groups, phones } = this.separateRecipients(allRecipients);
     
     // Determine optimal endpoint and format data
     if (groups.length > 0 && phones.length > 0) {
