@@ -279,17 +279,7 @@ export class UnifiedBotLifecycle {
     return this.client;
   }
 
-  public getLifecycleState(): BotLifecycleState {
-    return botLifecycle.getState();
-  }
 
-  public getLifecycleDetails() {
-    return botLifecycle.getStateDetails();
-  }
-
-  public getStateDescription(): string {
-    return botLifecycle.getStateDescription();
-  }
 
   public async shutdown(): Promise<void> {
     if (this.isShuttingDown) {
@@ -348,9 +338,9 @@ export class UnifiedBotLifecycle {
       isReady: this.isClientReady(),
       hasQRCode: this.hasQRCode(),
       qrCodePath: this.hasQRCode() ? this.qrCodePath : null,
-      lifecycleState: this.getLifecycleState(),
-      stateDescription: this.getStateDescription(),
-      lifecycleDetails: this.getLifecycleDetails(),
+      lifecycleState: botLifecycle.getState(),
+      stateDescription: botLifecycle.getStateDescription(),
+      lifecycleDetails: botLifecycle.getStateDetails(),
     };
   }
 }
