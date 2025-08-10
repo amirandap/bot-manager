@@ -1,11 +1,7 @@
-import * as fs from "fs";
+import { botLogger } from '../utils/loggerWrapper';\n\nimport * as fs from "fs";
 import * as path from "path";
 import { BotLifecycleState, LifecycleEvent } from "../types/types";
-
-// Get paths from environment or create them
-const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
-const DATA_ROOT = path.join(__dirname, "../../../../data");
-const LOGS_PATH = path.join(DATA_ROOT, "logs", BOT_ID);
+import { BOT_ID, LOGS_PATH } from "../config/EnvironmentManager";
 
 class BotLifecycleTracker {
   private currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
@@ -29,12 +25,12 @@ class BotLifecycleTracker {
         const savedState = JSON.parse(data);
         this.currentState = savedState.currentState;
         this.stateHistory = savedState.stateHistory || [];
-        console.log(`📊 Loaded previous lifecycle state: ${this.currentState}`);
+        botLogger.info(`📊 Loaded previous lifecycle state: ${this.currentState}`);
       } else {
-        console.log(`📊 No previous lifecycle state found, starting fresh`);
+        botLogger.info(`📊 No previous lifecycle state found, starting fresh`);
       }
     } catch (error) {
-      console.error(`❌ Error loading lifecycle state:`, error);
+      botLogger.error(`❌ Error loading lifecycle state:`);
       // Continue with default state
     }
   }
@@ -51,7 +47,7 @@ class BotLifecycleTracker {
       // Also update PM2 metrics to expose state information
       this.updatePM2Metrics();
     } catch (error) {
-      console.error(`❌ Error saving lifecycle state:`, error);
+      botLogger.error(`❌ Error saving lifecycle state:`);
     }
   }
 
@@ -174,7 +170,7 @@ class BotLifecycleTracker {
         });
       }
     } catch (error) {
-      console.error(`❌ Error updating PM2 metrics:`, error);
+      botLogger.error(`❌ Error updating PM2 metrics:`);
     }
   }
 
@@ -336,6 +332,22 @@ class BotLifecycleTracker {
     );
   }
 
+  public markChromeError(error: Error) {
+    this.setState(
+      BotLifecycleState.ERROR_CHROME,
+      "Chrome executable validation failed",
+      error
+    );
+  }
+
+  public markValidationError(error: Error, details?: string) {
+    this.setState(
+      BotLifecycleState.ERROR_VALIDATION,
+      details || "Startup validation failed",
+      error
+    );
+  }
+
   public markConnectionError(error: Error) {
     this.setState(
       BotLifecycleState.ERROR_CONNECTION,
@@ -422,6 +434,10 @@ class BotLifecycleTracker {
         return "Desconectado de WhatsApp";
       case BotLifecycleState.RECONNECTING:
         return "Reconectando a WhatsApp";
+      case BotLifecycleState.ERROR_VALIDATION:
+        return "Error de validación inicial";
+      case BotLifecycleState.ERROR_CHROME:
+        return "Error configuración Chrome";
       case BotLifecycleState.ERROR_BROWSER:
         return "Error iniciando navegador";
       case BotLifecycleState.ERROR_CONNECTION:
@@ -450,5 +466,3 @@ class BotLifecycleTracker {
 
 // Singleton instance
 export const botLifecycle = new BotLifecycleTracker();
-
-export { BOT_ID };

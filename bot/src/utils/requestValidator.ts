@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
-import { SendResponse } from "../types/types";
+import {
+  SendResponse,
+  BaseMessageRequestBody,
+  ValidationResult,
+  RecipientValidationResult,
+  FileValidationResult,
+  ErrorObject,
+} from "../types/types";
 
 /**
  * Generic request validator for message endpoints
@@ -8,21 +15,21 @@ export default class RequestValidator {
   /**
    * Validates basic message request with optional file
    */
-  static validateMessageRequest(req: Request, res: Response, requiresMessage: boolean = true): {
-    isValid: boolean;
-    body?: any;
-    file?: Express.Multer.File;
-  } {
-    const body = req.body;
+  public static validateMessageRequest(
+    req: Request,
+    res: Response,
+    requiresMessage: boolean = true
+  ): ValidationResult {
+    const body = req.body as BaseMessageRequestBody;
     const file = req.file as Express.Multer.File;
-    
-    console.log("Payload received: ", body);
+
+    // Remove console.log for production - use proper logging instead
 
     if (requiresMessage && !body.message && !file) {
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
         error: "Missing message or file parameter",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return { isValid: false };
     }
@@ -33,18 +40,19 @@ export default class RequestValidator {
   /**
    * Validates that required recipients are present
    */
-  static validateRecipients(req: Request, res: Response): {
-    isValid: boolean;
-    body?: any;
-  } {
-    const body = req.body;
+  public static validateRecipients(
+    req: Request,
+    res: Response
+  ): RecipientValidationResult {
+    const body = req.body as BaseMessageRequestBody;
     const { to, phoneNumber, group_id, discorduserid } = body;
 
     if (!to && !phoneNumber && !group_id && !discorduserid) {
       res.status(400).json({
         success: false,
-        error: "Missing recipient information. Provide 'to', 'phoneNumber', 'group_id', or 'discorduserid'",
-        timestamp: new Date().toISOString()
+        error:
+          "Missing recipient information. Provide 'to', 'phoneNumber', 'group_id', or 'discorduserid'",
+        timestamp: new Date().toISOString(),
       });
       return { isValid: false };
     }
@@ -55,20 +63,21 @@ export default class RequestValidator {
   /**
    * Validates file upload requirements
    */
-  static validateFileUpload(req: Request, res: Response, fileType: string, acceptedTypes: string[]): {
-    isValid: boolean;
-    file?: Express.Multer.File;
-    body?: any;
-  } {
+  public static validateFileUpload(
+    req: Request,
+    res: Response,
+    fileType: string,
+    acceptedTypes: string[]
+  ): FileValidationResult {
     const file = req.file as Express.Multer.File;
-    const body = req.body;
+    const body = req.body as BaseMessageRequestBody;
 
     if (!file) {
       res.status(400).json({
         success: false,
         error: `VALIDATION_ERROR: ${fileType} file is required`,
         acceptedTypes,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return { isValid: false };
     }
@@ -79,7 +88,10 @@ export default class RequestValidator {
   /**
    * Builds standardized response object
    */
-  static buildResponse(messagesSent: string[], errors: any[]): SendResponse {
+  public static buildResponse(
+    messagesSent: string[],
+    errors: ErrorObject[]
+  ): SendResponse {
     return {
       success: errors.length === 0,
       messagesSent,
@@ -90,11 +102,14 @@ export default class RequestValidator {
   }
 
   /**
-   * Gets appropriate HTTP status code based on results
+   * Determines HTTP status code based on results
    */
-  static getResponseStatus(errors: any[], messagesSent: string[]): number {
+  public static getResponseStatus(
+    errors: ErrorObject[],
+    messagesSent: string[]
+  ): number {
     if (errors.length === 0) return 200; // All successful
     if (messagesSent.length === 0) return 500; // All failed
-    return 207; // Partial success (Multi-Status)
+    return 207; // Mixed results (multi-status)
   }
 }

@@ -1,5 +1,8 @@
-import { getFallbackNumber } from "./fallbackUtils";
-import { PhoneNumberResult, CountryConfig } from "../types/types";
+import { PhoneNumberValidation, CountryConfig } from "../types/core";
+import { botLogger } from "./loggerWrapper";
+
+// Move fallback number to avoid circular dependency
+const DEFAULT_FALLBACK_NUMBER = "+18095551234";
 
 const PHONE_CONSTRAINTS = {
   MIN_LENGTH: 10,
@@ -63,7 +66,10 @@ function applyCountrySpecificFormatting(number: string): string {
   for (const config of COUNTRY_CONFIGS) {
     if (config.pattern.test(number)) {
       const formatted = config.formatter(number);
-      console.log(`🇦🇷 ${config.name} number detected: "${formatted}"`);
+      botLogger.phoneNumberProcessing(
+        `${config.name} number detected`,
+        formatted
+      );
       return formatted;
     }
   }
@@ -71,8 +77,9 @@ function applyCountrySpecificFormatting(number: string): string {
   for (const domPattern of DOMINICAN_PATTERNS) {
     if (domPattern.pattern.test(number)) {
       const formatted = domPattern.handler(number);
-      console.log(
-        `🇩🇴 Dominican number (${domPattern.name}) detected: "${formatted}"`
+      botLogger.phoneNumberProcessing(
+        `Dominican number (${domPattern.name}) detected`,
+        formatted
       );
       return formatted;
     }
@@ -80,7 +87,10 @@ function applyCountrySpecificFormatting(number: string): string {
 
   if (REGEX_PATTERNS.INTERNATIONAL.test(number) && !number.startsWith("+")) {
     const formatted = ensureCountryCodePrefix(number);
-    console.log(`🌍 International number detected, adding +: "${formatted}"`);
+    botLogger.phoneNumberProcessing(
+      "International number detected, adding +",
+      formatted
+    );
     return formatted;
   }
 
@@ -101,29 +111,32 @@ function validatePhoneNumber(phoneNumber: string): boolean {
 function createResult(
   phoneNumber: string,
   isValid: boolean
-): PhoneNumberResult {
+): PhoneNumberValidation {
   if (isValid) {
     return { cleanedPhoneNumber: phoneNumber, isValid: true };
   }
 
-  const fallbackNumber = getFallbackNumber();
-  console.log(`❌ Using fallback number: "${fallbackNumber}"`);
+  // Use local fallback to avoid circular dependency
+  const fallbackNumber = DEFAULT_FALLBACK_NUMBER;
   return { cleanedPhoneNumber: fallbackNumber, isValid: false };
 }
 
 export function cleanAndFormatPhoneNumber(
   phoneNumber: string
-): PhoneNumberResult {
-  console.log(`🔍 Processing phone number: "${phoneNumber}"`);
+): PhoneNumberValidation {
+  botLogger.phoneNumberProcessing("Processing phone number", phoneNumber);
 
   const cleaned = sanitizePhoneNumber(phoneNumber);
-  console.log(`🧹 Cleaned number: "${cleaned}"`);
+  botLogger.phoneNumberProcessing("Cleaned number", cleaned);
 
   const formatted = applyCountrySpecificFormatting(cleaned);
-  console.log(`📞 Final formatted number: "${formatted}"`);
+  botLogger.phoneNumberProcessing("Final formatted number", formatted);
 
   const isValid = validatePhoneNumber(formatted);
-  console.log(`✅ Number validation: ${isValid ? "VALID" : "INVALID"}`);
+  botLogger.phoneNumberProcessing(
+    `Number validation: ${isValid ? "VALID" : "INVALID"}`,
+    formatted
+  );
 
   return createResult(formatted, isValid);
 }
