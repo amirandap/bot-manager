@@ -10,6 +10,7 @@ import * as QRCode from "qrcode";
 import { Logger } from "./Logger";
 import { botLifecycle } from "../utils/botLifecycleTracker";
 import { setClient } from "../config/clientExporter";
+import { puppeteerConfig } from "../config/PuppeteerConfig";
 import {
   CHROME_PATH,
   SESSION_PATH,
@@ -59,29 +60,34 @@ export class UnifiedBotLifecycle {
       this.logger.startupHeader("🤖 WHATSAPP BOT LIFECYCLE INITIALIZATION");
       botLifecycle.markBrowserLaunching();
 
-      // Validate Chrome path
-      await this.validateChromePath();
+      // Get system information for debugging
+      const systemInfo = puppeteerConfig.getSystemInfo();
+      this.logger.info(`System: ${systemInfo.platform} ${systemInfo.arch}`, "💻");
+      this.logger.info(`Node: ${systemInfo.nodeVersion}`, "�");
+      this.logger.info(`Memory: ${systemInfo.availableMemory}`, "🧠");
+      
+      // Validate environment before proceeding
+      const validation = await puppeteerConfig.validateEnvironment();
+      if (!validation.isValid) {
+        this.logger.warn("Environment validation issues found:", "⚠️");
+        validation.issues.forEach(issue => this.logger.warn(`  - ${issue}`, "❌"));
+        validation.recommendations.forEach(rec => this.logger.info(`  💡 ${rec}`, "💡"));
+      }
 
-      // Create WhatsApp client with session management
+      // Get optimized Puppeteer configuration
+      const puppeteerConf = puppeteerConfig.getConfiguration({
+        customChromePath: CHROME_PATH,
+        isProduction: process.env.NODE_ENV === "production",
+        headless: true,
+      });
+
+      // Create WhatsApp client with optimized configuration
       this.client = new Client({
         authStrategy: new LocalAuth({
           clientId: this.config.BOT_ID,
           dataPath: this.sessionPath,
         }),
-        puppeteer: {
-          headless: true,
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-          ],
-          executablePath: CHROME_PATH || undefined,
-        },
+        puppeteer: puppeteerConf,
         webVersionCache: {
           type: "remote",
           remotePath:
@@ -96,23 +102,29 @@ export class UnifiedBotLifecycle {
       // Export client for use by other modules
       setClient(this.client);
 
-      // Initialize client
+      // Initialize client - this will trigger the browser startup
       this.logger.info("Initializing WhatsApp client...", "🔄");
-      botLifecycle.markWaitingForQR();
 
       await this.client.initialize();
+      
+      // Only mark as waiting for QR after client initialization succeeds
+      this.logger.info("WhatsApp client initialized, waiting for QR code...", "⏳");
+      botLifecycle.markWaitingForQR();
+      
       this.isInitialized = true;
     } catch (error) {
       this.logger.error(`Failed to initialize WhatsApp client: ${error}`);
+      
+      // Check if it's a singleton lock error and try cleanup
+      if (error instanceof Error && error.message.includes('SingletonLock')) {
+        this.logger.info("Detected Chrome SingletonLock error, attempting cleanup...", "🧹");
+        const cleaned = puppeteerConfig.cleanupBrowserSession(this.sessionPath);
+        if (cleaned) {
+          this.logger.info("Browser session cleanup completed. Please restart the bot.", "✅");
+        }
+      }
+      
       botLifecycle.markBrowserError(error as Error);
-      throw error;
-    }
-  }
-
-  private async validateChromePath(): Promise<void> {
-    if (CHROME_PATH && !fs.existsSync(CHROME_PATH)) {
-      const error = new Error(`Chrome executable not found at: ${CHROME_PATH}`);
-      botLifecycle.markChromeError(error);
       throw error;
     }
   }
