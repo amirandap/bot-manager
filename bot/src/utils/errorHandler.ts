@@ -5,7 +5,6 @@
  * with WhatsApp-specific error classification and recovery strategies.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from "whatsapp-web.js";
 import { getFallbackNumber } from "./fallbackUtils";
 import { formatPhoneForWhatsApp } from "./recipientFormatting";
@@ -261,20 +260,14 @@ export class WhatsAppErrorHandler {
 
     // Send fallback notification if needed
     if (
-      this.shouldSendFallback(whatsappError) &&
+      !whatsappError.isPostSend && 
+      whatsappError.severity !== ErrorSeverity.LOW &&
       options.enableFallback !== false
     ) {
       await this.sendFallbackNotification(client, whatsappError);
     }
 
     return whatsappError;
-  }
-
-  /**
-   * Determines if fallback should be sent (legacy compatibility)
-   */
-  private shouldSendFallback(error: WhatsAppError): boolean {
-    return !error.isPostSend && error.severity !== ErrorSeverity.LOW;
   }
 
   /**
@@ -470,16 +463,22 @@ export function logWhatsAppError(
 export function shouldSendFallback(
   error: any,
   context: string,
-  recipient?: string
+  recipient?: string,
 ): boolean {
+  const handler = WhatsAppErrorHandler.getInstance();
   const whatsappError = WhatsAppErrorClassifier.classify(
     error,
     context,
-    recipient
+    recipient,
   );
-  logWhatsAppError(error, context, recipient);
+  
+  // Log the error directly using the handler
+  handler['logError'](whatsappError);
+  
+  // Use the same logic that was in the private method
   return (
-    !whatsappError.isPostSend && whatsappError.severity !== ErrorSeverity.LOW
+    !whatsappError.isPostSend && 
+    whatsappError.severity !== ErrorSeverity.LOW
   );
 }
 
