@@ -1,12 +1,12 @@
 /* eslint-disable max-len */
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 
-import express from 'express';
-import { sendTextWithErrorHandling } from '../../utils/messageHandler';
-import { fetchUserData } from '../../utils/userDataService';
-import { createPersonalizedMessage } from '../../utils/messageFormatter';
-import { MessageErrorHandler } from '../../utils/errorHandler';
-import { getClient } from '../../config/clientExporter';
+import express from "express";
+import { sendTextWithErrorHandling } from "../../utils/messageHandler";
+import { fetchUserData } from "../../utils/userDataService";
+import { createPersonalizedMessage } from "../../utils/messageFormatter";
+import { MessageErrorHandler } from "../../utils/errorHandler";
+import { getClient } from "../../config/clientExporter";
 
 const router = express.Router();
 
@@ -17,13 +17,13 @@ router.post("/", async (req: Request, res: Response) => {
     message: string;
   };
   console.log("Payload recibido en /confirmation: ", req.body);
-  
+
   const client = getClient();
-  
+
   if (!client) {
-    return res.status(503).json({ 
-      success: false, 
-      error: "WhatsApp client not ready"
+    return res.status(503).json({
+      success: false,
+      error: "WhatsApp client not ready",
     });
   }
 
@@ -37,11 +37,11 @@ router.post("/", async (req: Request, res: Response) => {
       if (userData) {
         const { celular, full_name } = userData;
         finalPhoneNumber = celular;
-        const firstName = full_name.split(' ')[0]; // Extract the first name
+        const firstName = full_name.split(" ")[0]; // Extract the first name
         newMessage = createPersonalizedMessage(
-          message.replace(/-/g, ' '),
+          message.replace(/-/g, " "),
           userData,
-          'Saludos',
+          "Saludos"
         );
       } else {
         console.error("Discord user ID not found: ", discorduserid);
@@ -66,12 +66,12 @@ router.post("/", async (req: Request, res: Response) => {
     const result = await sendTextWithErrorHandling(
       client,
       [finalPhoneNumber],
-      newMessage,
+      newMessage
     );
 
     if (result.success) {
-      return res.send({ 
-        message: 'Message sent successfully',
+      return res.send({
+        message: "Message sent successfully",
         messagesSent: result.messagesSent.length,
       });
     } else {
@@ -80,26 +80,26 @@ router.post("/", async (req: Request, res: Response) => {
         client,
         { discorduserid, phoneNumber, message, userData },
         result.errors,
-        'confirmation-endpoint',
+        "confirmation-endpoint"
       );
-      
-      return res.status(500).send({ 
-        error: 'Error sending message',
+
+      return res.status(500).send({
+        error: "Error sending message",
         details: result.errors,
       });
     }
   } catch (error: unknown) {
-    const reason = error instanceof Error ? error.message : 'Unknown reason';
-    
+    const reason = error instanceof Error ? error.message : "Unknown reason";
+
     // Handle critical errors
     await MessageErrorHandler.handleCriticalError(
       client,
       error,
       { discorduserid, phoneNumber, message, userData },
-      'confirmation-endpoint',
+      "confirmation-endpoint"
     );
-    
-    return res.status(500).send({ 
+
+    return res.status(500).send({
       error: `Error sending message: ${reason}`,
     });
   }

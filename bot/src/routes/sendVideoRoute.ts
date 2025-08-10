@@ -2,13 +2,13 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendVideoMessage } from "../helpers/mediaHelpers";
-import { MessageErrorHandler } from '../utils/errorHandler';
+import { sendVideoMessage } from "../utils/mediaMessaging";
+import { MessageErrorHandler } from "../utils/errorHandler";
 import RequestValidator from "../utils/requestValidator";
-import RecipientProcessor from "../utils/recipientProcessor";
+import { RecipientProcessor } from "../utils/recipientFormatting";
 
 const router = express.Router();
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 64 * 1024 * 1024, // 64MB limit for videos
@@ -16,27 +16,33 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Accept video files
     const allowedMimes = [
-      'video/mp4',
-      'video/avi',
-      'video/mov',
-      'video/wmv',
-      'video/flv',
-      'video/webm',
-      'video/mkv'
+      "video/mp4",
+      "video/avi",
+      "video/mov",
+      "video/wmv",
+      "video/flv",
+      "video/webm",
+      "video/mkv",
     ];
-    
+
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Invalid file type. Only video files allowed: ${allowedMimes.join(', ')}`));
+      cb(
+        new Error(
+          `Invalid file type. Only video files allowed: ${allowedMimes.join(
+            ", "
+          )}`
+        )
+      );
     }
-  }
+  },
 });
 
 /**
  * POST /send-video
  * Send video message to phone number(s) or group(s)
- * 
+ *
  * Body (multipart/form-data):
  * - to: string | string[] (phone numbers and/or group IDs)
  * - message?: string (optional caption)
@@ -45,19 +51,19 @@ const upload = multer({
 router.post("/", upload.single("file"), async (req, res) => {
   const requestId = Date.now();
   const client = getClient();
-  
+
   if (!client) {
-    return res.status(503).json({ 
-      success: false, 
+    return res.status(503).json({
+      success: false,
       error: "WhatsApp client not ready",
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-  
+
   try {
     console.log(`🎬 [BOT] Video message request ${requestId} received`);
-    
+
     const { to, message } = req.body;
     const file = req.file;
 
@@ -67,10 +73,18 @@ router.post("/", upload.single("file"), async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: Video file is required",
-        acceptedTypes: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm", "video/mkv"],
+        acceptedTypes: [
+          "video/mp4",
+          "video/avi",
+          "video/mov",
+          "video/wmv",
+          "video/flv",
+          "video/webm",
+          "video/mkv",
+        ],
         maxSize: "64MB",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -78,36 +92,51 @@ router.post("/", upload.single("file"), async (req, res) => {
       console.error(`❌ [BOT] Request ${requestId}: 'to' field is required`);
       return res.status(400).json({
         success: false,
-        error: "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
+        error:
+          "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
     // Normalize recipients to array
     const recipients = Array.isArray(to) ? to : [to];
-    const caption = message || '';
+    const caption = message || "";
 
-    console.log(`🎬 [BOT] Request ${requestId}: Sending video to ${recipients.length} recipient(s)`);
-    console.log(`📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `🎬 [BOT] Request ${requestId}: Sending video to ${recipients.length} recipient(s)`
+    );
+    console.log(
+      `📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(
+        file.size /
+        1024 /
+        1024
+      ).toFixed(2)}MB)`
+    );
 
     // Send video messages
-    const results = await sendVideoMessage(
-      client,
-      recipients,
-      file,
-      caption
-    );
+    const results = await sendVideoMessage(client, recipients, file, caption);
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-video");
+      await MessageErrorHandler.sendErrorReport(
+        client,
+        req.body,
+        results.errors,
+        "/send-video"
+      );
     }
 
-    const statusCode = results.errors.length === 0 ? 200 : 
-                      results.messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    const statusCode =
+      results.errors.length === 0
+        ? 200
+        : results.messagesSent.length === 0
+        ? 500
+        : 207; // 207 = Multi-Status
 
-    console.log(`✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`);
+    console.log(
+      `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
+    );
 
     return res.status(statusCode).json({
       success: results.errors.length === 0,
@@ -118,29 +147,29 @@ router.post("/", upload.single("file"), async (req, res) => {
       fileInfo: {
         name: file.originalname,
         size: file.size,
-        type: file.mimetype
+        type: file.mimetype,
       },
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
-    
-    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
-      client,
-      error,
-      req.body,
-      "/send-video"
-    );
-    
+
+    const { errorType, errorDetails } =
+      await MessageErrorHandler.handleCriticalError(
+        client,
+        error,
+        req.body,
+        "/send-video"
+      );
+
     return res.status(500).json({
       success: false,
       error: "VIDEO_SEND_ERROR: Internal server error",
       errorType,
-      details: errorDetails.error,
+      details: errorDetails.troubleshooting,
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });

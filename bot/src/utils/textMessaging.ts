@@ -2,7 +2,7 @@
 import { Client } from 'whatsapp-web.js';
 import { formatRecipient } from './recipientFormatting';
 import { shouldSendFallback, logWhatsAppError } from './errorHandler';
-import { MediaResult } from './messageTypes';
+import { MediaResult } from '../types/types';
 
 /**
  * Text messaging utilities

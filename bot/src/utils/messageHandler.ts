@@ -2,34 +2,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client } from "whatsapp-web.js";
-import { 
-  sendImageMessage, 
-  sendDocumentMessage, 
-  sendAudioMessage, 
+import { Client } from 'whatsapp-web.js';
+import {
+  sendImageMessage,
+  sendDocumentMessage,
+  sendAudioMessage,
   sendVideoMessage,
-} from "./mediaMessaging";
-import { sendTextMessage } from "./textMessaging";
-import { sendErrorMessage } from "./errorHandler";
-import { MediaResult } from "./messageTypes";
-import { MessageErrorHandler } from "./errorHandler";
-import { validateWhatsAppError, ErrorValidationResult } from "./errorHandler";
-import { getFallbackNumber } from "./fallbackUtils";
-
-export interface MessageHandlerResult {
-  success: boolean;
-  messagesSent: string[];
-  errors: Array<{
-    recipient: string;
-    error: string;
-    errorType: string;
-    timestamp: string;
-  }>;
-  fallbackSent?: boolean;
-  troubleshootingGuide?: string;
-}
-
-export type MessageType = 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO';
+} from './mediaMessaging';
+import { sendTextMessage } from './textMessaging';
+import { sendErrorMessage, shouldSendFallback } from './errorHandler';
+import { MessageErrorHandler } from './errorHandler';
+import { validateWhatsAppError } from './errorHandler';
+import { getFallbackNumber } from './fallbackUtils';
+import {
+  MediaResult,
+  MessageHandlerResult,
+  MessageType,
+} from '../types/types';
 
 /**
  * Unified message handler that integrates error handling and fallback mechanisms
@@ -46,23 +35,23 @@ export async function sendMessageWithErrorHandling(
     caption?: string;
     message?: string;
     filename?: string; // New: Support for custom filenames
-  },
+  }
 ): Promise<MessageHandlerResult> {
   const result: MessageHandlerResult = {
     success: false,
     messagesSent: [],
     errors: [],
-    fallbackSent: false
+    fallbackSent: false,
   };
 
   if (!client) {
     const error = {
-      recipient: 'ALL',
-      error: 'WhatsApp client not initialized',
-      errorType: 'CLIENT_NOT_INITIALIZED',
-      timestamp: new Date().toISOString()
+      recipient: "ALL",
+      error: "WhatsApp client not initialized",
+      errorType: "CLIENT_NOT_INITIALIZED",
+      timestamp: new Date().toISOString(),
     };
-    
+
     result.errors.push(error);
     return result;
   }
@@ -70,74 +59,74 @@ export async function sendMessageWithErrorHandling(
   let mediaResult: MediaResult;
 
   try {
-  // Send messages based on type
-  switch (messageType) {
-    case 'TEXT': {
-      if (!content.text) {
-        throw new Error('Text content is required for TEXT messages');
+    // Send messages based on type
+    switch (messageType) {
+      case "TEXT": {
+        if (!content.text) {
+          throw new Error("Text content is required for TEXT messages");
+        }
+        mediaResult = await sendTextMessage(client, recipients, content.text);
+        break;
       }
-      mediaResult = await sendTextMessage(client, recipients, content.text);
-      break;
-    }
 
-    case 'IMAGE': {
-      // Support both file uploads and URLs
-      if (!content.file && !content.imageUrl) {
-        throw new Error('File or imageUrl is required for IMAGE messages');
+      case "IMAGE": {
+        // Support both file uploads and URLs
+        if (!content.file && !content.imageUrl) {
+          throw new Error("File or imageUrl is required for IMAGE messages");
+        }
+        const imageSource = content.file || content.imageUrl!;
+        mediaResult = await sendImageMessage(
+          client,
+          recipients,
+          imageSource,
+          content.caption,
+          content.filename
+        );
+        break;
       }
-      const imageSource = content.file || content.imageUrl!;
-      mediaResult = await sendImageMessage(
-        client,
-        recipients,
-        imageSource,
-        content.caption,
-        content.filename,
-      );
-      break;
-    }
 
-    case 'DOCUMENT': {
-      if (!content.file) {
-        throw new Error('File is required for DOCUMENT messages');
+      case "DOCUMENT": {
+        if (!content.file) {
+          throw new Error("File is required for DOCUMENT messages");
+        }
+        mediaResult = await sendDocumentMessage(
+          client,
+          recipients,
+          content.file,
+          content.message
+        );
+        break;
       }
-      mediaResult = await sendDocumentMessage(
-        client,
-        recipients,
-        content.file,
-        content.message,
-      );
-      break;
-    }
 
-    case 'AUDIO': {
-      if (!content.file) {
-        throw new Error('File is required for AUDIO messages');
+      case "AUDIO": {
+        if (!content.file) {
+          throw new Error("File is required for AUDIO messages");
+        }
+        mediaResult = await sendAudioMessage(
+          client,
+          recipients,
+          content.file,
+          content.message
+        );
+        break;
       }
-      mediaResult = await sendAudioMessage(
-        client,
-        recipients,
-        content.file,
-        content.message,
-      );
-      break;
-    }
 
-    case 'VIDEO': {
-      if (!content.file) {
-        throw new Error('File is required for VIDEO messages');
+      case "VIDEO": {
+        if (!content.file) {
+          throw new Error("File is required for VIDEO messages");
+        }
+        mediaResult = await sendVideoMessage(
+          client,
+          recipients,
+          content.file,
+          content.caption
+        );
+        break;
       }
-      mediaResult = await sendVideoMessage(
-        client,
-        recipients,
-        content.file,
-        content.caption,
-      );
-      break;
-    }
 
-    default:
-      throw new Error(`Unsupported message type: ${messageType}`);
-  }
+      default:
+        throw new Error(`Unsupported message type: ${messageType}`);
+    }
 
     // Process results
     result.messagesSent = mediaResult.messagesSent;
@@ -155,41 +144,52 @@ export async function sendMessageWithErrorHandling(
         );
         result.fallbackSent = true;
       } catch (errorHandlerError: any) {
-        console.error(`❌ [MESSAGE_HANDLER] Error handler failed:`, errorHandlerError);
+        console.error(
+          "❌ [MESSAGE_HANDLER] Error handler failed:",
+          errorHandlerError
+        );
       }
     }
-
   } catch (criticalError: any) {
-    console.error(`❌ [MESSAGE_HANDLER] Critical error in message handling:`, criticalError);
-    
+    console.error(
+      "❌ [MESSAGE_HANDLER] Critical error in message handling:",
+      criticalError
+    );
+
     // Validate if it's a WhatsApp-specific error
     const errorValidation = validateWhatsAppError(criticalError);
-    
+
     const criticalErrorObj = {
-      recipient: 'ALL',
-      error: criticalError.message || 'Critical error in message handling',
-      errorType: errorValidation.isPostSendError ? 'POST_SEND_CRITICAL_ERROR' : 'SYSTEM_CRITICAL_ERROR',
-      timestamp: new Date().toISOString()
+      recipient: "ALL",
+      error: criticalError.message || "Critical error in message handling",
+      errorType: errorValidation.isPostSendError
+        ? "POST_SEND_CRITICAL_ERROR"
+        : "SYSTEM_CRITICAL_ERROR",
+      timestamp: new Date().toISOString(),
     };
-    
+
     result.errors.push(criticalErrorObj);
 
     // Try to send critical error to fallback
     try {
-      const fallbackMessage = `🚨 CRITICAL BOT ERROR 🚨\n\n` +
+      const fallbackMessage =
+        "🚨 CRITICAL BOT ERROR 🚨\n\n" +
         `Message Type: ${messageType}\n` +
-        `Recipients: ${recipients.join(', ')}\n` +
+        `Recipients: ${recipients.join(", ")}\n` +
         `Error: ${criticalError.message}\n` +
         `Time: ${new Date().toISOString()}\n\n` +
         `Error Type: ${errorValidation.errorType}\n` +
         `Description: ${errorValidation.description}\n` +
-        `Is Post-Send Error: ${errorValidation.isPostSendError ? 'Yes' : 'No'}`;
+        `Is Post-Send Error: ${errorValidation.isPostSendError ? "Yes" : "No"}`;
 
       await sendErrorMessage(client, fallbackMessage);
       result.fallbackSent = true;
-      console.log(`✅ [MESSAGE_HANDLER] Critical error sent to fallback`);
+      console.log("✅ [MESSAGE_HANDLER] Critical error sent to fallback");
     } catch (fallbackError: any) {
-      console.error(`❌ [MESSAGE_HANDLER] Failed to send critical error to fallback:`, fallbackError);
+      console.error(
+        "❌ [MESSAGE_HANDLER] Failed to send critical error to fallback:",
+        fallbackError
+      );
     }
   }
 
@@ -203,9 +203,11 @@ export async function sendMessageWithErrorHandling(
 export async function sendTextWithErrorHandling(
   client: Client | null,
   recipients: string[],
-  message: string,
+  message: string
 ): Promise<MessageHandlerResult> {
-  return sendMessageWithErrorHandling(client, recipients, 'TEXT', { text: message });
+  return sendMessageWithErrorHandling(client, recipients, "TEXT", {
+    text: message,
+  });
 }
 
 /**
@@ -217,9 +219,9 @@ export async function sendImageFromUrl(
   recipients: string[],
   imageUrl: string,
   caption?: string,
-  filename?: string,
+  filename?: string
 ): Promise<MessageHandlerResult> {
-  return sendMessageWithErrorHandling(client, recipients, 'IMAGE', {
+  return sendMessageWithErrorHandling(client, recipients, "IMAGE", {
     imageUrl,
     caption,
     filename,
@@ -246,9 +248,16 @@ export async function sendSystemNotification(
 
   try {
     await sendErrorMessage(client, fullMessage, fallbackNumber);
-    console.log(`✅ [SYSTEM_NOTIFICATION] ${isError ? 'Error' : 'Info'} notification sent to fallback`);
+    console.log(
+      `✅ [SYSTEM_NOTIFICATION] ${
+        isError ? "Error" : "Info"
+      } notification sent to fallback`
+    );
   } catch (error: any) {
-    console.error(`❌ [SYSTEM_NOTIFICATION] Failed to send notification:`, error);
+    console.error(
+      "❌ [SYSTEM_NOTIFICATION] Failed to send notification:",
+      error
+    );
   }
 }
 
@@ -283,11 +292,15 @@ export async function sendMessagesBatch(
   let totalErrors = 0;
   let successfulBatches = 0;
 
-  console.log(`📦 [BATCH_HANDLER] Starting batch send of ${batches.length} batches`);
+  console.log(
+    `📦 [BATCH_HANDLER] Starting batch send of ${batches.length} batches`
+  );
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
-    console.log(`📤 [BATCH_HANDLER] Processing batch ${i + 1}/${batches.length}`);
+    console.log(
+      `📤 [BATCH_HANDLER] Processing batch ${i + 1}/${batches.length}`
+    );
 
     try {
       const result = await sendMessageWithErrorHandling(
@@ -307,23 +320,24 @@ export async function sendMessagesBatch(
 
       // Small delay between batches to avoid rate limiting
       if (i < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
-
     } catch (batchError: any) {
       console.error(`❌ [BATCH_HANDLER] Error in batch ${i + 1}:`, batchError);
-      
+
       const errorResult: MessageHandlerResult = {
         success: false,
         messagesSent: [],
-        errors: [{
-          recipient: 'BATCH',
-          error: batchError.message || 'Batch processing error',
-          errorType: 'BATCH_ERROR',
-          timestamp: new Date().toISOString()
-        }]
+        errors: [
+          {
+            recipient: "BATCH",
+            error: batchError.message || "Batch processing error",
+            errorType: "BATCH_ERROR",
+            timestamp: new Date().toISOString(),
+          },
+        ],
       };
-      
+
       batchResults.push(errorResult);
       totalErrors++;
     }
@@ -331,7 +345,9 @@ export async function sendMessagesBatch(
 
   const overallSuccess = successfulBatches > 0 && totalErrors === 0;
 
-  console.log(`📊 [BATCH_HANDLER] Batch complete: ${successfulBatches}/${batches.length} successful, ${totalMessagesSent} messages sent, ${totalErrors} errors`);
+  console.log(
+    `📊 [BATCH_HANDLER] Batch complete: ${successfulBatches}/${batches.length} successful, ${totalMessagesSent} messages sent, ${totalErrors} errors`
+  );
 
   return {
     overallSuccess,
@@ -340,7 +356,203 @@ export async function sendMessagesBatch(
       totalBatches: batches.length,
       successfulBatches,
       totalMessagesSent,
-      totalErrors
-    }
+      totalErrors,
+    },
   };
+}
+
+/**
+ * Send messages to groups with unified error handling
+ * Consolidated from groupMessageHandler.ts
+ */
+export async function sendToGroups(
+  client: Client | null,
+  groups: string[],
+  message: string,
+  file?: Express.Multer.File
+): Promise<{
+  messagesSent: string[];
+  errors: Array<{
+    recipient: string;
+    error: string;
+    errorType: string;
+    timestamp: string;
+  }>;
+}> {
+  const messagesSent: string[] = [];
+  const errors: Array<{
+    recipient: string;
+    error: string;
+    errorType: string;
+    timestamp: string;
+  }> = [];
+
+  if (!client) {
+    errors.push({
+      recipient: "ALL",
+      error: "WhatsApp client not initialized",
+      errorType: "CLIENT_NOT_INITIALIZED",
+      timestamp: new Date().toISOString(),
+    });
+    return { messagesSent, errors };
+  }
+
+  for (const groupId of groups) {
+    try {
+      console.log(`🏢 [BOT] Sending to group: ${groupId}`);
+      console.log(`🔍 [BOT] Message content: "${message}"`);
+      console.log(`📁 [BOT] Has file attachment: ${!!file}`);
+
+      let sendResult;
+      if (file) {
+        console.log(
+          `📎 [BOT] Sending file to group: ${file.originalname} (${file.mimetype})`
+        );
+        sendResult = await client.sendMessage(
+          groupId,
+          { data: file.buffer.toString("base64"), mimetype: file.mimetype },
+          { caption: message }
+        );
+      } else {
+        console.log("💬 [BOT] Sending text message to group");
+        sendResult = await client.sendMessage(groupId, message);
+      }
+
+      console.log("🔍 [BOT] Send result:", sendResult);
+      messagesSent.push(groupId);
+      console.log(`✅ [BOT] Group message sent successfully to: ${groupId}`);
+    } catch (error: unknown) {
+      const reason = error instanceof Error ? error.message : "Unknown error";
+      const errorStack =
+        error instanceof Error ? error.stack : "No stack trace";
+
+      // Use standardized error validation to determine if fallback should be sent
+      const sendFallback = shouldSendFallback(error, "GROUP_MESSAGE", groupId);
+
+      if (!sendFallback) {
+        // Post-send error - message was likely delivered successfully
+        messagesSent.push(groupId);
+        console.log(
+          "✅ [BOT] Treating as successful send despite post-send error"
+        );
+      } else {
+        // Critical error - actual delivery failure
+        console.error(
+          `❌ [BOT] Critical error sending message to group ${groupId}:`
+        );
+        console.error(`   Error Type: ${typeof error}`);
+        console.error(`   Error Message: ${reason}`);
+        console.error(`   Error Stack: ${errorStack}`);
+        console.error("   Full Error Object:", error);
+
+        errors.push({
+          recipient: groupId,
+          error: reason,
+          errorType: "GROUP_SEND_ERROR",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  return { messagesSent, errors };
+}
+
+/**
+ * Send messages to phone numbers with unified error handling
+ * Consolidated from phoneMessageHandler.ts
+ */
+export async function sendToPhones(
+  client: Client | null,
+  phoneNumbers: string[],
+  message: string,
+  file?: Express.Multer.File
+): Promise<{
+  messagesSent: string[];
+  errors: Array<{
+    recipient: string;
+    error: string;
+    errorType: string;
+    timestamp: string;
+  }>;
+}> {
+  const messagesSent: string[] = [];
+  const errors: Array<{
+    recipient: string;
+    error: string;
+    errorType: string;
+    timestamp: string;
+  }> = [];
+
+  if (!client) {
+    errors.push({
+      recipient: "ALL",
+      error: "WhatsApp client not initialized",
+      errorType: "CLIENT_NOT_INITIALIZED",
+      timestamp: new Date().toISOString(),
+    });
+    return { messagesSent, errors };
+  }
+
+  for (const number of phoneNumbers) {
+    try {
+      if (file) {
+        // Use document message sender
+        const result = await sendDocumentMessage(
+          client,
+          [number],
+          file,
+          message
+        );
+
+        if (result.messagesSent.length > 0) {
+          messagesSent.push(...result.messagesSent);
+        }
+
+        if (result.errors.length > 0) {
+          // Convert MediaResult errors to ErrorObject format
+          const convertedErrors = result.errors.map((err) => ({
+            recipient: err.recipient,
+            error: err.error,
+            errorType: err.errorType,
+            timestamp: err.timestamp,
+          }));
+          errors.push(...convertedErrors);
+        }
+      } else {
+        // Use text message sender
+        const result = await sendTextMessage(client, [number], message);
+
+        if (result.messagesSent.length > 0) {
+          messagesSent.push(...result.messagesSent);
+        }
+
+        if (result.errors.length > 0) {
+          // Convert MediaResult errors to ErrorObject format
+          const convertedErrors = result.errors.map((err) => ({
+            recipient: err.recipient,
+            error: err.error,
+            errorType: err.errorType,
+            timestamp: err.timestamp,
+          }));
+          errors.push(...convertedErrors);
+        }
+      }
+    } catch (error: unknown) {
+      // Critical errors that couldn't be handled by the new message functions
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      const errorDetails = {
+        recipient: number,
+        error: errorMessage,
+        errorType: "CRITICAL_ERROR",
+        timestamp: new Date().toISOString(),
+      };
+
+      errors.push(errorDetails);
+    }
+  }
+
+  return { messagesSent, errors };
 }

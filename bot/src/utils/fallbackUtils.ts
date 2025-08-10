@@ -1,33 +1,20 @@
 /* eslint-disable no-console */
 import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../constants/numbers";
+import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 
 // Mutable fallback number that can be changed at runtime
 let runtimeFallbackNumber: string | null = null;
-
-/**
- * Basic phone number cleaning (avoiding circular dependency)
- */
-function basicCleanPhoneNumber(phoneNumber: string): string {
-  let cleaned = phoneNumber.replace(/[^\d+]/g, "");
-
-  // Ensure it starts with + for international format
-  if (!cleaned.startsWith("+") && cleaned.length >= 10) {
-    cleaned = `+${cleaned}`;
-  }
-
-  return cleaned;
-}
 
 /**
  * Sets a new fallback number at runtime
  * @param newNumber - The new fallback number
  */
 export function setFallbackNumber(newNumber: string): void {
-  const cleanedNumber = basicCleanPhoneNumber(newNumber);
+  const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(newNumber);
   console.log(
-    `📞 Updating fallback number from "${getFallbackNumber()}" to "${cleanedNumber}"`
+    `📞 Updating fallback number from "${getFallbackNumber()}" to "${cleanedPhoneNumber}"`
   );
-  runtimeFallbackNumber = cleanedNumber;
+  runtimeFallbackNumber = cleanedPhoneNumber;
 }
 
 /**
@@ -37,16 +24,16 @@ export function setFallbackNumber(newNumber: string): void {
  */
 export function getFallbackNumber(): string {
   const rawNumber = runtimeFallbackNumber || DEFAULT_FALLBACK_PHONE_NUMBER;
-  const cleaned = basicCleanPhoneNumber(rawNumber);
+  const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(rawNumber);
 
   // Log if we had to format the fallback number
-  if (cleaned !== rawNumber) {
+  if (cleanedPhoneNumber !== rawNumber) {
     console.log(
-      `🔧 Fallback number formatted from "${rawNumber}" to "${cleaned}"`
+      `🔧 Fallback number formatted from "${rawNumber}" to "${cleanedPhoneNumber}"`
     );
   }
 
-  return cleaned;
+  return cleanedPhoneNumber;
 }
 
 /**

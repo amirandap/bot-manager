@@ -1,45 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { BotLifecycleState, LifecycleEvent } from '../types/types';
 
 // Get paths from environment or create them
 const BOT_ID = process.env.BOT_ID || `bot-${Date.now()}`;
 const DATA_ROOT = path.join(__dirname, '../../../../data');
 const LOGS_PATH = path.join(DATA_ROOT, 'logs', BOT_ID);
-
-// Define lifecycle states for better tracking
-export enum BotLifecycleState {
-  // Startup phases
-  INITIALIZING = 'initializing',
-  BROWSER_LAUNCHING = 'browser_launching',
-  WAITING_FOR_QR = 'waiting_for_qr',
-  QR_READY = 'qr_ready',
-  QR_SCANNED = 'qr_scanned',
-  QR_ERROR = 'qr_error',      // New state for QR code errors
-  AUTHENTICATING = 'authenticating',
-  
-  // Runtime states
-  READY = 'ready',
-  CONNECTED = 'connected',
-  DISCONNECTED = 'disconnected',
-  RECONNECTING = 'reconnecting',
-  
-  // Error states
-  ERROR_BROWSER = 'error_browser',
-  ERROR_CONNECTION = 'error_connection',
-  ERROR_AUTHENTICATION = 'error_authentication',
-  ERROR_UNKNOWN = 'error_unknown',
-  
-  // Shutdown states
-  STOPPING = 'stopping',
-  STOPPED = 'stopped'
-}
-
-interface LifecycleEvent {
-  timestamp: string;
-  state: BotLifecycleState;
-  details?: string;
-  error?: string;
-}
 
 class BotLifecycleTracker {
   private currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
@@ -421,5 +387,4 @@ class BotLifecycleTracker {
 // Singleton instance
 export const botLifecycle = new BotLifecycleTracker();
 
-// Export BOT_ID for use in other modules
 export { BOT_ID };

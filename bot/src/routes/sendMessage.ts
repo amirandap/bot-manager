@@ -2,53 +2,92 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
+import { formatRecipient } from "../utils/recipientFormatting";
+import { MessageErrorHandler } from "../utils/errorHandler";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/", upload.single("media"), async (req, res) => {
+  const requestId = Date.now();
+  const client = getClient();
+
   try {
-    const client = getClient();
-    
     if (!client) {
-      return res.status(503).json({ 
-        success: false, 
-        error: "WhatsApp client not ready" 
+      return res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
       });
     }
 
     const { phone, message } = req.body;
-    
+
     if (!phone || !message) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Phone and message are required" 
+      return res.status(400).json({
+        success: false,
+        error: "Phone and message are required",
+        requestId,
+        timestamp: new Date().toISOString(),
       });
     }
+
+    console.log(`📱 [BOT] Simple message request ${requestId}: ${phone}`);
 
     // Simple message sending
     try {
-      const chatId = phone.includes('@c.us') ? phone : `${phone}@c.us`;
+      const chatId = formatRecipient(phone);
       await client.sendMessage(chatId, message);
-      
-      res.json({ 
-        success: true, 
+
+      console.log(`✅ [BOT] Request ${requestId} completed successfully`);
+
+      res.json({
+        success: true,
         message: "Message sent successfully",
-        to: phone
+        to: phone,
+        requestId,
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error("Error sending message:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to send message' 
+      console.error(`❌ [BOT] Request ${requestId} send error:`, error);
+
+      // Use the new error handler
+      const { errorType, errorDetails } =
+        await MessageErrorHandler.handleCriticalError(
+          client,
+          error,
+          req.body,
+          "/send-message"
+        );
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to send message",
+        errorType,
+        details: errorDetails.troubleshooting,
+        requestId,
+        timestamp: new Date().toISOString(),
       });
     }
-
   } catch (error) {
-    console.error("Critical error in sendMessage route:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    console.error(`❌ [BOT] Request ${requestId} critical error:`, error);
+
+    const { errorType, errorDetails } =
+      await MessageErrorHandler.handleCriticalError(
+        client,
+        error,
+        req.body,
+        "/send-message"
+      );
+
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+      errorType,
+      details: errorDetails.troubleshooting,
+      requestId,
+      timestamp: new Date().toISOString(),
     });
   }
 });

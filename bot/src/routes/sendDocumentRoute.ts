@@ -2,13 +2,13 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendDocumentMessage } from "../helpers/mediaHelpers";
-import { MessageErrorHandler } from '../utils/errorHandler';
+import { sendDocumentMessage } from "../utils/mediaMessaging";
+import { MessageErrorHandler } from "../utils/errorHandler";
 import RequestValidator from "../utils/requestValidator";
-import RecipientProcessor from "../utils/recipientProcessor";
+import { RecipientProcessor } from "../utils/recipientFormatting";
 
 const router = express.Router();
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit for documents
@@ -16,32 +16,36 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Accept document files
     const allowedMimes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'text/plain',
-      'text/csv',
-      'application/zip',
-      'application/x-rar-compressed',
-      'application/x-7z-compressed'
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+      "text/csv",
+      "application/zip",
+      "application/x-rar-compressed",
+      "application/x-7z-compressed",
     ];
-    
+
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Invalid file type. Only documents allowed: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, ZIP, RAR, 7Z`));
+      cb(
+        new Error(
+          `Invalid file type. Only documents allowed: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, CSV, ZIP, RAR, 7Z`
+        )
+      );
     }
-  }
+  },
 });
 
 /**
  * POST /send-document
  * Send document message to phone number(s) or group(s)
- * 
+ *
  * Body (multipart/form-data):
  * - to: string | string[] (phone numbers and/or group IDs)
  * - message?: string (optional message)
@@ -50,19 +54,19 @@ const upload = multer({
 router.post("/", upload.single("file"), async (req, res) => {
   const requestId = Date.now();
   const client = getClient();
-  
+
   if (!client) {
-    return res.status(503).json({ 
-      success: false, 
+    return res.status(503).json({
+      success: false,
       error: "WhatsApp client not ready",
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
-  
+
   try {
     console.log(`📄 [BOT] Document message request ${requestId} received`);
-    
+
     const { to, message } = req.body;
     const file = req.file;
 
@@ -72,10 +76,23 @@ router.post("/", upload.single("file"), async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: Document file is required",
-        acceptedTypes: ["PDF", "DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX", "TXT", "CSV", "ZIP", "RAR", "7Z"],
+        acceptedTypes: [
+          "PDF",
+          "DOC",
+          "DOCX",
+          "XLS",
+          "XLSX",
+          "PPT",
+          "PPTX",
+          "TXT",
+          "CSV",
+          "ZIP",
+          "RAR",
+          "7Z",
+        ],
         maxSize: "100MB",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -83,17 +100,26 @@ router.post("/", upload.single("file"), async (req, res) => {
       console.error(`❌ [BOT] Request ${requestId}: 'to' field is required`);
       return res.status(400).json({
         success: false,
-        error: "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
+        error:
+          "VALIDATION_ERROR: 'to' field is required (phone numbers or group IDs)",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
     // Normalize recipients to array
     const recipients = Array.isArray(to) ? to : [to];
 
-    console.log(`📄 [BOT] Request ${requestId}: Sending document to ${recipients.length} recipient(s)`);
-    console.log(`📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `📄 [BOT] Request ${requestId}: Sending document to ${recipients.length} recipient(s)`
+    );
+    console.log(
+      `📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(
+        file.size /
+        1024 /
+        1024
+      ).toFixed(2)}MB)`
+    );
 
     // Send document messages
     const results = await sendDocumentMessage(
@@ -105,13 +131,24 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await MessageErrorHandler.sendErrorReport(client, req.body, results.errors, "/send-document");
+      await MessageErrorHandler.sendErrorReport(
+        client,
+        req.body,
+        results.errors,
+        "/send-document"
+      );
     }
 
-    const statusCode = results.errors.length === 0 ? 200 : 
-                      results.messagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    const statusCode =
+      results.errors.length === 0
+        ? 200
+        : results.messagesSent.length === 0
+        ? 500
+        : 207; // 207 = Multi-Status
 
-    console.log(`✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`);
+    console.log(
+      `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
+    );
 
     return res.status(statusCode).json({
       success: results.errors.length === 0,
@@ -122,29 +159,29 @@ router.post("/", upload.single("file"), async (req, res) => {
       fileInfo: {
         name: file.originalname,
         size: file.size,
-        type: file.mimetype
+        type: file.mimetype,
       },
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
-    
-    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
-      client,
-      error,
-      req.body,
-      "/send-document"
-    );
-    
+
+    const { errorType, errorDetails } =
+      await MessageErrorHandler.handleCriticalError(
+        client,
+        error,
+        req.body,
+        "/send-document"
+      );
+
     return res.status(500).json({
       success: false,
       error: "DOCUMENT_SEND_ERROR: Internal server error",
       errorType,
       details: errorDetails.error,
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
