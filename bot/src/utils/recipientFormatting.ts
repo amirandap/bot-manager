@@ -18,11 +18,8 @@ export function formatRecipient(recipient: string): string {
     return recipient;
   } else {
     // It's a phone number, format for WhatsApp
-    const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(recipient);
-    const whatsappNumber = cleanedPhoneNumber.startsWith("+")
-      ? cleanedPhoneNumber.slice(1)
-      : cleanedPhoneNumber;
-    return `${whatsappNumber.trim()}@c.us`;
+    const whatsappNumber = formatPhoneForWhatsApp(recipient);
+    return `${whatsappNumber}@c.us`;
   }
 }
 

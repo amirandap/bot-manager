@@ -7,8 +7,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from "whatsapp-web.js";
-import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 import { getFallbackNumber } from "./fallbackUtils";
+import { formatPhoneForWhatsApp } from "./recipientFormatting";
 import {
   ErrorSeverity,
   ErrorCategory,
@@ -353,11 +353,8 @@ Recoverable: ${error.isRecoverable ? "Yes" : "No"}`;
   ): Promise<void> {
     try {
       const fallbackNumber = getFallbackNumber();
-      const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(fallbackNumber);
-      const whatsappNumber = cleanedPhoneNumber.startsWith("+")
-        ? cleanedPhoneNumber.slice(1)
-        : cleanedPhoneNumber;
-      const formattedNumber = `${whatsappNumber.trim()}@c.us`;
+      const whatsappNumber = formatPhoneForWhatsApp(fallbackNumber);
+      const formattedNumber = `${whatsappNumber}@c.us`;
 
       await client.sendMessage(formattedNumber, message);
       // eslint-disable-next-line no-console
@@ -398,11 +395,8 @@ async function sendErrorMessageLegacy(
   }
 
   const targetNumber = fallbackNumber || getFallbackNumber();
-  const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(targetNumber);
-  const whatsappNumber = cleanedPhoneNumber.startsWith("+")
-    ? cleanedPhoneNumber.slice(1)
-    : cleanedPhoneNumber;
-  const formattedNumber = `${whatsappNumber.trim()}@c.us`;
+  const whatsappNumber = formatPhoneForWhatsApp(targetNumber);
+  const formattedNumber = `${whatsappNumber}@c.us`;
 
   try {
     await client.sendMessage(formattedNumber, message);
