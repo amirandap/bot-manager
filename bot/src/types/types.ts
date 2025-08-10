@@ -1,3 +1,33 @@
+/**
+ * =================
+ * BOT TYPES DEFINITION
+ * =================
+ * 
+ * Consolidated type definitions for the WhatsApp Bot Manager
+ * All types are organized in logical sections for easy navigation
+ */
+
+// =================
+// CORE RESULT TYPES
+// =================
+
+export interface CoreResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface ErrorObject {
+  recipient: string;
+  error: string;
+  errorType: string;
+  timestamp: string;
+}
+
+export interface MessageResult extends CoreResult {
+  messagesSent: string[];
+  errors: ErrorObject[];
+}
+
 // =================
 // SYSTEM TYPES
 // =================
@@ -10,7 +40,7 @@ export interface SystemError extends Error {
 }
 
 // =================
-// ENVIRONMENT CONFIGURATION TYPES
+// ENVIRONMENT CONFIGURATION
 // =================
 
 export interface EnvironmentConfig {
@@ -27,7 +57,7 @@ export interface EnvironmentConfig {
 }
 
 // =================
-// BOT LIFECYCLE TYPES
+// BOT LIFECYCLE
 // =================
 
 export enum BotLifecycleState {
@@ -68,7 +98,7 @@ export interface LifecycleEvent {
 }
 
 // =================
-// ERROR HANDLING TYPES
+// ERROR HANDLING
 // =================
 
 export enum ErrorSeverity {
@@ -146,22 +176,24 @@ export interface CriticalErrorDetails {
   };
 }
 
-// Unified error object for all API responses
-export interface ErrorObject {
-  recipient: string;
-  error: string;
-  errorType?: string;
-  timestamp?: string;
+export interface ErrorContext {
+  recipient?: string;
+  endpoint?: string;
+  requestId?: string | number;
+  timestamp: string;
 }
 
 // =================
-// PHONE NUMBER TYPES
+// PHONE NUMBER HANDLING
 // =================
 
-import { PhoneNumberValidation } from "./core";
+export interface PhoneNumberValidation {
+  cleanedPhoneNumber: string;
+  isValid: boolean;
+}
 
 export interface PhoneNumberResult extends PhoneNumberValidation {
-  // Inherits cleanedPhoneNumber and isValid from core
+  // Inherits cleanedPhoneNumber and isValid
 }
 
 export interface CountryConfig {
@@ -172,24 +204,35 @@ export interface CountryConfig {
 }
 
 // =================
-// MESSAGE TYPES
+// RECIPIENT PROCESSING
 // =================
 
-export type MessageType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "VIDEO";
-
-export interface MediaResult {
-  messagesSent: string[];
-  errors: ErrorObject[];
+export interface ProcessedRecipient {
+  formatted: string;
+  isValid: boolean;
+  type: "phone" | "group" | "unknown";
 }
 
-export interface SendMessageResult extends MediaResult {
-  // Alias for backward compatibility
+export interface RequestContext {
+  requestId: string | number;
+  timestamp: string;
+  endpoint?: string;
 }
 
-export interface MessageSendOptions {
+// =================
+// MEDIA HANDLING
+// =================
+
+export interface MediaProcessingOptions {
   caption?: string;
   filename?: string;
   sendAudioAsVoice?: boolean;
+}
+
+export interface MediaAttachment {
+  data: Buffer | string;
+  mimetype: string;
+  filename?: string;
 }
 
 export interface LegacyFileFormat {
@@ -199,12 +242,91 @@ export interface LegacyFileFormat {
 
 export type MediaSource = Express.Multer.File | string | LegacyFileFormat;
 
+// =================
+// MESSAGE TYPES
+// =================
+
+export type MessageType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "VIDEO";
+
+export interface MessageSendOptions {
+  caption?: string;
+  filename?: string;
+  sendAudioAsVoice?: boolean;
+}
+
+export interface MediaResult extends MessageResult {
+  // Inherits messagesSent, errors from MessageResult
+  // Inherits success, error from CoreResult
+}
+
+export interface SendMessageResult extends MediaResult {
+  // Alias for backward compatibility
+}
+
 export interface MessageHandlerResult {
   success: boolean;
   messagesSent: string[];
   errors: ErrorObject[];
   fallbackSent?: boolean;
   troubleshootingGuide?: string;
+}
+
+export interface ProcessingResult extends MediaResult {
+  // Inherits messagesSent, errors, success, error
+}
+
+// =================
+// API REQUEST/RESPONSE
+// =================
+
+export interface BaseMessageRequestBody {
+  discorduserid?: string;
+  phoneNumber?: string | string[];
+  to?: string | string[]; // Alias for phoneNumber
+  group_id?: string;
+  group_name?: string;
+  message?: string; // Adding message for validation purposes
+}
+
+export interface SendMessageRequestBody extends BaseMessageRequestBody {
+  message: string;
+}
+
+export interface MediaMessageRequestBody extends BaseMessageRequestBody {
+  message?: string; // Optional caption/message for media
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  body?: BaseMessageRequestBody;
+  file?: Express.Multer.File;
+}
+
+export interface RecipientValidationResult {
+  isValid: boolean;
+  body?: BaseMessageRequestBody;
+}
+
+export interface FileValidationResult {
+  isValid: boolean;
+  file?: Express.Multer.File;
+  body?: BaseMessageRequestBody;
+}
+
+export interface SendResponse {
+  success: boolean;
+  messagesSent: string[];
+  errors: ErrorObject[];
+  totalSent: number;
+  totalErrors: number;
+}
+
+export interface MediaSendResponse extends SendResponse {
+  fileInfo?: {
+    name: string;
+    size: number;
+    type: string;
+  };
 }
 
 // =================
@@ -237,61 +359,45 @@ export interface User {
 }
 
 // =================
-// API REQUEST/RESPONSE TYPES
+// TYPE UNIONS & GUARDS
 // =================
 
-export interface BaseMessageRequestBody {
-  discorduserid?: string;
-  phoneNumber?: string | string[];
-  to?: string | string[]; // Alias for phoneNumber
-  group_id?: string;
-  group_name?: string;
-  message?: string; // Adding message for validation purposes
+export type AnyError = SystemError | WhatsAppError;
+export type MessageRequest = SendMessageRequestBody | MediaMessageRequestBody;
+export type ValidationResults =
+  | ValidationResult
+  | RecipientValidationResult
+  | FileValidationResult;
+
+// Type guards for runtime type checking
+export function isWhatsAppError(error: unknown): error is WhatsAppError {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "category" in error &&
+      "severity" in error
+  );
 }
 
-export interface SendMessageRequestBody extends BaseMessageRequestBody {
-  message: string;
+export function isSystemError(error: unknown): error is SystemError {
+  return Boolean(error && typeof error === "object" && "code" in error);
 }
 
-export interface MediaMessageRequestBody extends BaseMessageRequestBody {
-  message?: string; // Optional caption/message for media
+export function isMediaRequest(body: unknown): body is MediaMessageRequestBody {
+  const bodyObj = body as Record<string, unknown>;
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      !("message" in bodyObj && typeof bodyObj.message === "string")
+  );
 }
 
-// Validation types
-export interface ValidationResult {
-  isValid: boolean;
-  body?: BaseMessageRequestBody;
-  file?: Express.Multer.File;
-}
-
-export interface RecipientValidationResult {
-  isValid: boolean;
-  body?: BaseMessageRequestBody;
-}
-
-export interface FileValidationResult {
-  isValid: boolean;
-  file?: Express.Multer.File;
-  body?: BaseMessageRequestBody;
-}
-
-export interface ProcessingResult {
-  messagesSent: string[];
-  errors: ErrorObject[];
-}
-
-export interface SendResponse {
-  success: boolean;
-  messagesSent: string[];
-  errors: ErrorObject[];
-  totalSent: number;
-  totalErrors: number;
-}
-
-export interface MediaSendResponse extends SendResponse {
-  fileInfo?: {
-    name: string;
-    size: number;
-    type: string;
-  };
+export function isTextRequest(body: unknown): body is SendMessageRequestBody {
+  const bodyObj = body as Record<string, unknown>;
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      "message" in bodyObj &&
+      typeof bodyObj.message === "string"
+  );
 }

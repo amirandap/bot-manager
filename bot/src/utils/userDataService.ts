@@ -4,7 +4,7 @@
  */
 
 import { URL } from '../constants/URL';
-import { User } from '../types/types';
+import { User } from '../types';
 
 /**
  * Fetch user data by Discord user ID

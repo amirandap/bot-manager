@@ -1,4 +1,6 @@
-import { botLogger } from '../utils/loggerWrapper';\n\n/**
+import { botLogger } from '../utils/loggerWrapper';
+
+/**
  * Centralized middleware for common bot operations
  * Reduces code duplication across routes
  */

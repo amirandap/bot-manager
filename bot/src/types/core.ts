@@ -11,14 +11,17 @@ export interface CoreResult {
   error?: string;
 }
 
+// Unified error object for all API responses
+export interface ErrorObject {
+  recipient: string;
+  error: string;
+  errorType: string;
+  timestamp: string;
+}
+
 export interface MessageResult extends CoreResult {
   messagesSent: string[];
-  errors: Array<{
-    recipient: string;
-    error: string;
-    errorType?: string;
-    timestamp?: string;
-  }>;
+  errors: ErrorObject[];
 }
 
 // Phone number result used by multiple utilities
@@ -67,12 +70,5 @@ export interface ErrorContext {
   recipient?: string;
   endpoint?: string;
   requestId?: string | number;
-  timestamp: string;
-}
-
-export interface ProcessingError {
-  recipient: string;
-  error: string;
-  errorType: string;
   timestamp: string;
 }

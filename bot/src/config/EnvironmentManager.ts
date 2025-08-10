@@ -1,4 +1,6 @@
-import { botLogger } from '../utils/loggerWrapper';\n\nimport * as path from "path";
+import { botLogger } from '../utils/loggerWrapper';
+
+import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import { EnvironmentConfig } from "../types/types";

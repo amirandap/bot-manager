@@ -1,4 +1,4 @@
-import { PhoneNumberValidation, CountryConfig } from "../types/core";
+import { PhoneNumberValidation, CountryConfig } from "../types";
 import { botLogger } from "./loggerWrapper";
 
 // Move fallback number to avoid circular dependency
