@@ -3,14 +3,14 @@
 import express from "express";
 import { getClient } from "../config/clientExporter";
 import { GroupChat } from "whatsapp-web.js";
-import { getGroupDetails } from "../helpers/groupHelper";
+import { getGroupDetails } from "../utils/groupUtils";
 
 const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
     console.log("GET /get-groups: Request received");
-    
+
     const client = getClient();
 
     if (!client) {

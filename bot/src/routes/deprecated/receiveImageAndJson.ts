@@ -1,22 +1,24 @@
 /* eslint-disable max-len */
-import { getClient } from '../../config/clientExporter';
-import { sendImageMessage } from '../../helpers/mediaHelpers';
-import { sendErrorMessage } from '../../utils/errorHandler';
-import { Participant } from '../../types/types';
-import express from 'express';
+import { getClient } from "../config/clientExporter";
+import { fetchUserData } from "../utils/userDataService";
+import { cleanAndFormatPhoneNumber } from "../utils/cleanAndFormatPhoneNumber";
+import { sendImageMessage } from "../utils/mediaMessaging";
+import { sendErrorMessage } from "../utils/errorHandler";
+import { Participant } from "../types/types";
+import express from "express";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   const client = getClient();
-  
+
   if (!client) {
-    return res.status(503).json({ 
-      success: false, 
-      error: "WhatsApp client not ready"
+    return res.status(503).json({
+      success: false,
+      error: "WhatsApp client not ready",
     });
   }
-  
+
   try {
     const { participant } = req.body as { participant: Participant };
     console.log("Payload recibido en /receiveImageAndJson: ", req.body);
@@ -34,14 +36,14 @@ router.post("/", async (req, res) => {
 
     // Use new sendImageMessage which handles URL images
     const result = await sendImageMessage(client, [phone], image, text);
-    
+
     if (result.messagesSent.length > 0) {
-      return res.status(200).send({ 
-        message: 'Message sent successfully',
+      return res.status(200).send({
+        message: "Message sent successfully",
         messagesSent: result.messagesSent.length,
       });
     } else {
-      throw new Error('Failed to send image message');
+      throw new Error("Failed to send image message");
     }
   } catch (error) {
     console.error("Error sending the message:", error);

@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client, MessageMedia } from 'whatsapp-web.js';
-import { formatRecipient } from './recipientFormatting';
-import { shouldSendFallback } from './errorHandler';
-import { createMessageMedia, createMessageMediaFromUrl } from './mediaUtils';
-import { MediaResult } from './messageTypes';
+import { Client, MessageMedia } from "whatsapp-web.js";
+import { formatRecipient } from "./recipientFormatting";
+import { WhatsAppErrorHandler } from "./errorHandler";
+import { createMessageMedia, createMessageMediaFromUrl } from "./mediaUtils";
+import { MediaResult } from '../types/types';
 
 /**
  * Media messaging utilities
- * Extracted from mediaHelpers for better organization
+ * Updated to use the new centralized error handler
  */
+
+// Get error handler instance
+const errorHandler = WhatsAppErrorHandler.getInstance();
 
 /**
  * Send image message to multiple recipients
@@ -19,20 +22,20 @@ export async function sendImageMessage(
   recipients: string[],
   source: Express.Multer.File | string, // File object or URL string
   caption?: string,
-  filename?: string,
+  filename?: string
 ): Promise<MediaResult> {
   const messagesSent: string[] = [];
   const errors: any[] = [];
 
   if (!client) {
-    throw new Error('WhatsApp client not initialized');
+    throw new Error("WhatsApp client not initialized");
   }
 
   let media: MessageMedia;
-  
+
   try {
     // Determine if source is a file or URL
-    if (typeof source === 'string') {
+    if (typeof source === "string") {
       // Source is a URL
       media = await createMessageMediaFromUrl(source, filename);
     } else {
@@ -59,24 +62,30 @@ export async function sendImageMessage(
       // eslint-disable-next-line no-console
       console.log(`✅ [BOT] Image sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
-
     } catch (error: any) {
-      const sendFallback = shouldSendFallback(error, 'IMAGE_MESSAGE', recipient);
-      
-      if (!sendFallback) {
+      // Use the new error handler to classify and handle the error
+      const whatsappError = await errorHandler.handle(error, client, {
+        context: "IMAGE_MESSAGE",
+        enableFallback: false, // We handle errors manually here
+      });
+
+      if (whatsappError.isPostSend) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log('✅ [BOT] Treating image send as successful despite post-send error');
+        console.log(
+          "✅ [BOT] Treating image send as successful despite post-send error"
+        );
         continue;
       }
 
+      // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
       console.error(`❌ [BOT] Error sending image to ${recipient}:`, error);
       errors.push({
         recipient,
-        error: error.message || 'Unknown error',
-        errorType: 'IMAGE_SEND_ERROR',
+        error: error.message || "Unknown error",
+        errorType: whatsappError.category,
         timestamp: new Date().toISOString(),
       });
     }
@@ -92,13 +101,13 @@ export async function sendDocumentMessage(
   client: Client | null,
   recipients: string[],
   file: Express.Multer.File,
-  message?: string,
+  message?: string
 ): Promise<MediaResult> {
   const messagesSent: string[] = [];
   const errors: any[] = [];
 
   if (!client) {
-    throw new Error('WhatsApp client not initialized');
+    throw new Error("WhatsApp client not initialized");
   }
 
   const media = createMessageMedia(file);
@@ -111,32 +120,40 @@ export async function sendDocumentMessage(
 
       // For documents, send the file first, then optionally send a message
       await client.sendMessage(formattedRecipient, media);
-      
+
       if (message && message.trim()) {
         await client.sendMessage(formattedRecipient, message);
       }
 
       // eslint-disable-next-line no-console
-      console.log(`✅ [BOT] Document sent successfully to: ${formattedRecipient}`);
+      console.log(
+        `✅ [BOT] Document sent successfully to: ${formattedRecipient}`
+      );
       messagesSent.push(formattedRecipient);
-
     } catch (error: any) {
-      const sendFallback = shouldSendFallback(error, 'DOCUMENT_MESSAGE', recipient);
-      
-      if (!sendFallback) {
+      // Use the new error handler to classify and handle the error
+      const whatsappError = await errorHandler.handle(error, client, {
+        context: "DOCUMENT_MESSAGE",
+        enableFallback: false, // We handle errors manually here
+      });
+
+      if (whatsappError.isPostSend) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log('✅ [BOT] Treating document send as successful despite post-send error');
+        console.log(
+          "✅ [BOT] Document send successful despite post-send error"
+        );
         continue;
       }
 
+      // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
       console.error(`❌ [BOT] Error sending document to ${recipient}:`, error);
       errors.push({
         recipient,
-        error: error.message || 'Unknown error',
-        errorType: 'DOCUMENT_SEND_ERROR',
+        error: error.message || "Unknown error",
+        errorType: whatsappError.category,
         timestamp: new Date().toISOString(),
       });
     }
@@ -152,13 +169,13 @@ export async function sendAudioMessage(
   client: Client | null,
   recipients: string[],
   file: Express.Multer.File,
-  message?: string,
+  message?: string
 ): Promise<MediaResult> {
   const messagesSent: string[] = [];
   const errors: any[] = [];
 
   if (!client) {
-    throw new Error('WhatsApp client not initialized');
+    throw new Error("WhatsApp client not initialized");
   }
 
   const media = createMessageMedia(file);
@@ -171,14 +188,14 @@ export async function sendAudioMessage(
 
       // For audio, send as voice message (ptt: true) or regular audio
       const options: any = { media };
-      
+
       // Check if it's a voice note (ogg/opus usually indicates voice)
-      if (file.mimetype === 'audio/ogg' || file.mimetype === 'audio/opus') {
+      if (file.mimetype === "audio/ogg" || file.mimetype === "audio/opus") {
         options.sendAudioAsVoice = true;
       }
 
-      await client.sendMessage(formattedRecipient, '', options);
-      
+      await client.sendMessage(formattedRecipient, "", options);
+
       if (message && message.trim()) {
         await client.sendMessage(formattedRecipient, message);
       }
@@ -186,24 +203,30 @@ export async function sendAudioMessage(
       // eslint-disable-next-line no-console
       console.log(`✅ [BOT] Audio sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
-
     } catch (error: any) {
-      const sendFallback = shouldSendFallback(error, 'AUDIO_MESSAGE', recipient);
-      
-      if (!sendFallback) {
+      // Use the new error handler to classify and handle the error
+      const whatsappError = await errorHandler.handle(error, client, {
+        context: "AUDIO_MESSAGE",
+        enableFallback: false, // We handle errors manually here
+      });
+
+      if (whatsappError.isPostSend) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log('✅ [BOT] Treating audio send as successful despite post-send error');
+        console.log(
+          "✅ [BOT] Treating audio send as successful despite post-send error"
+        );
         continue;
       }
 
+      // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
       console.error(`❌ [BOT] Error sending audio to ${recipient}:`, error);
       errors.push({
         recipient,
-        error: error.message || 'Unknown error',
-        errorType: 'AUDIO_SEND_ERROR',
+        error: error.message || "Unknown error",
+        errorType: whatsappError.category,
         timestamp: new Date().toISOString(),
       });
     }
@@ -219,13 +242,13 @@ export async function sendVideoMessage(
   client: Client | null,
   recipients: string[],
   file: Express.Multer.File,
-  caption?: string,
+  caption?: string
 ): Promise<MediaResult> {
   const messagesSent: string[] = [];
   const errors: any[] = [];
 
   if (!client) {
-    throw new Error('WhatsApp client not initialized');
+    throw new Error("WhatsApp client not initialized");
   }
 
   const media = createMessageMedia(file);
@@ -246,24 +269,30 @@ export async function sendVideoMessage(
       // eslint-disable-next-line no-console
       console.log(`✅ [BOT] Video sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
-
     } catch (error: any) {
-      const sendFallback = shouldSendFallback(error, 'VIDEO_MESSAGE', recipient);
-      
-      if (!sendFallback) {
+      // Use the new error handler to classify and handle the error
+      const whatsappError = await errorHandler.handle(error, client, {
+        context: "VIDEO_MESSAGE",
+        enableFallback: false, // We handle errors manually here
+      });
+
+      if (whatsappError.isPostSend) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log('✅ [BOT] Treating video send as successful despite post-send error');
+        console.log(
+          "✅ [BOT] Treating video send as successful despite post-send error"
+        );
         continue;
       }
 
+      // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
       console.error(`❌ [BOT] Error sending video to ${recipient}:`, error);
       errors.push({
         recipient,
-        error: error.message || 'Unknown error',
-        errorType: 'VIDEO_SEND_ERROR',
+        error: error.message || "Unknown error",
+        errorType: whatsappError.category,
         timestamp: new Date().toISOString(),
       });
     }

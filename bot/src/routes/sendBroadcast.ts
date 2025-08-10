@@ -2,10 +2,10 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import GroupMessageHandler from "./sendMessage/groupMessageHandler";
-import PhoneMessageHandler from "./sendMessage/phoneMessageHandler";
-import { MessageErrorHandler } from '../utils/errorHandler';
-import { SendMessageRequestBody } from "./sendMessage/types";
+import { sendToGroups, sendToPhones } from "../utils/messageHandler";
+import { MessageErrorHandler } from "../utils/errorHandler";
+import { SendMessageRequestBody } from "../types/types";
+import { separateRecipients } from "../utils/recipientFormatting";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -13,30 +13,32 @@ const upload = multer({ storage: multer.memoryStorage() });
 /**
  * POST /send-broadcast
  * Send message to multiple recipients (phones and/or groups)
- * 
+ *
  * Body:
  * - to: string[] (required) - Array of phone numbers and/or group IDs
  * - message: string (required)
- * 
+ *
  * File: Optional attachment
  */
 router.post("/", upload.single("file"), async (req, res) => {
   const requestId = Date.now();
   const client = getClient();
-  
+
   try {
     if (!client) {
-      return res.status(503).json({ 
-        success: false, 
+      return res.status(503).json({
+        success: false,
         error: "WhatsApp client not ready",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
     console.log(`📢 [BOT] Broadcast message request ${requestId} received`);
-    
-    const { to, message } = req.body as SendMessageRequestBody & { to: string[] };
+
+    const { to, message } = req.body as SendMessageRequestBody & {
+      to: string[];
+    };
     const file = req.file;
 
     // Validation
@@ -46,36 +48,30 @@ router.post("/", upload.single("file"), async (req, res) => {
         success: false,
         error: "VALIDATION_ERROR: to is required (non-empty array)",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
-    if (!message || typeof message !== 'string') {
+    if (!message || typeof message !== "string") {
       console.error(`❌ [BOT] Request ${requestId}: message is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: message is required (string)",
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
 
     // Separate groups and phone numbers
-    const groups = to.filter(recipient => recipient.includes('@g.us'));
-    const phoneNumbers = to.filter(recipient => !recipient.includes('@g.us'));
-    
-    console.log(`📢 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) + ${groups.length} group(s)`);
+    const { groups, phoneNumbers } = separateRecipients(to);
 
-    // Send to groups
-    const groupResults = await GroupMessageHandler.sendToGroups(
-      client,
-      groups,
-      message,
-      file
+    console.log(
+      `📢 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) + ${groups.length} group(s)`
     );
 
-    // Send to phone numbers
-    const phoneResults = await PhoneMessageHandler.sendToPhones(
+    // Send to groups and phone numbers using messageHandler
+    const groupResults = await sendToGroups(client, groups, message, file);
+    const phoneResults = await sendToPhones(
       client,
       phoneNumbers,
       message,
@@ -83,18 +79,28 @@ router.post("/", upload.single("file"), async (req, res) => {
     );
 
     // Combine results
-    const allMessagesSent = [...groupResults.messagesSent, ...phoneResults.messagesSent];
+    const allMessagesSent = [
+      ...groupResults.messagesSent,
+      ...phoneResults.messagesSent,
+    ];
     const allErrors = [...groupResults.errors, ...phoneResults.errors];
 
     // Send error report if needed
     if (allErrors.length > 0) {
-      await MessageErrorHandler.sendErrorReport(client, req.body, allErrors, "/send-broadcast");
+      await MessageErrorHandler.sendErrorReport(
+        client,
+        req.body,
+        allErrors,
+        "/send-broadcast"
+      );
     }
 
-    const statusCode = allErrors.length === 0 ? 200 : 
-                      allMessagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
+    const statusCode =
+      allErrors.length === 0 ? 200 : allMessagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
 
-    console.log(`✅ [BOT] Request ${requestId} completed: ${allMessagesSent.length} sent, ${allErrors.length} errors`);
+    console.log(
+      `✅ [BOT] Request ${requestId} completed: ${allMessagesSent.length} sent, ${allErrors.length} errors`
+    );
 
     return res.status(statusCode).json({
       success: allErrors.length === 0,
@@ -106,29 +112,29 @@ router.post("/", upload.single("file"), async (req, res) => {
         phonesSent: phoneResults.messagesSent.length,
         groupsSent: groupResults.messagesSent.length,
         phoneErrors: phoneResults.errors.length,
-        groupErrors: groupResults.errors.length
+        groupErrors: groupResults.errors.length,
       },
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error: unknown) {
     console.error(`❌ [BOT] Request ${requestId} failed:`, error);
-    
-    const { errorType, errorDetails } = await MessageErrorHandler.handleCriticalError(
-      client,
-      error,
-      req.body,
-      "/send-broadcast"
-    );
-    
+
+    const { errorType, errorDetails } =
+      await MessageErrorHandler.handleCriticalError(
+        client,
+        error,
+        req.body,
+        "/send-broadcast"
+      );
+
     return res.status(500).json({
       success: false,
       error: "BROADCAST_SEND_ERROR: Internal server error",
       errorType,
-      details: errorDetails.error,
+      details: errorDetails.troubleshooting,
       requestId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
