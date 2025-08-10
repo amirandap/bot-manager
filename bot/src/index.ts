@@ -1,9 +1,23 @@
 // Unified WhatsApp bot with improved lifecycle management - Test version
+import express from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as qrTerminal from 'qrcode';
+import { Client, LocalAuth } from 'whatsapp-web.js';
+import { BotLifecycleState } from './types/types';
+import { BOT_ID } from './utils/botLifecycleTracker';
+import { getFallbackNumber } from './utils/fallbackUtils';
+import { WhatsAppErrorHandler } from './utils/errorHandler';
+import messageRoutes from './routes/unified/messageRoutes';
+import sendToPhoneRoute from './routes/sendToPhone';
+import { setClient } from './config/clientExporter';sApp bot with improved lifecycle management - Test version
 import express from "express";
 import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import * as qrTerminal from "qrcode";
+import { spawn } from "child_process";
 import { Client, LocalAuth } from "whatsapp-web.js";
 import { BotLifecycleState } from "./types/types";
 import { BOT_ID } from "./utils/botLifecycleTracker";
@@ -16,11 +30,57 @@ import { setClient } from "./config/clientExporter";
 // Load environment variables
 dotenv.config();
 
+// ===== STEP 1: PRINT ALL ENVIRONMENT VARIABLES =====
+// eslint-disable-next-line no-console
+console.log("=".repeat(60));
+// eslint-disable-next-line no-console
+console.log("🔍 ENVIRONMENT VARIABLES VERIFICATION");
+// eslint-disable-next-line no-console
+console.log("=".repeat(60));
+
 // Bot configuration from environment variables
 // BOT_ID is now imported from botLifecycleTracker to avoid circular dependency
+// eslint-disable-next-line node/no-process-env
 const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
+// eslint-disable-next-line node/no-process-env
 const BOT_PORT = parseInt(process.env.BOT_PORT || "3000");
+// eslint-disable-next-line node/no-process-env
 const BOT_TYPE = process.env.BOT_TYPE || "whatsapp";
+// eslint-disable-next-line node/no-process-env
+const CHROME_PATH = process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
+
+// Print all relevant environment variables
+// eslint-disable-next-line no-console
+console.log(`📋 BOT_ID: ${BOT_ID}`);
+// eslint-disable-next-line no-console
+console.log(`🤖 BOT_NAME: ${BOT_NAME}`);
+// eslint-disable-next-line no-console
+console.log(`🌐 BOT_PORT: ${BOT_PORT}`);
+// eslint-disable-next-line no-console
+console.log(`📱 BOT_TYPE: ${BOT_TYPE}`);
+// eslint-disable-next-line no-console, node/no-process-env
+console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+// eslint-disable-next-line no-console
+console.log(`🔧 CHROME_PATH: ${CHROME_PATH}`);
+// eslint-disable-next-line no-console
+console.log(`📂 PWD: ${process.cwd()}`);
+// eslint-disable-next-line no-console
+console.log(`🆔 PID: ${process.pid}`);
+
+// PM2 specific variables (if running under PM2)
+// eslint-disable-next-line node/no-process-env
+if (process.env.pm_id) {
+  // eslint-disable-next-line no-console
+  console.log("📊 PM2 Environment Variables:");
+  // eslint-disable-next-line no-console, node/no-process-env
+  console.log(`   PM2_ID: ${process.env.pm_id}`);
+  // eslint-disable-next-line no-console, node/no-process-env
+  console.log(`   PM2_INSTANCE_ID: ${process.env.PM2_INSTANCE_ID || "N/A"}`);
+  // eslint-disable-next-line no-console, node/no-process-env
+  console.log(
+    `   PM2_JSON_PROCESSING: ${process.env.PM2_JSON_PROCESSING || "N/A"}`
+  );
+}
 
 // Centralized data paths
 const DATA_ROOT = path.join(__dirname, "../../../data");
@@ -28,19 +88,119 @@ const SESSION_PATH = path.join(DATA_ROOT, "sessions", BOT_ID);
 const QR_PATH = path.join(DATA_ROOT, "qr-codes");
 const LOGS_PATH = path.join(DATA_ROOT, "logs", BOT_ID);
 
+// eslint-disable-next-line no-console
+console.log("📁 File Paths:");
+// eslint-disable-next-line no-console
+console.log(`   DATA_ROOT: ${DATA_ROOT}`);
+// eslint-disable-next-line no-console
+console.log(`   SESSION_PATH: ${SESSION_PATH}`);
+// eslint-disable-next-line no-console
+console.log(`   QR_PATH: ${QR_PATH}`);
+// eslint-disable-next-line no-console
+console.log(`   LOGS_PATH: ${LOGS_PATH}`);
+
+// ===== STEP 2: VALIDATE CHROME EXECUTABLE =====
+// eslint-disable-next-line no-console
+console.log("\n" + "=".repeat(60));
+// eslint-disable-next-line no-console
+console.log("🔍 CHROME EXECUTABLE VALIDATION");
+// eslint-disable-next-line no-console
+console.log("=".repeat(60));
+
+function validateChromeExecutable(): boolean {
+  // eslint-disable-next-line no-console
+  console.log(`🔍 Checking Chrome executable at: ${CHROME_PATH}`);
+
+  if (!fs.existsSync(CHROME_PATH)) {
+    // eslint-disable-next-line no-console
+    console.error(`❌ Chrome executable not found at: ${CHROME_PATH}`);
+    // eslint-disable-next-line no-console
+    console.error("💡 Available alternatives:");
+
+    // Common Chrome paths to check
+    const commonPaths = [
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/google-chrome",
+      "/usr/bin/chromium-browser",
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/snap/bin/chromium",
+      "/opt/google/chrome/chrome",
+    ];
+
+    const foundPaths = commonPaths.filter((p) => fs.existsSync(p));
+
+    if (foundPaths.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log("✅ Found these Chrome/Chromium installations:");
+      // eslint-disable-next-line no-console
+      foundPaths.forEach((p) => console.log(`   ${p}`));
+      // eslint-disable-next-line no-console
+      console.log(
+        "💡 Set CHROME_PATH environment variable to use one of these"
+      );
+    } else {
+      // eslint-disable-next-line no-console
+      console.log("❌ No Chrome/Chromium installations found");
+      // eslint-disable-next-line no-console
+      console.log("💡 Please install Google Chrome or Chromium");
+    }
+    return false;
+  }
+
+  // Test if the executable is actually executable
+  try {
+    fs.accessSync(CHROME_PATH, fs.constants.X_OK);
+    // eslint-disable-next-line no-console
+    console.log(`✅ Chrome executable validated successfully: ${CHROME_PATH}`);
+    return true;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `❌ Chrome executable found but not executable: ${CHROME_PATH}`
+    );
+    // eslint-disable-next-line no-console
+    console.error(`   Error: ${error}`);
+    return false;
+  }
+}
+
+// Validate Chrome before proceeding
+if (!validateChromeExecutable()) {
+  // eslint-disable-next-line no-console
+  console.error("❌ Chrome validation failed. Cannot proceed.");
+  throw new Error("Chrome validation failed");
+}
+
+// ===== STEP 3: CREATE DIRECTORIES =====
+// eslint-disable-next-line no-console
+console.log("\n" + "=".repeat(60));
+// eslint-disable-next-line no-console
+console.log("📁 DIRECTORY CREATION");
+// eslint-disable-next-line no-console
+console.log("=".repeat(60));
+
 // Create directories if they don't exist
 [SESSION_PATH, QR_PATH, LOGS_PATH].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+    // eslint-disable-next-line no-console
     console.log(`📁 Created directory: ${dir}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`✅ Directory exists: ${dir}`);
   }
 });
 
+// eslint-disable-next-line no-console
+console.log("\n" + "=".repeat(60));
+// eslint-disable-next-line no-console
+console.log("🚀 BOT INITIALIZATION");
+// eslint-disable-next-line no-console
+console.log("=".repeat(60));
+// eslint-disable-next-line no-console
 console.log(`🤖 Initializing ${BOT_NAME} (${BOT_ID})`);
-console.log(`📂 Session path: ${SESSION_PATH}`);
-console.log(`📱 QR path: ${QR_PATH}`);
-console.log(`📄 Logs path: ${LOGS_PATH}`);
-console.log(`🌐 Port: ${BOT_PORT}`);
+// eslint-disable-next-line no-console
+console.log(`🌐 Server will start on port: ${BOT_PORT}`);
 
 // Create a unified lifecycle tracker with WhatsApp client integration
 class UnifiedBotLifecycle {
@@ -136,15 +296,22 @@ class UnifiedBotLifecycle {
   }
 
   public initializeClient(): void {
+    // eslint-disable-next-line no-console
+    console.log("\n" + "=".repeat(60));
+    // eslint-disable-next-line no-console
+    console.log("🚀 WHATSAPP CLIENT INITIALIZATION");
+    // eslint-disable-next-line no-console
+    console.log("=".repeat(60));
+
     this.setState(
       BotLifecycleState.BROWSER_LAUNCHING,
       "Starting WhatsApp Web client"
     );
 
     try {
-      const chromeExecutablePath =
-        process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
-      console.log(`🌐 Using Chrome: ${chromeExecutablePath}`);
+      // Use the validated Chrome path
+      // eslint-disable-next-line no-console
+      console.log(`🌐 Using validated Chrome: ${CHROME_PATH}`);
 
       // Enhanced browser arguments for better stability
       const browserArgs = [
@@ -183,6 +350,11 @@ class UnifiedBotLifecycle {
         "--memory-pressure-off",
       ];
 
+      // eslint-disable-next-line no-console
+      console.log("🔧 Browser arguments configured");
+      // eslint-disable-next-line no-console
+      console.log("📋 Creating WhatsApp Web client...");
+
       this._client = new Client({
         authStrategy: new LocalAuth({
           dataPath: SESSION_PATH,
@@ -191,22 +363,21 @@ class UnifiedBotLifecycle {
         puppeteer: {
           headless: true,
           args: browserArgs,
-          executablePath: chromeExecutablePath,
+          executablePath: CHROME_PATH,
           timeout: 60000, // 60 seconds timeout
           defaultViewport: null,
           ignoreDefaultArgs: ["--disable-extensions"],
         },
       });
 
-      this.setupClientEventListeners();
+      // eslint-disable-next-line no-console
+      console.log("✅ WhatsApp client created successfully");
 
-      this.setState(
-        BotLifecycleState.WAITING_FOR_QR,
-        "Client created, waiting for QR"
-      );
+      this.setupClientEventListeners();
 
       // Add timeout for initialization
       const initTimeout = setTimeout(() => {
+        // eslint-disable-next-line no-console
         console.log("⏰ WhatsApp client initialization timeout");
         this.setState(
           BotLifecycleState.ERROR_BROWSER,
@@ -214,10 +385,19 @@ class UnifiedBotLifecycle {
         );
       }, 120000); // 2 minutes timeout
 
+      // eslint-disable-next-line no-console
+      console.log("🚀 Starting client initialization...");
+
       this._client
         .initialize()
         .then(() => {
           clearTimeout(initTimeout);
+          // eslint-disable-next-line no-console
+          console.log("🚀 WhatsApp client initialization started successfully");
+          this.setState(
+            BotLifecycleState.WAITING_FOR_QR,
+            "Client initialized, waiting for QR code generation"
+          );
         })
         .catch((error) => {
           clearTimeout(initTimeout);
@@ -465,18 +645,33 @@ app.get("/qr-code", (req, res) => {
 // Start server and initialize WhatsApp bot
 const startServer = async () => {
   try {
+    // eslint-disable-next-line no-console
+    console.log("\n" + "=".repeat(60));
+    // eslint-disable-next-line no-console
+    console.log("🌐 EXPRESS SERVER STARTUP");
+    // eslint-disable-next-line no-console
+    console.log("=".repeat(60));
+
     const server = app.listen(BOT_PORT, () => {
+      // eslint-disable-next-line no-console
       console.log(`✅ ${BOT_NAME} server started on port ${BOT_PORT}`);
+      // eslint-disable-next-line no-console
       console.log(`📱 QR Code endpoint: http://localhost:${BOT_PORT}/qr-code`);
 
       logToFile("status.log", `Server started on port ${BOT_PORT}`);
 
-      // Initialize WhatsApp client immediately after server starts
-      console.log("🚀 Starting WhatsApp client initialization...");
+      // Only proceed with WhatsApp client after server is successfully running
+      // eslint-disable-next-line no-console
+      console.log("✅ Express server running successfully");
+      // eslint-disable-next-line no-console
+      console.log("🚀 Proceeding with WhatsApp client initialization...");
+
+      // Initialize WhatsApp client only after server is confirmed running
       botLifecycle.initializeClient();
     });
 
     server.on("error", (err) => {
+      // eslint-disable-next-line no-console
       console.error(`❌ Server error: ${err.message}`);
       logToFile("errors.log", `Server error: ${err.message}`);
       botLifecycle.setState(
@@ -487,9 +682,10 @@ const startServer = async () => {
 
     return server;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error(`❌ Failed to start server: ${error}`);
     logToFile("errors.log", `Failed to start server: ${error}`);
-    process.exit(1);
+    throw new Error(`Server startup failed: ${error}`);
   }
 };
 
@@ -529,7 +725,17 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
+// ===== STEP 4: START SERVER =====
+// eslint-disable-next-line no-console
+console.log('\n' + '='.repeat(60));
+// eslint-disable-next-line no-console
+console.log('✅ All pre-flight checks passed. Starting server...');
+
 // Start the server and initialize bot
-startServer();
+startServer().catch((error) => {
+  // eslint-disable-next-line no-console
+  console.error('❌ Server startup failed:', error);
+  throw error;
+});
 
 export { BOT_ID, BOT_NAME, BOT_PORT, SESSION_PATH, QR_PATH, LOGS_PATH };
