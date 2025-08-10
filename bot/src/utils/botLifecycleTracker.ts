@@ -1,9 +1,15 @@
-import { botLogger } from '../utils/loggerWrapper';
+/**
+ * Bot Lifecycle Tracker - Simplified Version
+ * Now uses centralized PM2 utilities for communication
+ * Focuses only on WhatsApp lifecycle state management
+ */
 
+import { botLogger } from '../utils/loggerWrapper';
 import * as fs from "fs";
 import * as path from "path";
 import { BotLifecycleState, LifecycleEvent } from "../types/types";
 import { BOT_ID, LOGS_PATH } from "../config/EnvironmentManager";
+import { updatePM2Metrics, markStepSuccess, markStepFailure, markStepInProgress, WHATSAPP_LIFECYCLE_STEPS } from "./pm2Utils";
 
 class BotLifecycleTracker {
   private currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
@@ -25,15 +31,29 @@ class BotLifecycleTracker {
       if (fs.existsSync(this.stateFile)) {
         const data = fs.readFileSync(this.stateFile, "utf-8");
         const savedState = JSON.parse(data);
-        this.currentState = savedState.currentState;
-        this.stateHistory = savedState.stateHistory || [];
-        botLogger.info(`📊 Loaded previous lifecycle state: ${this.currentState}`);
+        
+        // Only restore stable states - error states and transitional states should start fresh
+        const stableStates = [
+          BotLifecycleState.READY,
+          BotLifecycleState.CONNECTED
+        ];
+        
+        if (stableStates.includes(savedState.currentState)) {
+          this.currentState = savedState.currentState;
+          this.stateHistory = savedState.stateHistory || [];
+          botLogger.info(`📊 Loaded previous stable lifecycle state: ${this.currentState}`);
+        } else {
+          // For error states, transitional states, or unstable states - start fresh
+          botLogger.info(`📊 Previous state was ${savedState.currentState} - starting fresh with INITIALIZING`);
+          this.currentState = BotLifecycleState.INITIALIZING;
+          this.stateHistory = [];
+        }
       } else {
         botLogger.info(`📊 No previous lifecycle state found, starting fresh`);
       }
     } catch (error) {
-      botLogger.error(`❌ Error loading lifecycle state:`);
-      // Continue with default state
+      botLogger.error(`❌ Error loading lifecycle state: ${error}`);
+      // Continue with default state (INITIALIZING)
     }
   }
 
@@ -42,175 +62,13 @@ class BotLifecycleTracker {
       const data = {
         botId: BOT_ID,
         currentState: this.currentState,
-        stateHistory: this.stateHistory.slice(-100), // Keep only last 100 events
+        stateHistory: this.stateHistory.slice(-50), // Keep only last 50 events (reduced from 100)
+        lastUpdated: new Date().toISOString()
       };
       fs.writeFileSync(this.stateFile, JSON.stringify(data, null, 2), "utf-8");
-
-      // Also update PM2 metrics to expose state information
-      this.updatePM2Metrics();
     } catch (error) {
-      botLogger.error(`❌ Error saving lifecycle state:`);
+      botLogger.error(`❌ Error saving lifecycle state: ${error}`);
     }
-  }
-
-  // Update PM2 metrics to expose state information for monitoring
-  private updatePM2Metrics() {
-    try {
-      if (process.send) {
-        // Get detailed information about the current state
-        const lastEvent =
-          this.stateHistory.length > 0
-            ? this.stateHistory[this.stateHistory.length - 1]
-            : null;
-
-        // Calculate startup metrics
-        const startupComplete =
-          this.currentState === BotLifecycleState.READY ||
-          this.currentState === BotLifecycleState.CONNECTED;
-
-        // Calculate browser metrics
-        const browserStarted =
-          this.currentState !== BotLifecycleState.INITIALIZING &&
-          this.currentState !== BotLifecycleState.BROWSER_LAUNCHING &&
-          this.currentState !== BotLifecycleState.ERROR_BROWSER;
-
-        // Calculate session metrics
-        const sessionActive =
-          this.currentState === BotLifecycleState.CONNECTED ||
-          this.currentState === BotLifecycleState.READY;
-        const waitingForQR =
-          this.currentState === BotLifecycleState.WAITING_FOR_QR ||
-          this.currentState === BotLifecycleState.QR_READY;
-
-        // Calculate API readiness
-        const apiReady = this.currentState === BotLifecycleState.READY;
-
-        // Calculate error metrics
-        const hasError =
-          this.currentState.toString().startsWith("ERROR_") ||
-          this.currentState === BotLifecycleState.QR_ERROR;
-
-        // Find the last error event
-        const lastErrorEvent = [...this.stateHistory]
-          .reverse()
-          .find((event) => event.error);
-
-        // Calculate lifecycle progression (0-100%)
-        const lifecycleStages = [
-          BotLifecycleState.INITIALIZING,
-          BotLifecycleState.BROWSER_LAUNCHING,
-          BotLifecycleState.WAITING_FOR_QR,
-          BotLifecycleState.QR_READY,
-          BotLifecycleState.QR_SCANNED,
-          BotLifecycleState.AUTHENTICATING,
-          BotLifecycleState.CONNECTED,
-          BotLifecycleState.READY,
-        ];
-
-        const currentIndex = lifecycleStages.indexOf(this.currentState);
-        // If in an error state, find the last non-error state
-        const lifecycleProgress =
-          currentIndex !== -1
-            ? Math.round((currentIndex / (lifecycleStages.length - 1)) * 100)
-            : this.calculateProgressFromHistory();
-
-        // Send metrics to PM2
-        process.send({
-          type: "process:msg",
-          data: {
-            // Basic state information
-            botState: this.currentState,
-            botStateTimestamp: lastEvent
-              ? lastEvent.timestamp
-              : new Date().toISOString(),
-            botId: BOT_ID,
-
-            // QR code metrics
-            hasQRCode: this.currentState === BotLifecycleState.QR_READY,
-            qrCodeTimestamp: this.getQRCodeTimestamp(),
-            qrCodeExpired: this.isQRCodeExpired(),
-
-            // Startup and browser metrics
-            startupComplete: startupComplete,
-            browserStarted: browserStarted,
-            browserError: this.currentState === BotLifecycleState.ERROR_BROWSER,
-
-            // Session metrics
-            sessionActive: sessionActive,
-            waitingForQR: waitingForQR,
-            authenticating:
-              this.currentState === BotLifecycleState.AUTHENTICATING,
-
-            // API metrics
-            apiReady: apiReady,
-
-            // Connection metrics
-            isConnected: sessionActive,
-            reconnecting: this.currentState === BotLifecycleState.RECONNECTING,
-
-            // Error metrics
-            isError: hasError,
-            lastError: lastErrorEvent
-              ? {
-                  timestamp: lastErrorEvent.timestamp,
-                  message: lastErrorEvent.error,
-                  state: lastErrorEvent.state,
-                }
-              : null,
-
-            // Progress metrics
-            lifecycleProgress: lifecycleProgress,
-
-            // Detailed state information for dashboard
-            stateDetails: lastEvent
-              ? {
-                  details: lastEvent.details,
-                  error: lastEvent.error,
-                }
-              : null,
-          },
-        });
-      }
-    } catch (error) {
-      botLogger.error(`❌ Error updating PM2 metrics:`);
-    }
-  }
-
-  // Calculate progress based on history if we're in an error state
-  private calculateProgressFromHistory(): number {
-    const lifecycleStages = [
-      BotLifecycleState.INITIALIZING,
-      BotLifecycleState.BROWSER_LAUNCHING,
-      BotLifecycleState.WAITING_FOR_QR,
-      BotLifecycleState.QR_READY,
-      BotLifecycleState.QR_SCANNED,
-      BotLifecycleState.AUTHENTICATING,
-      BotLifecycleState.CONNECTED,
-      BotLifecycleState.READY,
-    ];
-
-    // Find the last non-error state in history
-    for (let i = this.stateHistory.length - 1; i >= 0; i--) {
-      const event = this.stateHistory[i];
-      const index = lifecycleStages.indexOf(event.state);
-      if (index !== -1) {
-        return Math.round((index / (lifecycleStages.length - 1)) * 100);
-      }
-    }
-
-    return 0; // Default to 0% if no valid state found
-  }
-
-  // Check if the QR code is expired (2 minutes)
-  private isQRCodeExpired(): boolean {
-    const qrTimestamp = this.getQRCodeTimestamp();
-    if (!qrTimestamp) return false;
-
-    const qrTime = new Date(qrTimestamp).getTime();
-    const now = new Date().getTime();
-    const twoMinutesMs = 2 * 60 * 1000;
-
-    return now - qrTime > twoMinutesMs;
   }
 
   public setState(state: BotLifecycleState, details?: string, error?: Error) {
@@ -230,23 +88,8 @@ class BotLifecycleTracker {
     this.stateHistory.push(event);
     this.saveState();
 
-    // Update metrics immediately for key state transitions
-    const criticalStateChanges = [
-      BotLifecycleState.BROWSER_LAUNCHING,
-      BotLifecycleState.QR_READY,
-      BotLifecycleState.CONNECTED,
-      BotLifecycleState.READY,
-      BotLifecycleState.DISCONNECTED,
-    ];
-
-    // Always update metrics immediately for error states or critical transitions
-    if (
-      state.toString().startsWith("ERROR_") ||
-      criticalStateChanges.includes(state) ||
-      state === BotLifecycleState.QR_ERROR
-    ) {
-      this.updatePM2Metrics();
-    }
+    // Use centralized PM2 utilities for communication
+    this.updatePM2WithState(state, details, error);
 
     // Log state change
     console.log(
@@ -254,6 +97,109 @@ class BotLifecycleTracker {
         details ? ` (${details})` : ""
       }${error ? ` [ERROR: ${error.message}]` : ""}`
     );
+  }
+
+  /**
+   * Use centralized PM2 utilities instead of custom PM2 communication
+   */
+  private updatePM2WithState(state: BotLifecycleState, details?: string, error?: Error) {
+    const stateMetrics = this.calculateStateMetrics(state);
+    
+    // Map lifecycle state to predefined step name
+    const stepName = this.getStepNameForState(state);
+    
+    if (error || state.toString().startsWith('ERROR_')) {
+      // Use centralized failure reporting
+      if (error) {
+        markStepFailure(stepName, error, { 
+          lifecycle_state: state,
+          details,
+          ...stateMetrics 
+        });
+      } else {
+        markStepFailure(stepName, new Error(details || `State: ${state}`), { 
+          lifecycle_state: state,
+          ...stateMetrics 
+        });
+      }
+    } else {
+      // Use centralized success/progress reporting
+      const criticalStates = [
+        BotLifecycleState.QR_READY,
+        BotLifecycleState.CONNECTED,
+        BotLifecycleState.READY,
+        BotLifecycleState.AUTHENTICATING
+      ];
+
+      if (criticalStates.includes(state)) {
+        markStepSuccess(stepName, details || this.getStateDescription(), stateMetrics);
+      } else {
+        markStepInProgress(stepName, details || this.getStateDescription(), stateMetrics.progress);
+      }
+    }
+  }
+
+  /**
+   * Map BotLifecycleState to predefined step names for consistent PM2 tracking
+   */
+  private getStepNameForState(state: BotLifecycleState): string {
+    const stateToStepMap: Record<BotLifecycleState, string> = {
+      [BotLifecycleState.INITIALIZING]: WHATSAPP_LIFECYCLE_STEPS.INITIALIZING,
+      [BotLifecycleState.BROWSER_LAUNCHING]: WHATSAPP_LIFECYCLE_STEPS.BROWSER_LAUNCHING,
+      [BotLifecycleState.WAITING_FOR_QR]: WHATSAPP_LIFECYCLE_STEPS.WAITING_FOR_QR,
+      [BotLifecycleState.QR_READY]: WHATSAPP_LIFECYCLE_STEPS.QR_READY,
+      [BotLifecycleState.QR_SCANNED]: WHATSAPP_LIFECYCLE_STEPS.QR_SCANNED,
+      [BotLifecycleState.AUTHENTICATING]: WHATSAPP_LIFECYCLE_STEPS.AUTHENTICATING,
+      [BotLifecycleState.CONNECTED]: WHATSAPP_LIFECYCLE_STEPS.CONNECTED,
+      [BotLifecycleState.READY]: WHATSAPP_LIFECYCLE_STEPS.READY,
+      [BotLifecycleState.DISCONNECTED]: WHATSAPP_LIFECYCLE_STEPS.DISCONNECTED,
+      [BotLifecycleState.RECONNECTING]: WHATSAPP_LIFECYCLE_STEPS.RECONNECTING,
+      [BotLifecycleState.LOADING]: WHATSAPP_LIFECYCLE_STEPS.LOADING,
+      [BotLifecycleState.ERROR_BROWSER]: WHATSAPP_LIFECYCLE_STEPS.ERROR_BROWSER,
+      [BotLifecycleState.ERROR_CHROME]: WHATSAPP_LIFECYCLE_STEPS.ERROR_CHROME,
+      [BotLifecycleState.ERROR_VALIDATION]: WHATSAPP_LIFECYCLE_STEPS.ERROR_VALIDATION,
+      [BotLifecycleState.ERROR_CONNECTION]: WHATSAPP_LIFECYCLE_STEPS.ERROR_CONNECTION,
+      [BotLifecycleState.ERROR_AUTHENTICATION]: WHATSAPP_LIFECYCLE_STEPS.ERROR_AUTHENTICATION,
+      [BotLifecycleState.ERROR_UNKNOWN]: WHATSAPP_LIFECYCLE_STEPS.ERROR_UNKNOWN,
+      [BotLifecycleState.QR_ERROR]: WHATSAPP_LIFECYCLE_STEPS.QR_ERROR,
+      [BotLifecycleState.STOPPING]: WHATSAPP_LIFECYCLE_STEPS.STOPPING,
+      [BotLifecycleState.STOPPED]: WHATSAPP_LIFECYCLE_STEPS.STOPPED,
+    };
+
+    return stateToStepMap[state] || `whatsapp_${state.toLowerCase()}`;
+  }
+
+  /**
+   * Calculate simplified metrics for the current state
+   */
+  private calculateStateMetrics(state: BotLifecycleState) {
+    const lifecycleStages = [
+      BotLifecycleState.INITIALIZING,
+      BotLifecycleState.BROWSER_LAUNCHING,
+      BotLifecycleState.WAITING_FOR_QR,
+      BotLifecycleState.QR_READY,
+      BotLifecycleState.QR_SCANNED,
+      BotLifecycleState.AUTHENTICATING,
+      BotLifecycleState.LOADING,
+      BotLifecycleState.CONNECTED,
+      BotLifecycleState.READY,
+    ];
+
+    const currentIndex = lifecycleStages.indexOf(state);
+    const progress = currentIndex !== -1 
+      ? Math.round((currentIndex / (lifecycleStages.length - 1)) * 100)
+      : 0;
+
+    return {
+      progress,
+      botState: state,
+      isReady: state === BotLifecycleState.READY,
+      isConnected: state === BotLifecycleState.CONNECTED || state === BotLifecycleState.READY,
+      hasQRCode: state === BotLifecycleState.QR_READY,
+      isError: state.toString().startsWith('ERROR_') || state === BotLifecycleState.QR_ERROR,
+      isLoading: state === BotLifecycleState.LOADING,
+      timestamp: new Date().toISOString()
+    };
   }
 
   public getState(): BotLifecycleState {
@@ -271,19 +217,13 @@ class BotLifecycleTracker {
     };
   }
 
-  // Helper methods for common state transitions
+  // Simplified helper methods for common state transitions
   public markBrowserLaunching() {
-    this.setState(
-      BotLifecycleState.BROWSER_LAUNCHING,
-      "Starting WhatsApp Web browser"
-    );
+    this.setState(BotLifecycleState.BROWSER_LAUNCHING, "Starting WhatsApp Web browser");
   }
 
   public markWaitingForQR() {
-    this.setState(
-      BotLifecycleState.WAITING_FOR_QR,
-      "Waiting for QR code generation"
-    );
+    this.setState(BotLifecycleState.WAITING_FOR_QR, "Waiting for QR code generation");
   }
 
   public markQRReady() {
@@ -295,10 +235,7 @@ class BotLifecycleTracker {
   }
 
   public markAuthenticating() {
-    this.setState(
-      BotLifecycleState.AUTHENTICATING,
-      "Authenticating with WhatsApp servers"
-    );
+    this.setState(BotLifecycleState.AUTHENTICATING, "Authenticating with WhatsApp servers");
   }
 
   public markConnected() {
@@ -306,72 +243,43 @@ class BotLifecycleTracker {
   }
 
   public markReady() {
-    this.setState(
-      BotLifecycleState.READY,
-      "Bot is fully initialized and ready"
-    );
+    this.setState(BotLifecycleState.READY, "Bot is fully initialized and ready");
+  }
+
+  public markLoading(details?: string) {
+    this.setState(BotLifecycleState.LOADING, details || "Loading WhatsApp resources");
   }
 
   public markDisconnected(reason?: string) {
-    this.setState(
-      BotLifecycleState.DISCONNECTED,
-      `Disconnected from WhatsApp${reason ? `: ${reason}` : ""}`
-    );
+    this.setState(BotLifecycleState.DISCONNECTED, `Disconnected from WhatsApp${reason ? `: ${reason}` : ""}`);
   }
 
   public markReconnecting() {
-    this.setState(
-      BotLifecycleState.RECONNECTING,
-      "Attempting to reconnect to WhatsApp"
-    );
+    this.setState(BotLifecycleState.RECONNECTING, "Attempting to reconnect to WhatsApp");
   }
 
   public markBrowserError(error: Error) {
-    this.setState(
-      BotLifecycleState.ERROR_BROWSER,
-      "Browser initialization failed",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_BROWSER, "Browser initialization failed", error);
   }
 
   public markChromeError(error: Error) {
-    this.setState(
-      BotLifecycleState.ERROR_CHROME,
-      "Chrome executable validation failed",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_CHROME, "Chrome executable validation failed", error);
   }
 
   public markValidationError(error: Error, details?: string) {
-    this.setState(
-      BotLifecycleState.ERROR_VALIDATION,
-      details || "Startup validation failed",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_VALIDATION, details || "Startup validation failed", error);
   }
 
   public markConnectionError(error: Error) {
-    this.setState(
-      BotLifecycleState.ERROR_CONNECTION,
-      "WhatsApp connection error",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_CONNECTION, "WhatsApp connection error", error);
   }
 
   public markAuthenticationError(error: Error) {
-    this.setState(
-      BotLifecycleState.ERROR_AUTHENTICATION,
-      "WhatsApp authentication failed",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_AUTHENTICATION, "WhatsApp authentication failed", error);
   }
 
   public markError(error: Error) {
-    this.setState(
-      BotLifecycleState.ERROR_UNKNOWN,
-      "Unknown error occurred",
-      error
-    );
+    this.setState(BotLifecycleState.ERROR_UNKNOWN, "Unknown error occurred", error);
   }
 
   public markStopping(reason?: string) {
@@ -382,36 +290,22 @@ class BotLifecycleTracker {
     this.setState(BotLifecycleState.STOPPED, "Bot has been stopped");
   }
 
-  // Track QR code related errors
   public markQRError(error: Error) {
-    this.setState(
-      BotLifecycleState.QR_ERROR,
-      "Error generating or sending QR code",
-      error
-    );
+    this.setState(BotLifecycleState.QR_ERROR, "Error generating or sending QR code", error);
   }
 
-  // Methods to check current QR code availability
+  // Simple check methods
   public hasQRCode(): boolean {
     return this.currentState === BotLifecycleState.QR_READY;
   }
 
-  // Method to get last QR code generation time
   public getQRCodeTimestamp(): string | null {
-    // Find the most recent QR_READY event
     const qrEvent = [...this.stateHistory]
       .reverse()
       .find((event) => event.state === BotLifecycleState.QR_READY);
-
     return qrEvent ? qrEvent.timestamp : null;
   }
 
-  // Manually update PM2 metrics (can be called from outside)
-  public updateMetrics() {
-    this.updatePM2Metrics();
-  }
-
-  // Get a human-readable description of the current state
   public getStateDescription(): string {
     switch (this.currentState) {
       case BotLifecycleState.INITIALIZING:
@@ -430,6 +324,8 @@ class BotLifecycleTracker {
         return "Autenticando con WhatsApp";
       case BotLifecycleState.CONNECTED:
         return "Conectado a WhatsApp";
+      case BotLifecycleState.LOADING:
+        return "Cargando recursos";
       case BotLifecycleState.READY:
         return "Completamente operativo";
       case BotLifecycleState.DISCONNECTED:
@@ -457,7 +353,6 @@ class BotLifecycleTracker {
     }
   }
 
-  // Check health status
   public isHealthy(): boolean {
     return (
       this.currentState === BotLifecycleState.CONNECTED ||

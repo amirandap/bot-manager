@@ -1,177 +1,151 @@
-// Unified WhatsApp bot with improved lifecycle management - Refactored version
-import express from "express";
+// Simplified WhatsApp Bot Starter - Focus on initialization and error handling
 import { StartupManager } from "./services/StartupManager";
-import { UnifiedBotLifecycle } from "./services/UnifiedBotLifecycle";
+import { BotOrchestrator } from "./services/BotOrchestrator";
+import { 
+  alertPM2Failure, 
+  notifyPM2Shutdown, 
+  updateStartupProgress,
+  markStepSuccess,
+  markStepFailure,
+  markStepInProgress,
+  markStartupComplete,
+  STARTUP_STEPS,
+  getTotalStartupSteps
+} from "./utils/pm2Utils";
 
-// Import unified route management
-import messageRoutes from "./routes/unified/messageRoutes";
-import getGroupsRouter from "./routes/getGroups";
-
-// Import middleware
-import { addRequestId, logRequest, handleBotError } from "./middleware/botMiddleware";
-
-// Initialize startup manager and perform pre-flight checks
+// Initialize startup manager
 const startupManager = new StartupManager();
 const logger = startupManager.getLogger();
+const TOTAL_STEPS = getTotalStartupSteps();
 
 /**
- * Wait for WhatsApp client to be ready before starting the server
- * This prevents 503 errors on routes that depend on the WhatsApp client
+ * Graceful shutdown with PM2 notification
  */
-async function waitForClientReady(
-  botLifecycleManager: UnifiedBotLifecycle, 
-  logger: any,
-  timeoutMs: number = 300000 // 5 minutes default timeout
-): Promise<void> {
-  const startTime = Date.now();
-  const checkInterval = 2000; // Check every 2 seconds
-
-  return new Promise((resolve, reject) => {
-    const checkReady = () => {
-      const status = botLifecycleManager.getStatus();
-      
-      // Check if client is ready
-      if (status.isReady) {
-        logger.success("✅ WhatsApp client is ready!", "🎉");
-        resolve();
-        return;
-      }
-      
-      // Check for browser or initialization errors
-      if (status.lifecycleState.toString().startsWith('ERROR_')) {
-        const error = new Error(
-          `WhatsApp client failed to initialize. State: ${status.stateDescription}`
-        );
-        logger.error(`❌ Initialization failed: ${error.message}`);
-        reject(error);
-        return;
-      }
-      
-      // Check for timeout
-      if (Date.now() - startTime > timeoutMs) {
-        const error = new Error(
-          `Timeout waiting for WhatsApp client to be ready. Current state: ${status.stateDescription}`
-        );
-        logger.error(`⏰ Timeout: ${error.message}`);
-        reject(error);
-        return;
-      }
-      
-      // Log current state with more specific messages
-      const stateEmojis = {
-        'BROWSER_LAUNCHING': '🚀',
-        'WAITING_FOR_QR': '⏳',
-        'QR_READY': '📱',
-        'QR_SCANNED': '✅',
-        'AUTHENTICATING': '🔐',
-        'CONNECTED': '🌐'
-      };
-      
-      const emoji = stateEmojis[status.lifecycleState] || "🔄";
-      logger.info(
-        `${emoji} Current state: ${status.stateDescription}`,
-        "�"
-      );
-      
-      // Check again after interval
-      setTimeout(checkReady, checkInterval);
-    };
+async function gracefulShutdown(botOrchestrator: BotOrchestrator, signal?: string, error?: Error): Promise<void> {
+  try {
+    logger.info(`🛑 Initiating graceful shutdown${signal ? ` (${signal})` : ''}...`);
     
-    // Start checking
-    checkReady();
-  });
+    // Shutdown bot orchestrator
+    await botOrchestrator.shutdown();
+    
+    // Notify PM2 about shutdown
+    notifyPM2Shutdown(signal, error, error ? 'error_triggered' : 'manual');
+    
+    logger.success("✅ Graceful shutdown completed");
+  } catch (shutdownError) {
+    logger.error(`❌ Error during shutdown: ${shutdownError}`);
+    alertPM2Failure(shutdownError as Error, 'shutdown');
+  }
 }
 
 async function startBot(): Promise<void> {
+  let botOrchestrator: BotOrchestrator | null = null;
+  let currentStep = 0;
+  
   try {
-    // Perform all startup validations
+    // Step 1: Startup validation
+    currentStep++;
+    logger.startupHeader("🔍 STARTUP VALIDATION");
+    markStepInProgress(STARTUP_STEPS.VALIDATION, "Validating environment and dependencies");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.VALIDATION, 'in_progress');
+    
     const startupSuccess = await startupManager.initialize();
 
     if (!startupSuccess) {
-      throw new Error("Startup validation failed");
+      const error = new Error("Startup validation failed - check Chrome installation and environment variables");
+      markStepFailure(STARTUP_STEPS.VALIDATION, error);
+      alertPM2Failure(error, 'startup_validation', false, STARTUP_STEPS.VALIDATION);
+      throw error;
     }
 
+    markStepSuccess(STARTUP_STEPS.VALIDATION, "Environment validation completed successfully");
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.VALIDATION, 'success');
+
     const config = startupManager.getConfig();
-    const app = express();
     
-    // Basic middleware
-    app.use(express.json());
-    app.use(addRequestId);
-    app.use(logRequest);
+    // Step 2: Initialize bot orchestrator
+    currentStep++;
+    logger.startupHeader("🤖 BOT ORCHESTRATOR INITIALIZATION");
+    markStepInProgress(STARTUP_STEPS.LIFECYCLE_INIT, "Creating BotOrchestrator instance");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.LIFECYCLE_INIT, 'in_progress');
+    
+    botOrchestrator = new BotOrchestrator(config, logger);
+    
+    markStepSuccess(STARTUP_STEPS.LIFECYCLE_INIT, "Bot orchestrator created successfully");
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.LIFECYCLE_INIT, 'success');
 
-    // Initialize bot lifecycle
-    const botLifecycleManager = new UnifiedBotLifecycle(config, logger);
+    // Step 3: Initialize complete bot system (WhatsApp client, API server, etc.)
+    currentStep++;
+    markStepInProgress(STARTUP_STEPS.WHATSAPP_CLIENT, "Initializing complete bot system");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.WHATSAPP_CLIENT, 'in_progress');
+    
+    await botOrchestrator.initialize();
+    
+    markStepSuccess(STARTUP_STEPS.WHATSAPP_CLIENT, "Bot system initialized successfully");
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.WHATSAPP_CLIENT, 'success');
+    
+    // Step 4: Check for critical initialization errors
+    currentStep++;
+    markStepInProgress(STARTUP_STEPS.ERROR_CHECK, "Checking for initialization errors");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.ERROR_CHECK, 'in_progress');
+    
+    const status = botOrchestrator.getStatus();
+    if (status.lifecycleState.toString().startsWith('ERROR_')) {
+      const error = new Error(`Bot initialization failed: ${status.stateDescription}`);
+      markStepFailure(STARTUP_STEPS.ERROR_CHECK, error, { lifecycle_state: status.lifecycleState });
+      alertPM2Failure(error, 'whatsapp_initialization', false, STARTUP_STEPS.ERROR_CHECK);
+      throw error;
+    }
 
-    // Set up API routes using unified route management
-    app.use("/", messageRoutes);
-    app.use("/get-groups", getGroupsRouter);
+    markStepSuccess(STARTUP_STEPS.ERROR_CHECK, "No critical initialization errors detected");
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.ERROR_CHECK, 'success');
 
-    // QR code endpoint
-    app.get("/qr-code", (req, res) => {
-      const status = botLifecycleManager.getStatus();
+    // Step 5: API server is already running (started by BotOrchestrator)
+    currentStep++;
+    logger.startupHeader("🌐 API SERVER STATUS");
+    markStepInProgress(STARTUP_STEPS.API_SETUP, "Verifying API server status");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.API_SETUP, 'in_progress');
+    
+    // API server was started by the BotOrchestrator during initialize()
+    logger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
+    logger.info(`📱 QR Code: http://localhost:${config.BOT_PORT}/qr-code`, "🌐");
+    logger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
 
-      if (botLifecycleManager.hasQRCode()) {
-        res.json({
-          success: true,
-          qrCode: botLifecycleManager.getQRCode(),
-          message: "QR code is ready for scanning",
-          ...status,
-        });
-      } else {
-        res.json({
-          success: false,
-          message: status.stateDescription,
-          ...status,
-        });
-      }
-    });
+    markStepSuccess(STARTUP_STEPS.API_SETUP, `API server verified on port ${config.BOT_PORT}`);
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.API_SETUP, 'success');
 
-    // Bot status endpoint
-    app.get("/status", (req, res) => {
-      const status = botLifecycleManager.getStatus();
-      res.json(status);
-    });
-
-    // Initialize WhatsApp client BEFORE starting server
-    logger.startupHeader("🤖 INITIALIZING WHATSAPP CLIENT");
-    await botLifecycleManager.initializeClient();
-
-    // Wait for client to be ready before starting server
-    logger.info("⏳ Waiting for WhatsApp client to be ready...");
-    await waitForClientReady(botLifecycleManager, logger);
-
-    // Start server only after WhatsApp client is ready
-    logger.startupHeader("🌐 EXPRESS SERVER STARTUP");
-
-    const server = app.listen(config.BOT_PORT, () => {
-      logger.success(
-        `${config.BOT_NAME} server started on port ${config.BOT_PORT}`
-      );
-      logger.success(
-        "🎉 WhatsApp client is ready - All endpoints are now available!"
-      );
-      logger.info(
-        `QR Code endpoint: http://localhost:${config.BOT_PORT}/qr-code`,
-        "📱"
-      );
-    });
-
-    server.on("error", (err) => {
-      logger.error(`Server error: ${err.message}`);
-      throw err;
-    });
-
-    // Graceful shutdown handlers
-    const shutdown = async (signal: string) => {
-      logger.info(`🛑 Received ${signal}, shutting down ${config.BOT_NAME}...`);
-      await botLifecycleManager.shutdown();
-      throw new Error(`Graceful shutdown requested via ${signal}`);
+    // Step 6: Setup graceful shutdown handlers
+    currentStep++;
+    markStepInProgress(STARTUP_STEPS.SHUTDOWN_HANDLERS, "Setting up graceful shutdown handlers");
+    updateStartupProgress(currentStep - 1, TOTAL_STEPS, STARTUP_STEPS.SHUTDOWN_HANDLERS, 'in_progress');
+    
+    const handleShutdown = async (signal: string) => {
+      await gracefulShutdown(botOrchestrator!, signal);
+      throw new Error(`Graceful shutdown completed via ${signal}`);
     };
 
-    process.on("SIGINT", () => shutdown("SIGINT"));
-    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => handleShutdown("SIGINT"));
+    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+    
+    markStepSuccess(STARTUP_STEPS.SHUTDOWN_HANDLERS, "Graceful shutdown handlers configured");
+    updateStartupProgress(currentStep, TOTAL_STEPS, STARTUP_STEPS.SHUTDOWN_HANDLERS, 'success');
+    
+    // Step 7: Startup complete
+    currentStep++;
+    logger.success("🎉 Bot startup completed successfully!");
+    markStartupComplete();
+    
   } catch (error) {
-    logger.error(`Failed to start bot: ${error}`);
+    // Critical failure - ensure PM2 is notified and shutdown gracefully
+    logger.error(`❌ Critical startup failure: ${error}`);
+    
+    if (botOrchestrator) {
+      await gracefulShutdown(botOrchestrator, undefined, error as Error);
+    }
+    
+    // Determine which step failed for better error context
+    const failedStep = currentStep <= TOTAL_STEPS ? Object.values(STARTUP_STEPS)[currentStep - 1] : 'unknown_step';
+    alertPM2Failure(error as Error, 'critical_startup', false, failedStep);
     throw error;
   }
 }

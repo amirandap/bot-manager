@@ -32,12 +32,12 @@ export interface ChromeValidationResult {
 export class PuppeteerConfigManager {
   private static instance: PuppeteerConfigManager;
   private currentOS: string;
-  private logger: Logger;
+  private logger?: Logger;
 
   private constructor() {
     this.currentOS = os.platform();
-    // Initialize with a basic logger for now - can be injected later if needed
-    this.logger = Logger.getInstance();
+    // Logger will be injected later via setLogger() method
+    this.logger = undefined;
   }
 
   public static getInstance(): PuppeteerConfigManager {
@@ -56,8 +56,20 @@ export class PuppeteerConfigManager {
   }
 
   /**
-   * Get the default Chrome installation paths for each OS
-   * Note: ChromeValidator also has its own list which takes precedence during validation
+   * Safe logging method that handles cases where logger might not be available
+   */
+  private log(level: 'info' | 'warn' | 'error', message: string): void {
+    if (this.logger) {
+      this.logger[level](message);
+    } else {
+      // Fallback to console logging if logger is not available
+      console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](message);
+    }
+  }
+
+  /**
+   * Get the comprehensive Chrome installation paths for each OS
+   * Includes all known Chrome/Chromium installation locations
    */
   private getDefaultChromePaths(): string[] {
     switch (this.currentOS) {
@@ -95,28 +107,96 @@ export class PuppeteerConfigManager {
         ].filter(Boolean);
 
       default:
-        console.warn(`Unsupported OS detected: ${this.currentOS}`);
+        this.log('warn', `Unsupported OS detected: ${this.currentOS}`);
         return [];
     }
   }
 
   /**
-   * Find a valid Chrome executable path using ChromeValidator
+   * Comprehensive Chrome validation with detailed logging and alternative suggestions
+   */
+  public validateChrome(chromePath?: string): ChromeValidationResult {
+    const logs: string[] = [];
+    const result: ChromeValidationResult = {
+      isValid: false,
+      logs,
+    };
+
+    // If no path provided, try to find one
+    if (!chromePath) {
+      logs.push("No Chrome path provided, attempting to find Chrome installation...");
+      const foundPath = this.findChromePath();
+      if (!foundPath) {
+        result.error = "No Chrome installation found in default locations";
+        result.alternativePaths = this.getDefaultChromePaths();
+        logs.push("❌ No valid Chrome installation found");
+        logs.push("💡 Please install Google Chrome or set CHROME_PATH environment variable");
+        return result;
+      }
+      chromePath = foundPath;
+    }
+
+    try {
+      // Check if file exists
+      if (!fs.existsSync(chromePath)) {
+        result.error = `Chrome executable not found at: ${chromePath}`;
+        result.alternativePaths = this.getDefaultChromePaths().filter(path => 
+          fs.existsSync(path)
+        );
+        logs.push(`❌ File not found: ${chromePath}`);
+        
+        if (result.alternativePaths.length > 0) {
+          logs.push("💡 Found alternative Chrome installations:");
+          result.alternativePaths.forEach(altPath => {
+            logs.push(`   ✅ ${altPath}`);
+          });
+        }
+        return result;
+      }
+
+      // Check if file is executable
+      try {
+        fs.accessSync(chromePath, fs.constants.F_OK | fs.constants.X_OK);
+        result.isValid = true;
+        result.path = chromePath;
+        logs.push(`✅ Chrome validation successful: ${chromePath}`);
+        
+        // Log additional info about the Chrome installation
+        const stats = fs.statSync(chromePath);
+        logs.push(`📄 File size: ${Math.round(stats.size / 1024 / 1024)}MB`);
+        logs.push(`📅 Modified: ${stats.mtime.toISOString()}`);
+        
+        return result;
+      } catch (accessError) {
+        result.error = `Chrome executable is not accessible or not executable: ${chromePath}`;
+        logs.push(`❌ Access denied or not executable: ${chromePath}`);
+        logs.push(`💡 Try: chmod +x "${chromePath}"`);
+        return result;
+      }
+    } catch (error) {
+      result.error = `Unexpected error during Chrome validation: ${error}`;
+      logs.push(`❌ Validation error: ${error}`);
+      return result;
+    }
+  }
+
+  /**
+   * Find a valid Chrome executable path with comprehensive validation
    */
   public findChromePath(customPath?: string): string | undefined {
     // If custom path is provided, validate it first
     if (customPath) {
-      const result = this.chromeValidator.validate(customPath);
+      const result = this.validateChrome(customPath);
       if (result.isValid) {
         return customPath;
       } else {
-        console.warn(`Custom Chrome path invalid: ${customPath}`);
+        this.log('warn', `Custom Chrome path invalid: ${customPath}`);
         // If custom path failed but alternatives were found, use the first one
         if (result.alternativePaths && result.alternativePaths.length > 0) {
           const altPath = result.alternativePaths[0];
-          const altResult = this.chromeValidator.validate(altPath);
+          const altResult = this.validateChrome(altPath);
           if (altResult.isValid) {
-            console.log(`Using alternative Chrome path: ${altPath}`);
+            this.log('info', `Using alternative Chrome path: ${altPath}`);
             return altPath;
           }
         }
@@ -127,14 +207,22 @@ export class PuppeteerConfigManager {
     const defaultPaths = this.getDefaultChromePaths();
     
     for (const chromePath of defaultPaths) {
-      const result = this.chromeValidator.validate(chromePath);
+      const result = this.validateChrome(chromePath);
       if (result.isValid) {
         return chromePath;
       }
     }
 
-    console.warn("No valid Chrome installation found in default locations");
+    this.log('warn', "No valid Chrome installation found in default locations");
     return undefined;
+  }
+
+  /**
+   * Chrome validation method with the same interface as ChromeValidator
+   * This provides compatibility for existing code that expects ChromeValidator interface
+   */
+  public validate(chromePath?: string): ChromeValidationResult {
+    return this.validateChrome(chromePath);
   }
 
   /**
@@ -254,6 +342,7 @@ export class PuppeteerConfigManager {
       return false;
     }
   }
+
   public getConfiguration(options?: {
     customChromePath?: string;
     isProduction?: boolean;

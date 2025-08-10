@@ -7,17 +7,18 @@ import { Client, LocalAuth } from "whatsapp-web.js";
 import * as fs from "fs";
 import * as path from "path";
 import * as QRCode from "qrcode";
+import express from "express";
 import { Logger } from "./Logger";
-import { botLifecycle } from "../utils/botLifecycleTracker";
 import { setClient } from "../config/clientExporter";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
+import { updatePM2Metrics, markStepSuccess, markStepFailure, markStepInProgress } from "../utils/pm2Utils";
+import { BotLifecycleState } from "../types/types";
 import {
   CHROME_PATH,
   SESSION_PATH,
   QR_PATH,
   LOGS_PATH,
 } from "../config/EnvironmentManager";
-import { BotLifecycleState } from "../types/types";
 
 interface BotConfig {
   BOT_ID: string;
@@ -31,6 +32,8 @@ export class UnifiedBotLifecycle {
   private qrCode: string | null = null;
   private isInitialized = false;
   private isShuttingDown = false;
+  private isInitializing = false; // Add flag to prevent multiple simultaneous initializations
+  private currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
   private sessionPath: string;
   private qrCodePath: string;
 
@@ -50,20 +53,128 @@ export class UnifiedBotLifecycle {
     });
   }
 
+  /**
+   * Update lifecycle state and notify PM2
+   */
+  private updateLifecycleState(state: BotLifecycleState, details?: string, error?: Error): void {
+    const previousState = this.currentState;
+    this.currentState = state;
+
+    // Calculate progress percentage
+    const lifecycleStages = [
+      BotLifecycleState.INITIALIZING,
+      BotLifecycleState.BROWSER_LAUNCHING,
+      BotLifecycleState.WAITING_FOR_QR,
+      BotLifecycleState.QR_READY,
+      BotLifecycleState.QR_SCANNED,
+      BotLifecycleState.AUTHENTICATING,
+      BotLifecycleState.CONNECTED,
+      BotLifecycleState.READY,
+    ];
+
+    const currentIndex = lifecycleStages.indexOf(state);
+    const progress = currentIndex !== -1 
+      ? Math.round((currentIndex / (lifecycleStages.length - 1)) * 100)
+      : 0;
+
+    // Use PM2 utilities for communication
+    const stepName = `whatsapp_${state.toLowerCase()}`;
+    
+    if (error || state.toString().startsWith('ERROR_')) {
+      if (error) {
+        markStepFailure(stepName, error, { 
+          lifecycle_state: state,
+          details,
+          progress,
+          bot_id: this.config.BOT_ID
+        });
+      } else {
+        updatePM2Metrics(stepName, 'failure', details || `State: ${state}`, progress, {
+          lifecycle_state: state,
+          bot_id: this.config.BOT_ID
+        });
+      }
+    } else {
+      // Critical states that should be marked as success
+      const criticalStates = [
+        BotLifecycleState.QR_READY,
+        BotLifecycleState.CONNECTED,
+        BotLifecycleState.READY,
+        BotLifecycleState.AUTHENTICATING
+      ];
+
+      if (criticalStates.includes(state)) {
+        markStepSuccess(stepName, details || this.getStateDescription(state), {
+          lifecycle_state: state,
+          progress,
+          bot_id: this.config.BOT_ID
+        });
+      } else {
+        markStepInProgress(stepName, details || this.getStateDescription(state), progress);
+      }
+    }
+
+    // Log state change
+    this.logger.info(
+      `📊 WhatsApp state: ${previousState} -> ${state}${details ? ` (${details})` : ""}${error ? ` [ERROR: ${error.message}]` : ""}`
+    );
+  }
+
+  /**
+   * Get human-readable state description
+   */
+  private getStateDescription(state: BotLifecycleState): string {
+    switch (state) {
+      case BotLifecycleState.INITIALIZING:
+        return "Iniciando el bot";
+      case BotLifecycleState.BROWSER_LAUNCHING:
+        return "Iniciando el navegador";
+      case BotLifecycleState.WAITING_FOR_QR:
+        return "Esperando código QR";
+      case BotLifecycleState.QR_READY:
+        return "Código QR listo para escanear";
+      case BotLifecycleState.QR_SCANNED:
+        return "Código QR escaneado";
+      case BotLifecycleState.AUTHENTICATING:
+        return "Autenticando con WhatsApp";
+      case BotLifecycleState.CONNECTED:
+        return "Conectado a WhatsApp";
+      case BotLifecycleState.READY:
+        return "Completamente operativo";
+      case BotLifecycleState.DISCONNECTED:
+        return "Desconectado de WhatsApp";
+      case BotLifecycleState.RECONNECTING:
+        return "Reconectando a WhatsApp";
+      case BotLifecycleState.STOPPING:
+        return "Deteniendo el bot";
+      case BotLifecycleState.STOPPED:
+        return "Bot detenido";
+      default:
+        return "Estado desconocido";
+    }
+  }
+
   public async initializeClient(): Promise<void> {
     if (this.isInitialized || this.isShuttingDown) {
       this.logger.warn("Client already initialized or shutting down");
       return;
     }
 
+    if (this.isInitializing) {
+      this.logger.warn("Client initialization already in progress");
+      return;
+    }
+
+    this.isInitializing = true;
+
     try {
       this.logger.startupHeader("🤖 WHATSAPP BOT LIFECYCLE INITIALIZATION");
-      botLifecycle.markBrowserLaunching();
+      this.updateLifecycleState(BotLifecycleState.BROWSER_LAUNCHING, "Starting WhatsApp Web browser");
 
       // Get system information for debugging
       const systemInfo = puppeteerConfig.getSystemInfo();
       this.logger.info(`System: ${systemInfo.platform} ${systemInfo.arch}`, "💻");
-      this.logger.info(`Node: ${systemInfo.nodeVersion}`, "�");
+      this.logger.info(`Node: ${systemInfo.nodeVersion}`, "💚");
       this.logger.info(`Memory: ${systemInfo.availableMemory}`, "🧠");
       
       // Validate environment before proceeding
@@ -109,23 +220,28 @@ export class UnifiedBotLifecycle {
       
       // Only mark as waiting for QR after client initialization succeeds
       this.logger.info("WhatsApp client initialized, waiting for QR code...", "⏳");
-      botLifecycle.markWaitingForQR();
+      this.updateLifecycleState(BotLifecycleState.WAITING_FOR_QR, "Waiting for QR code generation");
       
       this.isInitialized = true;
     } catch (error) {
       this.logger.error(`Failed to initialize WhatsApp client: ${error}`);
       
-      // Check if it's a singleton lock error and try cleanup
+      // Mark error state immediately and do not attempt any cleanup or retry
+      this.updateLifecycleState(BotLifecycleState.ERROR_BROWSER, "Browser initialization failed", error as Error);
+      
+      // Log the error details for debugging but don't attempt any fixes
       if (error instanceof Error && error.message.includes('SingletonLock')) {
-        this.logger.info("Detected Chrome SingletonLock error, attempting cleanup...", "🧹");
-        const cleaned = puppeteerConfig.cleanupBrowserSession(this.sessionPath);
-        if (cleaned) {
-          this.logger.info("Browser session cleanup completed. Please restart the bot.", "✅");
-        }
+        this.logger.error("Chrome browser session conflict detected. Bot is now in error state.", "❌");
+        this.logger.info("Please manually stop the bot and restart it to resolve the issue.", "💡");
+      } else {
+        this.logger.error("Browser initialization failed. Bot is now in error state.", "❌");
       }
       
-      botLifecycle.markBrowserError(error as Error);
-      throw error;
+      // Keep the bot in error state - don't throw the error to prevent restart cycles
+      this.logger.error("Bot will remain in error state. Manual intervention required.", "⚠️");
+      return; // Exit without throwing to prevent automatic restarts
+    } finally {
+      this.isInitializing = false;
     }
   }
 
@@ -138,7 +254,13 @@ export class UnifiedBotLifecycle {
         this.logger.success("QR Code generated! Scan to connect.", "📱");
         this.qrCode = qr;
         this.saveQRCode(qr);
-        botLifecycle.markQRReady();
+        this.updateLifecycleState(BotLifecycleState.QR_READY, "QR code is ready for scanning");
+
+        // Update PM2 with QR code ready status
+        updatePM2Metrics('qr_code_ready', 'success', 'QR code generated and ready for scanning', 60, {
+          qr_available: true,
+          qr_endpoint: `http://localhost:${this.config.BOT_PORT}/qr-code`
+        });
 
         this.logger.info(`QR Code saved to: ${this.qrCodePath}`, "💾");
         this.logger.info(
@@ -147,21 +269,28 @@ export class UnifiedBotLifecycle {
         );
       } catch (error) {
         this.logger.error(`Error handling QR code: ${error}`);
-        botLifecycle.markQRError(error as Error);
+        this.updateLifecycleState(BotLifecycleState.QR_ERROR, "Error generating or sending QR code", error as Error);
+        markStepFailure('qr_code_generation', error as Error);
       }
     });
 
     // Authentication success
     this.client.on("authenticated", () => {
       this.logger.success("WhatsApp authentication successful!", "✅");
-      botLifecycle.markAuthenticating();
+      this.updateLifecycleState(BotLifecycleState.AUTHENTICATING, "Authenticating with WhatsApp servers");
+      
+      // Update PM2 with authentication success
+      updatePM2Metrics('whatsapp_authenticated', 'success', 'WhatsApp authentication successful', 80, {
+        authenticated: true
+      });
     });
 
     // Authentication failure
     this.client.on("auth_failure", (msg) => {
       const error = new Error(`Authentication failed: ${msg}`);
       this.logger.error(`Authentication failed: ${msg}`);
-      botLifecycle.markAuthenticationError(error);
+      this.updateLifecycleState(BotLifecycleState.ERROR_AUTHENTICATION, "WhatsApp authentication failed", error);
+      markStepFailure('whatsapp_authentication', error);
     });
 
     // Client ready
@@ -170,7 +299,13 @@ export class UnifiedBotLifecycle {
         `${this.config.BOT_NAME} is ready and connected!`,
         "🎉"
       );
-      botLifecycle.markReady();
+      this.updateLifecycleState(BotLifecycleState.READY, "Bot is fully initialized and ready");
+
+      // Update PM2 with ready status
+      updatePM2Metrics('whatsapp_ready', 'success', 'WhatsApp client is ready and connected', 90, {
+        client_ready: true,
+        bot_operational: true
+      });
 
       // Clean up QR code file after successful connection
       this.cleanupQRCode();
@@ -179,11 +314,11 @@ export class UnifiedBotLifecycle {
     // Client disconnected
     this.client.on("disconnected", (reason) => {
       this.logger.warn(`WhatsApp client disconnected: ${reason}`, "⚠️");
-      botLifecycle.markDisconnected(reason);
+      this.updateLifecycleState(BotLifecycleState.DISCONNECTED, `Disconnected from WhatsApp: ${reason}`);
 
       if (!this.isShuttingDown) {
         this.logger.info("Attempting to reconnect...", "🔄");
-        botLifecycle.markReconnecting();
+        this.updateLifecycleState(BotLifecycleState.RECONNECTING, "Attempting to reconnect to WhatsApp");
       }
     });
 
@@ -200,7 +335,7 @@ export class UnifiedBotLifecycle {
     // Error handling
     this.client.on("error", (error) => {
       this.logger.error(`WhatsApp client error: ${error}`);
-      botLifecycle.markConnectionError(error);
+      this.updateLifecycleState(BotLifecycleState.ERROR_CONNECTION, "WhatsApp connection error", error);
     });
 
     // Message events for logging
@@ -240,7 +375,7 @@ export class UnifiedBotLifecycle {
         (error: Error | null | undefined) => {
           if (error) {
             this.logger.error(`Error saving QR code: ${error}`);
-            botLifecycle.markQRError(error);
+            this.updateLifecycleState(BotLifecycleState.QR_ERROR, "Error saving QR code", error);
           } else {
             this.logger.success("QR code image saved successfully", "💾");
           }
@@ -248,7 +383,7 @@ export class UnifiedBotLifecycle {
       );
     } catch (error) {
       this.logger.error(`Error generating QR code image: ${error}`);
-      botLifecycle.markQRError(error as Error);
+      this.updateLifecycleState(BotLifecycleState.QR_ERROR, "Error generating QR code image", error as Error);
     }
   }
 
@@ -272,7 +407,7 @@ export class UnifiedBotLifecycle {
   }
 
   public hasQRCode(): boolean {
-    return this.qrCode !== null && botLifecycle.hasQRCode();
+    return this.qrCode !== null && this.currentState === BotLifecycleState.QR_READY;
   }
 
   public getQRCodePath(): string {
@@ -283,7 +418,7 @@ export class UnifiedBotLifecycle {
     return (
       this.client !== null &&
       this.isInitialized &&
-      botLifecycle.getState() === BotLifecycleState.READY
+      this.currentState === BotLifecycleState.READY
     );
   }
 
@@ -300,7 +435,7 @@ export class UnifiedBotLifecycle {
     }
 
     this.isShuttingDown = true;
-    botLifecycle.markStopping("Graceful shutdown requested");
+    this.updateLifecycleState(BotLifecycleState.STOPPING, "Graceful shutdown requested");
 
     try {
       this.logger.info("Shutting down WhatsApp bot...", "🛑");
@@ -315,11 +450,11 @@ export class UnifiedBotLifecycle {
       // Clean up QR code
       this.cleanupQRCode();
 
-      botLifecycle.markStopped();
+      this.updateLifecycleState(BotLifecycleState.STOPPED, "Bot has been stopped");
       this.logger.success("WhatsApp bot shutdown complete", "✅");
     } catch (error) {
       this.logger.error(`Error during shutdown: ${error}`);
-      botLifecycle.markError(error as Error);
+      this.updateLifecycleState(BotLifecycleState.ERROR_UNKNOWN, "Unknown error occurred", error as Error);
       throw error;
     }
   }
@@ -350,9 +485,64 @@ export class UnifiedBotLifecycle {
       isReady: this.isClientReady(),
       hasQRCode: this.hasQRCode(),
       qrCodePath: this.hasQRCode() ? this.qrCodePath : null,
-      lifecycleState: botLifecycle.getState(),
-      stateDescription: botLifecycle.getStateDescription(),
-      lifecycleDetails: botLifecycle.getStateDetails(),
+      lifecycleState: this.currentState,
+      stateDescription: this.getStateDescription(this.currentState),
+      lifecycleDetails: {
+        currentState: this.currentState,
+        timestamp: new Date().toISOString()
+      },
     };
+  }
+
+  /**
+   * Setup Express API with all necessary routes and middleware
+   */
+  public async setupAPI(app: any, port: number): Promise<any> {
+    // Import routes only when needed
+    const messageRoutes = (await import("../routes/unified/messageRoutes")).default;
+    const getGroupsRouter = (await import("../routes/getGroups")).default;
+    const { addRequestId, logRequest } = await import("../middleware/botMiddleware");
+
+    // Basic middleware
+    app.use((await import("express")).json());
+    app.use(addRequestId);
+    app.use(logRequest);
+
+    // API routes
+    app.use("/", messageRoutes);
+    app.use("/get-groups", getGroupsRouter);
+
+    // Status endpoints managed by this lifecycle instance
+    app.get("/qr-code", (req: any, res: any) => {
+      const status = this.getStatus();
+      if (this.hasQRCode()) {
+        res.json({
+          success: true,
+          qrCode: this.getQRCode(),
+          message: "QR code ready for scanning",
+          ...status,
+        });
+      } else {
+        res.json({
+          success: false,
+          message: status.stateDescription,
+          ...status,
+        });
+      }
+    });
+
+    app.get("/status", (req: any, res: any) => {
+      const status = this.getStatus();
+      res.json(status);
+    });
+
+    // Start server
+    const server = app.listen(port, () => {
+      this.logger.success(`✅ ${this.config.BOT_NAME} started successfully on port ${port}`);
+      this.logger.info(`📊 Status: http://localhost:${port}/status`);
+      this.logger.info(`📱 QR Code: http://localhost:${port}/qr-code`);
+    });
+
+    return server;
   }
 }
