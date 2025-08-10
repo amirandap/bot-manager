@@ -1,23 +1,9 @@
 // Unified WhatsApp bot with improved lifecycle management - Test version
-import express from 'express';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as dotenv from 'dotenv';
-import * as qrTerminal from 'qrcode';
-import { Client, LocalAuth } from 'whatsapp-web.js';
-import { BotLifecycleState } from './types/types';
-import { BOT_ID } from './utils/botLifecycleTracker';
-import { getFallbackNumber } from './utils/fallbackUtils';
-import { WhatsAppErrorHandler } from './utils/errorHandler';
-import messageRoutes from './routes/unified/messageRoutes';
-import sendToPhoneRoute from './routes/sendToPhone';
-import { setClient } from './config/clientExporter';sApp bot with improved lifecycle management - Test version
 import express from "express";
 import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import * as qrTerminal from "qrcode";
-import { spawn } from "child_process";
 import { Client, LocalAuth } from "whatsapp-web.js";
 import { BotLifecycleState } from "./types/types";
 import { BOT_ID } from "./utils/botLifecycleTracker";
@@ -727,14 +713,14 @@ process.on("SIGTERM", async () => {
 
 // ===== STEP 4: START SERVER =====
 // eslint-disable-next-line no-console
-console.log('\n' + '='.repeat(60));
+console.log("\n" + "=".repeat(60));
 // eslint-disable-next-line no-console
-console.log('✅ All pre-flight checks passed. Starting server...');
+console.log("✅ All pre-flight checks passed. Starting server...");
 
 // Start the server and initialize bot
 startServer().catch((error) => {
   // eslint-disable-next-line no-console
-  console.error('❌ Server startup failed:', error);
+  console.error("❌ Server startup failed:", error);
   throw error;
 });
 
