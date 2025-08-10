@@ -1,12 +1,11 @@
 import { Logger, LogLevel } from "../services/Logger";
 import { EnvironmentManager } from "../config/EnvironmentManager";
-import { ChromeValidator } from "../validators/ChromeValidator";
+import { puppeteerConfig } from "../config/PuppeteerConfig";
 import { DirectoryManager } from "../utils/DirectoryManager";
 
 export class StartupManager {
   private logger: Logger;
   private envManager: EnvironmentManager;
-  private chromeValidator: ChromeValidator;
   private directoryManager: DirectoryManager;
 
   public constructor() {
@@ -22,7 +21,8 @@ export class StartupManager {
     });
 
     this.envManager = envManager;
-    this.chromeValidator = new ChromeValidator(this.logger);
+    // Set the logger instance for puppeteerConfig to use
+    puppeteerConfig.setLogger(this.logger);
     this.directoryManager = new DirectoryManager(this.logger);
   }
 
@@ -106,12 +106,34 @@ export class StartupManager {
     this.logger.startupHeader("🔍 CHROME EXECUTABLE VALIDATION");
 
     const config = this.envManager.getConfig();
-    const result = this.chromeValidator.validate(config.CHROME_PATH);
+    const result = puppeteerConfig.validate(config.CHROME_PATH);
 
     if (!result.isValid) {
       this.logger.error("Chrome validation failed. Cannot proceed.");
+      
+      // Log all validation details
+      result.logs.forEach(log => {
+        this.logger.info(log);
+      });
+      
+      if (result.error) {
+        this.logger.error(result.error);
+      }
+      
+      if (result.alternativePaths && result.alternativePaths.length > 0) {
+        this.logger.info("💡 Alternative Chrome paths found:");
+        result.alternativePaths.forEach(path => {
+          this.logger.info(`   ✅ ${path}`);
+        });
+      }
+      
       return false;
     }
+
+    // Log success details
+    result.logs.forEach(log => {
+      this.logger.info(log);
+    });
 
     return true;
   }
@@ -133,7 +155,11 @@ export class StartupManager {
     return this.logger;
   }
 
-  public getChromeValidator(): ChromeValidator {
-    return this.chromeValidator;
+  /**
+   * Get the PuppeteerConfigManager instance that handles Chrome validation
+   * This replaces the old getChromeValidator method
+   */
+  public getPuppeteerConfig() {
+    return puppeteerConfig;
   }
 }
