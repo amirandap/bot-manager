@@ -1,4 +1,6 @@
-import { botLogger } from '../utils/loggerWrapper';\n\n/**
+import { botLogger } from '../utils/loggerWrapper';
+
+/**
  * SMTP Configuration Utilities
  * Functions to check and validate SMTP email configuration
  */

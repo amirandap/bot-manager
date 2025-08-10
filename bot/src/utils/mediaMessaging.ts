@@ -91,7 +91,11 @@ export async function sendImageMessage(
     }
   }
 
-  return { messagesSent, errors };
+  return { 
+    messagesSent, 
+    errors, 
+    success: messagesSent.length > 0 
+  };
 }
 
 /**
@@ -159,7 +163,11 @@ export async function sendDocumentMessage(
     }
   }
 
-  return { messagesSent, errors };
+  return { 
+    messagesSent, 
+    errors, 
+    success: messagesSent.length > 0 
+  };
 }
 
 /**
@@ -232,7 +240,11 @@ export async function sendAudioMessage(
     }
   }
 
-  return { messagesSent, errors };
+  return { 
+    messagesSent, 
+    errors, 
+    success: messagesSent.length > 0 
+  };
 }
 
 /**
@@ -298,5 +310,9 @@ export async function sendVideoMessage(
     }
   }
 
-  return { messagesSent, errors };
+  return { 
+    messagesSent, 
+    errors, 
+    success: messagesSent.length > 0 
+  };
 }

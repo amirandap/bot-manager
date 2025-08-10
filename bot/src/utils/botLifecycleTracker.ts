@@ -1,4 +1,6 @@
-import { botLogger } from '../utils/loggerWrapper';\n\nimport * as fs from "fs";
+import { botLogger } from '../utils/loggerWrapper';
+
+import * as fs from "fs";
 import * as path from "path";
 import { BotLifecycleState, LifecycleEvent } from "../types/types";
 import { BOT_ID, LOGS_PATH } from "../config/EnvironmentManager";

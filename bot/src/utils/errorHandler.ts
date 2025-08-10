@@ -15,7 +15,7 @@ import {
   ErrorHandlerOptions,
   ErrorValidationResult,
   DetailedErrorAnalysis,
-} from "../types/types";
+} from "../types";
 
 // ============================================================================
 // ERROR CLASSIFICATION SYSTEM

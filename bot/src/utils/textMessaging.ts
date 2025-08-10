@@ -101,5 +101,9 @@ export async function sendTextMessage(
     }
   }
 
-  return { messagesSent, errors };
+  return { 
+    messagesSent, 
+    errors, 
+    success: messagesSent.length > 0 
+  };
 }

@@ -7,58 +7,92 @@
 
 import { Logger } from "../services/Logger";
 
-// Get logger instance with default config for bot operations
-const logger = Logger.getInstance();
+// Lazy-loaded logger instance to avoid circular dependencies
+let logger: Logger | null = null;
+
+function getLogger(): Logger {
+  if (!logger) {
+    try {
+      logger = Logger.getInstance();
+    } catch (error) {
+      // Logger not initialized yet, fall back to console
+      return null as any;
+    }
+  }
+  return logger;
+}
 
 export const botLogger = {
   info: (message: string, emoji?: string) => {
-    logger.info(message, emoji);
+    const loggerInstance = getLogger();
+    if (loggerInstance) {
+      loggerInstance.info(message, emoji);
+    } else {
+      // Fall back to console if logger not ready
+      const consoleMessage = emoji ? `${emoji} ${message}` : message;
+      // eslint-disable-next-line no-console
+      console.log(consoleMessage);
+    }
   },
 
   error: (message: string) => {
-    logger.error(message);
+    const loggerInstance = getLogger();
+    if (loggerInstance) {
+      loggerInstance.error(message);
+    } else {
+      // Fall back to console if logger not ready
+      // eslint-disable-next-line no-console
+      console.error(`❌ ${message}`);
+    }
   },
 
   warn: (message: string) => {
-    logger.warn(message);
+    const loggerInstance = getLogger();
+    if (loggerInstance) {
+      loggerInstance.warn(message);
+    } else {
+      // Fall back to console if logger not ready
+      // eslint-disable-next-line no-console
+      console.warn(`⚠️ ${message}`);
+    }
   },
 
   // Specific methods for common bot operations with emojis
   requestReceived: (endpoint: string, requestId: string) => {
-    logger.info(`${endpoint} request ${requestId} received`, "📥");
+    botLogger.info(`${endpoint} request ${requestId} received`, "📥");
   },
 
   requestCompleted: (endpoint: string, requestId: string) => {
-    logger.info(`${endpoint} request ${requestId} completed`, "✅");
+    botLogger.info(`${endpoint} request ${requestId} completed`, "✅");
   },
 
   requestFailed: (endpoint: string, requestId: string) => {
-    logger.error(`${endpoint} request ${requestId} failed`);
+    botLogger.error(`${endpoint} request ${requestId} failed`);
   },
 
   messageProcessing: (action: string, recipient: string) => {
-    logger.info(`${action}: ${recipient}`, "💬");
+    botLogger.info(`${action}: ${recipient}`, "💬");
   },
 
   mediaProcessing: (mediaType: string, recipient: string) => {
-    logger.info(`${mediaType} processing for: ${recipient}`, "📎");
+    botLogger.info(`${mediaType} processing for: ${recipient}`, "📎");
   },
 
   groupOperation: (action: string, groupId: string) => {
-    logger.info(`${action} group: ${groupId}`, "🏢");
+    botLogger.info(`${action} group: ${groupId}`, "🏢");
   },
 
   phoneNumberProcessing: (action: string, phoneNumber: string) => {
-    logger.info(`${action}: ${phoneNumber}`, "📱");
+    botLogger.info(`${action}: ${phoneNumber}`, "📱");
   },
 
   environmentInfo: (message: string) => {
-    logger.info(message, "📁");
+    botLogger.info(message, "📁");
   },
 
   errorWithContext: (message: string, error: unknown) => {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error(`${message}: ${errorMsg}`);
+    botLogger.error(`${message}: ${errorMsg}`);
   },
 };
 
