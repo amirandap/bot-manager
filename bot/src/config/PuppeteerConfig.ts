@@ -1,4 +1,4 @@
-/**
+import { botLogger } from '../utils/loggerWrapper';\n\n/**
  * Puppeteer Configuration Manager
  * 
  * Handles OS-specific Chrome paths, Chrome validation, and Puppeteer arguments for optimal 
@@ -321,7 +321,7 @@ export class PuppeteerConfigManager {
             const defaultLockPath = `${sessionPath}/${sessionDir}/Default/${lockFile}`;
             if (fs.existsSync(defaultLockPath)) {
               fs.unlinkSync(defaultLockPath);
-              console.log(`Removed lock file: ${defaultLockPath}`);
+              botLogger.info(`Removed lock file: ${defaultLockPath}`);
               cleaned = true;
             }
             
@@ -329,7 +329,7 @@ export class PuppeteerConfigManager {
             const rootLockPath = `${sessionPath}/${sessionDir}/${lockFile}`;
             if (fs.existsSync(rootLockPath)) {
               fs.unlinkSync(rootLockPath);
-              console.log(`Removed root lock file: ${rootLockPath}`);
+              botLogger.info(`Removed root lock file: ${rootLockPath}`);
               cleaned = true;
             }
           }
@@ -338,7 +338,7 @@ export class PuppeteerConfigManager {
 
       return cleaned;
     } catch (error) {
-      console.warn(`Failed to cleanup browser session: ${error}`);
+      botLogger.warn(`Failed to cleanup browser session: ${error}`);
       return false;
     }
   }
@@ -372,13 +372,13 @@ export class PuppeteerConfigManager {
     }
 
     // Log the configuration for debugging
-    console.log(`Puppeteer config for ${this.currentOS}:`);
-    console.log(`  - Chrome path: ${chromePath || "system default"}`);
-    console.log(`  - Headless: ${headless}`);
-    console.log(`  - Args count: ${config.args.length}`);
+    botLogger.info(`Puppeteer config for ${this.currentOS}:`);
+    botLogger.info(`  - Chrome path: ${chromePath || "system default"}`);
+    botLogger.info(`  - Headless: ${headless}`);
+    botLogger.info(`  - Args count: ${config.args.length}`);
     
     if (process.env.NODE_ENV === "development") {
-      console.log(`  - Full args: ${config.args.join(" ")}`);
+      botLogger.info(`  - Full args: ${config.args.join(" ")}`);
     }
 
     return config;

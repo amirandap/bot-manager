@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendToGroups } from "../utils/messageHandler";
+import { sendToGroups } from "../controllers/messageHandler";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { SendMessageRequestBody } from "../types/types";
 import { botLogger } from "../utils/loggerWrapper";

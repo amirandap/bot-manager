@@ -1,12 +1,12 @@
 import { Logger, LogLevel } from "../services/Logger";
 import { EnvironmentManager } from "../config/EnvironmentManager";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
-import { DirectoryManager } from "../utils/DirectoryManager";
+import { DirectoryManagerService } from "./DirectoryManagerService";
 
 export class StartupManager {
   private logger: Logger;
   private envManager: EnvironmentManager;
-  private directoryManager: DirectoryManager;
+  private directoryManager: DirectoryManagerService;
 
   public constructor() {
     // Initialize logger first
@@ -23,7 +23,7 @@ export class StartupManager {
     this.envManager = envManager;
     // Set the logger instance for puppeteerConfig to use
     puppeteerConfig.setLogger(this.logger);
-    this.directoryManager = new DirectoryManager(this.logger);
+    this.directoryManager = new DirectoryManagerService(this.logger);
   }
 
   public async initialize(): Promise<boolean> {

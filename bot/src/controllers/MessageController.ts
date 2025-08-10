@@ -12,13 +12,13 @@ import {
   sendToPhones,
   sendToGroups,
   sendMessageWithErrorHandling,
-} from "../utils/messageHandler";
+} from "./messageHandler";
 import {
   sendImageMessage,
   sendDocumentMessage,
   sendAudioMessage,
   sendVideoMessage,
-} from "../utils/mediaMessaging";
+} from "../services/MediaMessagingService";
 import { separateRecipients } from "../utils/recipientFormatting";
 import {
   MessageType,

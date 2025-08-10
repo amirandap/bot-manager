@@ -1,5 +1,5 @@
 /**
- * Bot Lifecycle Tracker - Simplified Version
+ * Bot Lifecycle Service - Simplified Version
  * Now uses centralized PM2 utilities for communication
  * Focuses only on WhatsApp lifecycle state management
  */
@@ -9,9 +9,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { BotLifecycleState, LifecycleEvent } from "../types/types";
 import { BOT_ID, LOGS_PATH } from "../config/EnvironmentManager";
-import { updatePM2Metrics, markStepSuccess, markStepFailure, markStepInProgress, WHATSAPP_LIFECYCLE_STEPS } from "./pm2Utils";
+import { updatePM2Metrics, markStepSuccess, markStepFailure, markStepInProgress, WHATSAPP_LIFECYCLE_STEPS } from "../utils/pm2Utils";
 
-class BotLifecycleTracker {
+class BotLifecycleService {
   private currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
   private stateHistory: LifecycleEvent[] = [];
   private stateFile: string;
@@ -362,4 +362,4 @@ class BotLifecycleTracker {
 }
 
 // Singleton instance
-export const botLifecycle = new BotLifecycleTracker();
+export const botLifecycle = new BotLifecycleService();

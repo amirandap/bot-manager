@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendDocumentMessage } from "../utils/mediaMessaging";
+import { sendDocumentMessage } from "../services/MediaMessagingService";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import RequestValidator from "../utils/requestValidator";
 import { RecipientProcessor } from "../utils/recipientFormatting";

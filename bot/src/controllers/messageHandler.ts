@@ -10,12 +10,12 @@ import {
   sendDocumentMessage,
   sendAudioMessage,
   sendVideoMessage,
-} from "./mediaMessaging";
-import { sendTextMessage } from "./textMessaging";
-import { sendErrorMessage, shouldSendFallback } from "./errorHandler";
-import { MessageErrorHandler } from "./errorHandler";
-import { validateWhatsAppError } from "./errorHandler";
-import { getFallbackNumber } from "./fallbackUtils";
+} from "../services/MediaMessagingService";
+import { sendTextMessage } from "../utils/textMessaging";
+import { sendErrorMessage, shouldSendFallback } from "../utils/errorHandler";
+import { MessageErrorHandler } from "../utils/errorHandler";
+import { validateWhatsAppError } from "../utils/errorHandler";
+import { getFallbackNumber } from "../utils/fallbackUtils";
 import { MediaResult, MessageHandlerResult, MessageType } from "../types/types";
 
 /**

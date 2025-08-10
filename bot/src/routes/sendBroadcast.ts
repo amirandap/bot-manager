@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendToGroups, sendToPhones } from "../utils/messageHandler";
+import { sendToGroups, sendToPhones } from "../controllers/messageHandler";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { SendMessageRequestBody } from "../types/types";
 import { separateRecipients } from "../utils/recipientFormatting";

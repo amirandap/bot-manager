@@ -62,4 +62,32 @@ export class DirectoryManagerService {
       throw new Error(`Directory creation failed for ${dirPath}: ${error}`);
     }
   }
+
+  // Methods from utils/DirectoryManager.ts for backwards compatibility
+  public ensureDirectories(directories: string[]): void {
+    directories.forEach((dir) => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        this.logger.info(`Created directory: ${dir}`, "📁");
+      } else {
+        this.logger.info(`Directory exists: ${dir}`, "✅");
+      }
+    });
+  }
+
+  public ensureDirectory(directory: string): boolean {
+    try {
+      if (!fs.existsSync(directory)) {
+        fs.mkdirSync(directory, { recursive: true });
+        this.logger.info(`Created directory: ${directory}`, "📁");
+        return true;
+      } else {
+        this.logger.info(`Directory exists: ${directory}`, "✅");
+        return true;
+      }
+    } catch (error) {
+      this.logger.error(`Failed to create directory ${directory}: ${error}`);
+      return false;
+    }
+  }
 }
