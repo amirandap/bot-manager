@@ -5,6 +5,7 @@ import { getClient } from "../config/clientExporter";
 import { sendToGroups } from "../utils/messageHandler";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { SendMessageRequestBody } from "../types/types";
+import { botLogger } from "../utils/loggerWrapper";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });

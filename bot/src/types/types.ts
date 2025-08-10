@@ -10,6 +10,23 @@ export interface SystemError extends Error {
 }
 
 // =================
+// ENVIRONMENT CONFIGURATION TYPES
+// =================
+
+export interface EnvironmentConfig {
+  BOT_ID: string;
+  BOT_NAME: string;
+  BOT_PORT: number;
+  BOT_TYPE: string;
+  NODE_ENV: string;
+  CHROME_PATH: string;
+  DATA_ROOT: string;
+  SESSION_PATH: string;
+  QR_PATH: string;
+  LOGS_PATH: string;
+}
+
+// =================
 // BOT LIFECYCLE TYPES
 // =================
 
@@ -31,6 +48,8 @@ export enum BotLifecycleState {
   LOADING = "loading",
 
   // Error states
+  ERROR_VALIDATION = "error_validation",
+  ERROR_CHROME = "error_chrome",
   ERROR_BROWSER = "error_browser",
   ERROR_CONNECTION = "error_connection",
   ERROR_AUTHENTICATION = "error_authentication",
@@ -127,13 +146,22 @@ export interface CriticalErrorDetails {
   };
 }
 
+// Unified error object for all API responses
+export interface ErrorObject {
+  recipient: string;
+  error: string;
+  errorType?: string;
+  timestamp?: string;
+}
+
 // =================
 // PHONE NUMBER TYPES
 // =================
 
-export interface PhoneNumberResult {
-  cleanedPhoneNumber: string;
-  isValid: boolean;
+import { PhoneNumberValidation } from "./core";
+
+export interface PhoneNumberResult extends PhoneNumberValidation {
+  // Inherits cleanedPhoneNumber and isValid from core
 }
 
 export interface CountryConfig {
@@ -151,23 +179,11 @@ export type MessageType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "VIDEO";
 
 export interface MediaResult {
   messagesSent: string[];
-  errors: Array<{
-    recipient: string;
-    error: string;
-    errorType: string;
-    timestamp: string;
-  }>;
+  errors: ErrorObject[];
 }
 
 export interface SendMessageResult extends MediaResult {
   // Alias for backward compatibility
-}
-
-export interface ErrorDetail {
-  recipient: string;
-  error: string;
-  errorType: string;
-  timestamp: string;
 }
 
 export interface MessageSendOptions {
@@ -186,12 +202,7 @@ export type MediaSource = Express.Multer.File | string | LegacyFileFormat;
 export interface MessageHandlerResult {
   success: boolean;
   messagesSent: string[];
-  errors: Array<{
-    recipient: string;
-    error: string;
-    errorType: string;
-    timestamp: string;
-  }>;
+  errors: ErrorObject[];
   fallbackSent?: boolean;
   troubleshootingGuide?: string;
 }
@@ -235,6 +246,7 @@ export interface BaseMessageRequestBody {
   to?: string | string[]; // Alias for phoneNumber
   group_id?: string;
   group_name?: string;
+  message?: string; // Adding message for validation purposes
 }
 
 export interface SendMessageRequestBody extends BaseMessageRequestBody {
@@ -245,11 +257,22 @@ export interface MediaMessageRequestBody extends BaseMessageRequestBody {
   message?: string; // Optional caption/message for media
 }
 
-export interface ErrorObject {
-  phoneNumber: string;
-  error: string;
-  errorType?: string;
-  timestamp?: string;
+// Validation types
+export interface ValidationResult {
+  isValid: boolean;
+  body?: BaseMessageRequestBody;
+  file?: Express.Multer.File;
+}
+
+export interface RecipientValidationResult {
+  isValid: boolean;
+  body?: BaseMessageRequestBody;
+}
+
+export interface FileValidationResult {
+  isValid: boolean;
+  file?: Express.Multer.File;
+  body?: BaseMessageRequestBody;
 }
 
 export interface ProcessingResult {

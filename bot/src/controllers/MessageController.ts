@@ -1,4 +1,4 @@
-/**
+import { botLogger } from '../utils/loggerWrapper';\n\n/**
  * Centralized Message Controller
  * Handles all message sending operations with unified validation, error handling, and response formatting
  */
@@ -196,7 +196,7 @@ export class MessageController {
     endpoint: string,
     requestId: string
   ): Promise<void> {
-    console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+    botLogger.error(`❌ [BOT] Request ${requestId} failed:`);
 
     const client = getClient();
     const { errorType, errorDetails } =
@@ -519,7 +519,7 @@ export class MessageController {
     const client = getClient()!;
 
     try {
-      console.log(`💬 [BOT] Simple message request ${requestId}: ${phone}`);
+      botLogger.info(`💬 [BOT] Simple message request ${requestId}: ${phone}`, '💬');
 
       // Use the unified message handler
       const results = await sendMessageWithErrorHandling(

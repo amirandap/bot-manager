@@ -1,4 +1,4 @@
-/**
+import { botLogger } from '../utils/loggerWrapper';\n\n/**
  * Centralized middleware for common bot operations
  * Reduces code duplication across routes
  */
@@ -103,7 +103,7 @@ export function handleBotError(
 ): void {
   const requestId = req.bot?.requestId || "unknown";
 
-  console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+  botLogger.error(`❌ [BOT] Request ${requestId} failed:`);
 
   if (res.headersSent) {
     return next(error);

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { botLogger } from '../utils/loggerWrapper';\n\n/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -319,7 +319,7 @@ export async function sendMessagesBatch(
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (batchError: any) {
-      console.error(`❌ [BATCH_HANDLER] Error in batch ${i + 1}:`, batchError);
+      botLogger.error(`❌ [BATCH_HANDLER] Error in batch ${i + 1}:`);
 
       const errorResult: MessageHandlerResult = {
         success: false,
@@ -395,9 +395,9 @@ export async function sendToGroups(
 
   for (const groupId of groups) {
     try {
-      console.log(`🏢 [BOT] Sending to group: ${groupId}`);
-      console.log(`🔍 [BOT] Message content: "${message}"`);
-      console.log(`📁 [BOT] Has file attachment: ${!!file}`);
+      botLogger.info(`🏢 [BOT] Sending to group: ${groupId}`, '🏢');
+      botLogger.info(`🔍 [BOT] Message content: "${message}"`, '💬');
+      botLogger.environmentInfo(`📁 [BOT] Has file attachment: ${!!file}`);
 
       let sendResult;
       if (file) {
@@ -416,7 +416,7 @@ export async function sendToGroups(
 
       console.log("🔍 [BOT] Send result:", sendResult);
       messagesSent.push(groupId);
-      console.log(`✅ [BOT] Group message sent successfully to: ${groupId}`);
+      botLogger.info(`✅ [BOT] Group message sent successfully to: ${groupId}`, '✅');
     } catch (error: unknown) {
       const reason = error instanceof Error ? error.message : "Unknown error";
       const errorStack =
@@ -436,9 +436,9 @@ export async function sendToGroups(
         console.error(
           `❌ [BOT] Critical error sending message to group ${groupId}:`
         );
-        console.error(`   Error Type: ${typeof error}`);
-        console.error(`   Error Message: ${reason}`);
-        console.error(`   Error Stack: ${errorStack}`);
+        botLogger.error(`   Error Type: ${typeof error}`);
+        botLogger.error(`   Error Message: ${reason}`);
+        botLogger.error(`   Error Stack: ${errorStack}`);
         console.error("   Full Error Object:", error);
 
         errors.push({

@@ -1,4 +1,4 @@
-/**
+import { botLogger } from '../utils/loggerWrapper';\n\n/**
  * SMTP Configuration Utilities
  * Functions to check and validate SMTP email configuration
  */
@@ -47,6 +47,6 @@ export function logSmtpStatus(): void {
     if (!process.env.GMAIL_PASS) missing.push("GMAIL_PASS");
     if (!process.env.MAIL_RECIPIENT) missing.push("MAIL_RECIPIENT");
     
-    console.log(`📧 SMTP not configured - email notifications disabled (missing: ${missing.join(", ")})`);
+    botLogger.info(`📧 SMTP not configured - email notifications disabled (missing: ${missing.join(", ")})`);
   }
 }
