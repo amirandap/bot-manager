@@ -6,6 +6,7 @@ import { sendImageMessage } from "../services/MediaMessagingService";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import RequestValidator from "../utils/requestValidator";
 import { RecipientProcessor } from "../utils/recipientFormatting";
+import { botLogger } from "../utils/loggerWrapper";
 
 const router = express.Router();
 const upload = multer({
@@ -58,7 +59,7 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 
   try {
-    console.log(`🖼️ [BOT] Image message request ${requestId} received`);
+    botLogger.info(`🖼️ [BOT] Image message request ${requestId} received`);
 
     // Validate file upload
     const fileValidation = RequestValidator.validateFileUpload(
@@ -82,10 +83,10 @@ router.post("/", upload.single("file"), async (req, res) => {
     const recipients = [...groups, ...phoneNumbers];
     const caption = message || "";
 
-    console.log(
+    botLogger.info(
       `🖼️ [BOT] Request ${requestId}: Sending image to ${recipients.length} recipient(s)`
     );
-    console.log(
+    botLogger.info(
       `📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(
         file.size / 1024
       ).toFixed(2)}KB)`
@@ -113,7 +114,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       results.errors
     );
 
-    console.log(
+    botLogger.success(
       `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
     );
 
@@ -128,7 +129,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+    botLogger.error(`❌ [BOT] Request ${requestId} failed: ${error}`);
 
     const { errorType, errorDetails } =
       await MessageErrorHandler.handleCriticalError(

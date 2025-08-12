@@ -8,7 +8,9 @@
         "start": "node -r module-alias/register ./dist --env=production",
         "dev": "nodemon",
         "test": "nodemon --config ./spec/nodemon.json",
-        "test:no-reloading": "npx ts-node --files -r tsconfig-paths/register ./spec"
+        "test:no-reloading": "npx ts-node --files -r tsconfig-paths/register ./spec",
+        "view-status": "npx ts-node --files -r tsconfig-paths/register ./scripts/view-bot-status.ts",
+        "view-status:watch": "npx ts-node --files -r tsconfig-paths/register ./scripts/view-bot-status.ts --watch"
     },
     "nodemonConfig": {
         "watch": [

@@ -3,6 +3,7 @@ import { Client } from "whatsapp-web.js";
 import { formatRecipient } from "./recipientFormatting";
 import { shouldSendFallback, logWhatsAppError } from "./errorHandler";
 import { MediaResult } from "../types/types";
+import { botLogger } from "./loggerWrapper";
 
 /**
  * Text messaging utilities
@@ -32,8 +33,7 @@ export async function sendTextMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      // eslint-disable-next-line no-console
-      console.log(`📤 [BOT] Sending text message to: ${formattedRecipient}`);
+      botLogger.info(`Sending text message to: ${formattedRecipient}`);
 
       // Verify number exists on WhatsApp (for phone numbers only)
       if (!recipient.includes("@g.us")) {
@@ -56,9 +56,8 @@ export async function sendTextMessage(
       try {
         await client.sendMessage(formattedRecipient, message);
         messageSent = true;
-        // eslint-disable-next-line no-console
-        console.log(
-          `✅ [BOT] Text message sent successfully to: ${formattedRecipient}`
+        botLogger.success(
+          `Text message sent successfully to: ${formattedRecipient}`
         );
         messagesSent.push(recipient);
       } catch (sendError: any) {
@@ -70,15 +69,12 @@ export async function sendTextMessage(
         );
 
         if (messageSent || validation.isPostSendError) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            "⚠️ [BOT] Post-send error (message likely sent): " +
-              `${sendError.message}`
+          botLogger.warn(
+            `Post-send error (message likely sent): ${sendError.message}`
           );
           messagesSent.push(recipient);
-          // eslint-disable-next-line no-console
-          console.log(
-            "✅ [BOT] Treating text send as successful despite post-send error"
+          botLogger.success(
+            "Treating text send as successful despite post-send error"
           );
           continue;
         }
@@ -86,10 +82,8 @@ export async function sendTextMessage(
       }
     } catch (error: any) {
       shouldSendFallback(error, "TEXT_MESSAGE", recipient);
-      // eslint-disable-next-line no-console
-      console.error(
-        `❌ [BOT] Error sending text message to ${recipient}:`,
-        error
+      botLogger.error(
+        `Error sending text message to ${recipient}: ${error}`
       );
 
       errors.push({

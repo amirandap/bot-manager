@@ -6,6 +6,7 @@ import { sendVideoMessage } from "../services/MediaMessagingService";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import RequestValidator from "../utils/requestValidator";
 import { RecipientProcessor } from "../utils/recipientFormatting";
+import { botLogger } from "../utils/loggerWrapper";
 
 const router = express.Router();
 const upload = multer({
@@ -62,14 +63,14 @@ router.post("/", upload.single("file"), async (req, res) => {
   }
 
   try {
-    console.log(`🎬 [BOT] Video message request ${requestId} received`);
+    botLogger.info(`Video message request ${requestId} received`);
 
     const { to, message } = req.body;
     const file = req.file;
 
     // Validation
     if (!file) {
-      console.error(`❌ [BOT] Request ${requestId}: Video file is required`);
+      botLogger.error(`Request ${requestId}: Video file is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: Video file is required",
@@ -89,7 +90,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     if (!to) {
-      console.error(`❌ [BOT] Request ${requestId}: 'to' field is required`);
+      botLogger.error(`Request ${requestId}: 'to' field is required`);
       return res.status(400).json({
         success: false,
         error:
@@ -103,11 +104,11 @@ router.post("/", upload.single("file"), async (req, res) => {
     const recipients = Array.isArray(to) ? to : [to];
     const caption = message || "";
 
-    console.log(
-      `🎬 [BOT] Request ${requestId}: Sending video to ${recipients.length} recipient(s)`
+    botLogger.info(
+      `Request ${requestId}: Sending video to ${recipients.length} recipient(s)`
     );
-    console.log(
-      `📁 [BOT] File info: ${file.originalname} (${file.mimetype}, ${(
+    botLogger.info(
+      `File info: ${file.originalname} (${file.mimetype}, ${(
         file.size /
         1024 /
         1024
@@ -134,8 +135,8 @@ router.post("/", upload.single("file"), async (req, res) => {
         ? 500
         : 207; // 207 = Multi-Status
 
-    console.log(
-      `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
+    botLogger.success(
+      `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
     );
 
     return res.status(statusCode).json({
@@ -153,7 +154,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+    botLogger.error(`Request ${requestId} failed: ${error}`);
 
     const { errorType, errorDetails } =
       await MessageErrorHandler.handleCriticalError(

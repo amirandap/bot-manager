@@ -42,7 +42,7 @@ export function getSmtpConfig(): {
  */
 export function logSmtpStatus(): void {
   if (isSmtpConfigured()) {
-    console.log("✅ SMTP configured - email notifications enabled");
+    botLogger.success("✅ SMTP configured - email notifications enabled");
   } else {
     const missing = [];
     if (!process.env.GMAIL_USER) missing.push("GMAIL_USER");

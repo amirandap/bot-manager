@@ -4,8 +4,8 @@
  */
 
 import { User } from "../types/types";
-import { getFallbackNumber } from "./fallbackUtils";
-import { getDisplayName, extractFirstName } from "./userDataService";
+import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
+import { getDisplayName, extractFirstName } from "../services/UserDataService";
 
 /**
  * Format message with user data
@@ -20,7 +20,7 @@ export function formatMessage(
   formattedMessage: string;
   phoneNumber: string;
 } {
-  const phoneNumber = user.celular || getFallbackNumber();
+  const phoneNumber = user.celular || DEFAULT_FALLBACK_PHONE_NUMBER;
   const formattedMessage = message.replace(/-/g, " ");
 
   return { formattedMessage, phoneNumber };

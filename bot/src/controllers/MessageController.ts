@@ -1,8 +1,13 @@
 import { botLogger } from '../utils/loggerWrapper';
 
 /**
- * Centralized Message Controller
- * Handles all message sending operations with unified validation, error handling, and response formatting
+ * Centralized Message Controller - CONSOLIDATED VERSION
+ * 
+ * ELIMINATES DUPLICATIONS BY USING:
+ * - MessageHandlerController for message handling (NOT old messageHandler.ts)
+ * - RequestValidator for validation (NOT internal duplicate methods)
+ * - MessageErrorHandler for error handling
+ * - Unified client checking (NO duplicate validateClient methods)
  */
 
 import { Request, Response } from "express";
@@ -12,7 +17,7 @@ import {
   sendToPhones,
   sendToGroups,
   sendMessageWithErrorHandling,
-} from "./messageHandler";
+} from "./MessageHandlerController";
 import {
   sendImageMessage,
   sendDocumentMessage,
@@ -20,6 +25,7 @@ import {
   sendVideoMessage,
 } from "../services/MediaMessagingService";
 import { separateRecipients } from "../utils/recipientFormatting";
+import RequestValidator from "../utils/requestValidator";
 import {
   MessageType,
   SendResponse,
@@ -29,150 +35,31 @@ import {
 
 export class MessageController {
   /**
-   * Unified client validation middleware
+   * Extract recipients from request body - consolidated logic
    */
-  private static validateClient(req: Request, res: Response): boolean {
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * Unified request validation
-   */
-  private static validateMessageRequest(
-    req: Request,
-    res: Response,
-    options: {
-      requiresRecipients?: boolean;
-      requiresMessage?: boolean;
-      requiresFile?: boolean;
-      allowedRecipientTypes?: ("phone" | "group")[];
-    } = {}
-  ): {
-    isValid: boolean;
-    requestId?: string;
-    recipients?: string[];
-    message?: string;
-    file?: Express.Multer.File;
-  } {
-    const requestId = Date.now().toString(36);
-    const {
-      requiresRecipients = true,
-      requiresMessage = true,
-      requiresFile = false,
-      allowedRecipientTypes = ["phone", "group"],
-    } = options;
-
-    // Extract recipients from various possible fields
-    const { phoneNumber, to, groupId, group_id } = req.body;
-    let recipients: string[] = [];
-
+  private static extractRecipients(body: BaseMessageRequestBody): string[] {
+    const { phoneNumber, to, group_id } = body;
+    
     if (phoneNumber) {
-      recipients = Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
+      return Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
     } else if (to) {
-      recipients = Array.isArray(to) ? to : [to];
-    } else if (groupId) {
-      recipients = Array.isArray(groupId) ? groupId : [groupId];
+      return Array.isArray(to) ? to : [to];
     } else if (group_id) {
-      recipients = Array.isArray(group_id) ? group_id : [group_id];
+      return Array.isArray(group_id) ? group_id : [group_id];
     }
-
-    // Validate recipients
-    if (requiresRecipients && recipients.length === 0) {
-      res.status(400).json({
-        success: false,
-        error:
-          "VALIDATION_ERROR: Recipients required (phoneNumber, to, groupId, or group_id)",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return { isValid: false };
-    }
-
-    // Validate recipient types
-    if (recipients.length > 0) {
-      const { groups, phoneNumbers } = separateRecipients(recipients);
-
-      if (!allowedRecipientTypes.includes("phone") && phoneNumbers.length > 0) {
-        res.status(400).json({
-          success: false,
-          error: "VALIDATION_ERROR: Phone numbers not allowed in this endpoint",
-          invalidRecipients: phoneNumbers,
-          requestId,
-          timestamp: new Date().toISOString(),
-        });
-        return { isValid: false };
-      }
-
-      if (!allowedRecipientTypes.includes("group") && groups.length > 0) {
-        res.status(400).json({
-          success: false,
-          error: "VALIDATION_ERROR: Group IDs not allowed in this endpoint",
-          invalidRecipients: groups,
-          requestId,
-          timestamp: new Date().toISOString(),
-        });
-        return { isValid: false };
-      }
-    }
-
-    // Validate message
-    const { message } = req.body;
-    if (requiresMessage && (!message || typeof message !== "string")) {
-      res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: message is required (string)",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return { isValid: false };
-    }
-
-    // Validate file
-    const file = req.file;
-    if (requiresFile && !file) {
-      res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: file is required",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return { isValid: false };
-    }
-
-    return {
-      isValid: true,
-      requestId,
-      recipients,
-      message,
-      file,
-    };
+    
+    return [];
   }
 
   /**
-   * Unified response formatting
+   * Unified response formatting - uses RequestValidator methods
    */
   private static formatResponse(
     results: { messagesSent: string[]; errors: any[] },
     requestId: string,
     additionalData?: Record<string, any>
   ): { statusCode: number; response: SendResponse | MediaSendResponse } {
-    const statusCode =
-      results.errors.length === 0
-        ? 200
-        : results.messagesSent.length === 0
-        ? 500
-        : 207; // Multi-Status
+    const statusCode = RequestValidator.getResponseStatus(results.errors, results.messagesSent);
 
     const response = {
       success: results.errors.length === 0,
@@ -189,7 +76,7 @@ export class MessageController {
   }
 
   /**
-   * Unified error handling
+   * Unified error handling - uses MessageErrorHandler
    */
   private static async handleError(
     error: unknown,
@@ -211,9 +98,7 @@ export class MessageController {
 
     res.status(500).json({
       success: false,
-      error: `${endpoint
-        .toUpperCase()
-        .replace(/[^A-Z]/g, "_")}_ERROR: Internal server error`,
+      error: `${endpoint.toUpperCase().replace(/[^A-Z]/g, "_")}_ERROR: Internal server error`,
       errorType,
       details: errorDetails.troubleshooting,
       requestId,
@@ -222,30 +107,52 @@ export class MessageController {
   }
 
   /**
-   * Send to phone numbers only
+   * Send to phone numbers only - consolidated validation
    */
   public static async sendToPhone(req: Request, res: Response): Promise<void> {
-    if (!MessageController.validateClient(req, res)) return;
+    // Single client check - no duplicate methods
+    const client = getClient();
+    if (!client) {
+      const requestId = Date.now().toString(36);
+      res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
-    const validation = MessageController.validateMessageRequest(req, res, {
-      allowedRecipientTypes: ["phone"],
-    });
-
+    // Use RequestValidator - no duplicate validation
+    const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const { requestId, recipients, message, file } = validation;
-    const client = getClient()!;
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
+
+    const requestId = Date.now().toString(36);
+    const { message } = validation.body!;
+    const file = validation.file;
+    const recipients = MessageController.extractRecipients(recipientValidation.body!);
+    
+    // Filter only phone numbers
+    const { phoneNumbers } = separateRecipients(recipients);
+    if (phoneNumbers.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR: No valid phone numbers found",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     try {
-      console.log(
-        `📱 [BOT] Request ${requestId}: Sending to ${
-          recipients!.length
-        } phone(s)`
-      );
+      botLogger.info(`📱 [BOT] Request ${requestId}: Sending to ${phoneNumbers.length} phone(s)`);
 
-      const results = await sendToPhones(client, recipients!, message!, file);
+      // Use MessageHandlerController - no old messageHandler.ts
+      const results = await sendToPhones(client, phoneNumbers, message!, file);
 
-      // Send error report if needed
       if (results.errors.length > 0) {
         await MessageErrorHandler.sendErrorReport(
           client,
@@ -255,52 +162,62 @@ export class MessageController {
         );
       }
 
-      const { statusCode, response } = MessageController.formatResponse(
-        results,
-        requestId!
-      );
+      const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      console.log(
+      botLogger.success(
         `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
       res.status(statusCode).json(response);
     } catch (error) {
-      await MessageController.handleError(
-        error,
-        req,
-        res,
-        "/send-to-phone",
-        requestId!
-      );
+      await MessageController.handleError(error, req, res, "/send-to-phone", requestId);
     }
   }
 
   /**
-   * Send to groups only
+   * Send to groups only - consolidated validation
    */
   public static async sendToGroup(req: Request, res: Response): Promise<void> {
-    if (!MessageController.validateClient(req, res)) return;
+    const client = getClient();
+    if (!client) {
+      const requestId = Date.now().toString(36);
+      res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
-    const validation = MessageController.validateMessageRequest(req, res, {
-      allowedRecipientTypes: ["group"],
-    });
-
+    const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const { requestId, recipients, message, file } = validation;
-    const client = getClient()!;
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
+
+    const requestId = Date.now().toString(36);
+    const { message } = validation.body!;
+    const file = validation.file;
+    const recipients = MessageController.extractRecipients(recipientValidation.body!);
+    
+    // Filter only group IDs
+    const { groups } = separateRecipients(recipients);
+    if (groups.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR: No valid group IDs found",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     try {
-      console.log(
-        `🏢 [BOT] Request ${requestId}: Sending to ${
-          recipients!.length
-        } group(s)`
-      );
+      botLogger.info(`📱 [BOT] Request ${requestId}: Sending to ${groups.length} group(s)`, '🏢');
 
-      const results = await sendToGroups(client, recipients!, message!, file);
+      const results = await sendToGroups(client, groups, message!, file);
 
-      // Send error report if needed
       if (results.errors.length > 0) {
         await MessageErrorHandler.sendErrorReport(
           client,
@@ -310,101 +227,78 @@ export class MessageController {
         );
       }
 
-      const { statusCode, response } = MessageController.formatResponse(
-        results,
-        requestId!
-      );
+      const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      console.log(
+      botLogger.success(
         `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
       res.status(statusCode).json(response);
     } catch (error) {
-      await MessageController.handleError(
-        error,
-        req,
-        res,
-        "/send-to-group",
-        requestId!
-      );
+      await MessageController.handleError(error, req, res, "/send-to-group", requestId);
     }
   }
 
   /**
-   * Send broadcast (to both phones and groups)
+   * Send broadcast to both phones and groups - consolidated logic
    */
-  public static async sendBroadcast(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    if (!MessageController.validateClient(req, res)) return;
+  public static async sendBroadcast(req: Request, res: Response): Promise<void> {
+    const client = getClient();
+    if (!client) {
+      const requestId = Date.now().toString(36);
+      res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
-    const validation = MessageController.validateMessageRequest(req, res, {
-      allowedRecipientTypes: ["phone", "group"],
-    });
-
+    const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const { requestId, recipients, message, file } = validation;
-    const client = getClient()!;
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
+
+    const requestId = Date.now().toString(36);
+    const { message } = validation.body!;
+    const file = validation.file;
+    const recipients = MessageController.extractRecipients(recipientValidation.body!);
+    
+    const { groups, phoneNumbers } = separateRecipients(recipients);
 
     try {
-      const { groups, phoneNumbers } = separateRecipients(recipients!);
-
-      console.log(
-        `📢 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) + ${groups.length} group(s)`
+      botLogger.info(
+        `📡 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) and ${groups.length} group(s)`
       );
 
-      // Send to both types
-      const [groupResults, phoneResults] = await Promise.all([
-        sendToGroups(client, groups, message!, file),
-        sendToPhones(client, phoneNumbers, message!, file),
-      ]);
+      // Use unified message handler from MessageHandlerController
+      const results = await sendMessageWithErrorHandling(
+        client,
+        [...phoneNumbers, ...groups],
+        "TEXT",
+        { text: message!, file }
+      );
 
-      // Combine results
-      const allMessagesSent = [
-        ...groupResults.messagesSent,
-        ...phoneResults.messagesSent,
-      ];
-      const allErrors = [...groupResults.errors, ...phoneResults.errors];
-
-      // Send error report if needed
-      if (allErrors.length > 0) {
+      if (results.errors.length > 0) {
         await MessageErrorHandler.sendErrorReport(
           client,
           req.body,
-          allErrors,
+          results.errors,
           "/send-broadcast"
         );
       }
 
-      const { statusCode, response } = MessageController.formatResponse(
-        { messagesSent: allMessagesSent, errors: allErrors },
-        requestId!,
-        {
-          breakdown: {
-            phonesSent: phoneResults.messagesSent.length,
-            groupsSent: groupResults.messagesSent.length,
-            phoneErrors: phoneResults.errors.length,
-            groupErrors: groupResults.errors.length,
-          },
-        }
-      );
+      const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      console.log(
-        `✅ [BOT] Request ${requestId} completed: ${allMessagesSent.length} sent, ${allErrors.length} errors`
+      botLogger.success(
+        `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
       res.status(statusCode).json(response);
     } catch (error) {
-      await MessageController.handleError(
-        error,
-        req,
-        res,
-        "/send-broadcast",
-        requestId!
-      );
+      await MessageController.handleError(error, req, res, "/send-broadcast", requestId);
     }
   }
 
@@ -416,49 +310,54 @@ export class MessageController {
     res: Response,
     mediaType: "image" | "document" | "audio" | "video"
   ): Promise<void> {
-    if (!MessageController.validateClient(req, res)) return;
+    const client = getClient();
+    if (!client) {
+      const requestId = Date.now().toString(36);
+      res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
-    const validation = MessageController.validateMessageRequest(req, res, {
-      requiresMessage: false, // Media can have optional captions
-      requiresFile: true,
-    });
+    const fileValidation = RequestValidator.validateFileUpload(
+      req,
+      res,
+      mediaType,
+      ["image/*", "application/*", "audio/*", "video/*"]
+    );
+    if (!fileValidation.isValid) return;
 
-    if (!validation.isValid) return;
+    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    if (!recipientValidation.isValid) return;
 
-    const { requestId, recipients, message, file } = validation;
-    const client = getClient()!;
+    const requestId = Date.now().toString(36);
+    const file = fileValidation.file!;
+    const recipients = MessageController.extractRecipients(recipientValidation.body!);
 
     try {
-      console.log(
-        `📁 [BOT] Request ${requestId}: Sending ${mediaType} to ${
-          recipients!.length
-        } recipient(s)`
-      );
+      botLogger.info(`📎 [BOT] Request ${requestId}: Sending ${mediaType} to ${recipients.length} recipient(s)`);
 
       let results;
       switch (mediaType) {
         case "image":
-          results = await sendImageMessage(client, recipients!, file!, message);
+          results = await sendImageMessage(client, recipients, file);
           break;
         case "document":
-          results = await sendDocumentMessage(
-            client,
-            recipients!,
-            file!,
-            message
-          );
+          results = await sendDocumentMessage(client, recipients, file);
           break;
         case "audio":
-          results = await sendAudioMessage(client, recipients!, file!, message);
+          results = await sendAudioMessage(client, recipients, file);
           break;
         case "video":
-          results = await sendVideoMessage(client, recipients!, file!, message);
+          results = await sendVideoMessage(client, recipients, file);
           break;
         default:
           throw new Error(`Unsupported media type: ${mediaType}`);
       }
 
-      // Send error report if needed
       if (results.errors.length > 0) {
         await MessageErrorHandler.sendErrorReport(
           client,
@@ -468,96 +367,81 @@ export class MessageController {
         );
       }
 
-      const { statusCode, response } = MessageController.formatResponse(
-        results,
-        requestId!,
-        {
-          fileInfo: {
-            name: file!.originalname,
-            size: file!.size,
-            type: file!.mimetype,
-          },
-        }
-      );
+      const { statusCode, response } = MessageController.formatResponse(results, requestId, {
+        mediaType,
+        fileName: file.originalname,
+        fileSize: file.size,
+      });
 
-      console.log(
-        `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
+      botLogger.success(
+        `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
       res.status(statusCode).json(response);
     } catch (error) {
-      await MessageController.handleError(
-        error,
-        req,
-        res,
-        `/send-${mediaType}`,
-        requestId!
-      );
+      await MessageController.handleError(error, req, res, `/send-${mediaType}`, requestId);
     }
   }
 
   /**
-   * Simple message sending (legacy compatibility)
+   * Simple message endpoint for testing
    */
-  public static async sendSimpleMessage(
-    req: Request,
-    res: Response
-  ): Promise<void> {
-    if (!MessageController.validateClient(req, res)) return;
-
-    const requestId = Date.now().toString(36);
-    const { phone, message } = req.body;
-
-    if (!phone || !message) {
-      res.status(400).json({
+  public static async sendSimpleMessage(req: Request, res: Response): Promise<void> {
+    const client = getClient();
+    if (!client) {
+      const requestId = Date.now().toString(36);
+      res.status(503).json({
         success: false,
-        error: "Phone and message are required",
+        error: "WhatsApp client not ready",
         requestId,
         timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    const client = getClient()!;
+    const validation = RequestValidator.validateMessageRequest(req, res, true);
+    if (!validation.isValid) return;
+
+    const requestId = Date.now().toString(36);
+    const { message, phoneNumber, to } = validation.body!;
+    
+    let recipients: string[] = [];
+    if (phoneNumber) {
+      recipients = Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
+    } else if (to) {
+      recipients = Array.isArray(to) ? to : [to];
+    } else {
+      res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR: phoneNumber or to is required",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     try {
-      botLogger.info(`💬 [BOT] Simple message request ${requestId}: ${phone}`, '💬');
+      botLogger.info(`📱 [BOT] Request ${requestId}: Simple message to ${recipients.length} recipient(s)`, '💬');
 
-      // Use the unified message handler
       const results = await sendMessageWithErrorHandling(
         client,
-        [phone],
+        recipients,
         "TEXT",
-        {
-          text: message,
-        }
+        { text: message! }
       );
 
-      if (results.success) {
-        res.json({
-          success: true,
-          message: "Message sent successfully",
-          to: phone,
-          requestId,
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          error: "Failed to send message",
-          errors: results.errors,
-          requestId,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (error) {
-      await MessageController.handleError(
-        error,
-        req,
-        res,
-        "/send-message",
-        requestId
+      const { statusCode, response } = MessageController.formatResponse(results, requestId);
+
+      botLogger.success(
+        `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
+
+      res.status(statusCode).json(response);
+    } catch (error) {
+      await MessageController.handleError(error, req, res, "/send-simple-message", requestId);
     }
   }
 }
+
+// Export both named and default exports for compatibility
+export default MessageController;

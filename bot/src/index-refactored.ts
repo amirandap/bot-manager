@@ -190,7 +190,7 @@ async function startBot(): Promise<void> {
     await setupExpressAPI(config);
     
     // Start API server with retry logic
-    await startAPIServer(config);
+    await startAPIServer(config, botLogger);
     
     // Log API endpoints
     botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
@@ -220,25 +220,38 @@ async function startBot(): Promise<void> {
     
     // Final startup validation and status reporting
     const finalWhatsAppStatus = getWhatsAppStatus();
+    const overallSuccess = finalWhatsAppStatus.canProceedWithStartup;
     
-    if (finalWhatsAppStatus.isReady) {
-      botLogger.success("🎉 Bot startup completed successfully! All systems operational.");
-      cleanupQRCode(); // Clean QR code after successful connection
+    if (finalWhatsAppStatus.isCriticalError) {
+      logger.error(`❌ Bot startup completed with critical errors: ${finalWhatsAppStatus.statusMessage}`);
+      logger.error("💡 Bot cannot operate normally. Manual intervention required.");
+    } else if (finalWhatsAppStatus.isRecoverableError) {
+      logger.warn(`⚠️ Bot startup completed with recoverable errors: ${finalWhatsAppStatus.statusMessage}`);
+      logger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
+      markStartupComplete();
+    } else if (finalWhatsAppStatus.isReady) {
+      logger.success("🎉 Bot startup completed successfully! All systems operational.");
+      cleanupQRCode(logger); // Clean QR code after successful connection
       markStartupComplete();
     } else {
-      botLogger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
-      botLogger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
+      logger.info("🔄 Bot startup infrastructure completed. WhatsApp connection in progress.");
+      logger.info("💡 Bot will be fully operational once WhatsApp connection is established.");
       markStartupComplete();
     }
     
+    // Log final status details
+    logger.info(`📊 Final Status: ${finalWhatsAppStatus.statusMessage}`);
+    logger.info(`🤖 Bot State: ${finalWhatsAppStatus.state}`);
+    logger.info(`🚀 Startup Success: ${overallSuccess ? 'YES' : 'NO'}`);
+    
   } catch (error) {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
-    botLogger.error(`❌ Critical startup failure: ${error}`);
+    logger.error(`❌ Critical startup failure: ${error}`);
     
     await gracefulShutdown(undefined, error as Error);
     
     // Determine which step failed for better error context
-    const failedStep = 'startup_failure';
+    const failedStep = currentStep <= TOTAL_STEPS ? Object.values(STARTUP_STEPS)[currentStep - 1] : 'unknown_step';
     alertPM2Failure(error as Error, 'critical_startup', false, failedStep);
     throw error;
   }

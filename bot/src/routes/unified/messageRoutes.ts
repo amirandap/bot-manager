@@ -98,3 +98,10 @@ router.post("/send-video", upload.single("file"), (req, res) => {
 });
 
 export default router;
+
+/**
+ * Setup all routes with the provided app
+ */
+export function setupRoutes(app: express.Application): void {
+  app.use(router);
+}

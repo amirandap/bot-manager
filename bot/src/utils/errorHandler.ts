@@ -6,8 +6,9 @@
  */
 
 import { Client } from "whatsapp-web.js";
-import { getFallbackNumber } from "./fallbackUtils";
+import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
 import { formatPhoneForWhatsApp } from "./recipientFormatting";
+import { botLogger } from "./loggerWrapper";
 import {
   ErrorSeverity,
   ErrorCategory,
@@ -287,22 +288,16 @@ export class WhatsAppErrorHandler {
     };
 
     if (error.isPostSend) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `⚠️ [POST_SEND_ERROR] ${error.context || "Unknown"}:`,
-        logData
+      botLogger.warn(
+        `POST_SEND_ERROR ${error.context || "Unknown"}: ${JSON.stringify(logData)}`
       );
-      // eslint-disable-next-line no-console
-      console.log("   ✅ Message likely delivered - post-send error");
+      botLogger.success("Message likely delivered - post-send error");
     } else if (error.severity === ErrorSeverity.CRITICAL) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `🚨 [CRITICAL_ERROR] ${error.context || "Unknown"}:`,
-        logData
+      botLogger.error(
+        `CRITICAL_ERROR ${error.context || "Unknown"}: ${JSON.stringify(logData)}`
       );
     } else {
-      // eslint-disable-next-line no-console
-      console.warn(`⚠️ [ERROR] ${error.context || "Unknown"}:`, logData);
+      botLogger.warn(`ERROR ${error.context || "Unknown"}: ${JSON.stringify(logData)}`);
     }
   }
 
@@ -345,7 +340,7 @@ Recoverable: ${error.isRecoverable ? "Yes" : "No"}`;
     message: string
   ): Promise<void> {
     try {
-      const fallbackNumber = getFallbackNumber();
+      const fallbackNumber = DEFAULT_FALLBACK_PHONE_NUMBER;
       const whatsappNumber = formatPhoneForWhatsApp(fallbackNumber);
       const formattedNumber = `${whatsappNumber}@c.us`;
 
@@ -387,7 +382,7 @@ async function sendErrorMessageLegacy(
     return;
   }
 
-  const targetNumber = fallbackNumber || getFallbackNumber();
+  const targetNumber = fallbackNumber || DEFAULT_FALLBACK_PHONE_NUMBER;
   const whatsappNumber = formatPhoneForWhatsApp(targetNumber);
   const formattedNumber = `${whatsappNumber}@c.us`;
 

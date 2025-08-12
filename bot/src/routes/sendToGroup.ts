@@ -2,7 +2,7 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendToGroups } from "../controllers/messageHandler";
+import { sendToGroups } from "../controllers/MessageHandlerController";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { SendMessageRequestBody } from "../types/types";
 import { botLogger } from "../utils/loggerWrapper";
@@ -34,7 +34,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    console.log(`🏢 [BOT] Group message request ${requestId} received`);
+    botLogger.info(`Group message request ${requestId} received`);
 
     const { groupId, message } = req.body as SendMessageRequestBody & {
       groupId: string | string[];
@@ -43,7 +43,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Validation
     if (!groupId || (!Array.isArray(groupId) && typeof groupId !== "string")) {
-      console.error(`❌ [BOT] Request ${requestId}: groupId is required`);
+      botLogger.error(`Request ${requestId}: groupId is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: groupId is required (string or array)",
@@ -53,7 +53,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     if (!message || typeof message !== "string") {
-      console.error(`❌ [BOT] Request ${requestId}: message is required`);
+      botLogger.error(`Request ${requestId}: message is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: message is required (string)",
@@ -68,8 +68,8 @@ router.post("/", upload.single("file"), async (req, res) => {
     // Validate all recipients are groups
     const invalidRecipients = groupIds.filter((id) => !id.includes("@g.us"));
     if (invalidRecipients.length > 0) {
-      console.error(
-        `❌ [BOT] Request ${requestId}: Invalid group IDs detected`
+      botLogger.error(
+        `Request ${requestId}: Invalid group IDs detected`
       );
       return res.status(400).json({
         success: false,
@@ -81,11 +81,11 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    console.log(
-      `🏢 [BOT] Request ${requestId}: Sending to ${groupIds.length} group(s)`
+    botLogger.info(
+      `Request ${requestId}: Sending to ${groupIds.length} group(s)`
     );
 
-    // Send messages using messageHandler
+    // Send messages using MessageHandlerController
     const results = await sendToGroups(client, groupIds, message, file);
 
     // Send error report if needed
@@ -112,8 +112,8 @@ router.post("/", upload.single("file"), async (req, res) => {
         ? 500
         : 207; // 207 = Multi-Status
 
-    console.log(
-      `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
+    botLogger.success(
+      `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
     );
 
     return res.status(statusCode).json({
@@ -126,7 +126,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+    botLogger.error(`Request ${requestId} failed: ${error}`);
 
     const { errorType, errorDetails } =
       await MessageErrorHandler.handleCriticalError(

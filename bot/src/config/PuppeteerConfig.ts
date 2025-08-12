@@ -1,4 +1,4 @@
-import { botLogger } from '../utils/loggerWrapper';\n\n/**
+/**
  * Puppeteer Configuration Manager
  * 
  * Handles OS-specific Chrome paths, Chrome validation, and Puppeteer arguments for optimal 
@@ -8,7 +8,7 @@ import { botLogger } from '../utils/loggerWrapper';\n\n/**
 
 import * as fs from "fs";
 import * as os from "os";
-import { Logger } from "../services/Logger";
+import { botLogger } from "../utils/loggerWrapper";
 
 export interface PuppeteerConfiguration {
   executablePath?: string;
@@ -32,12 +32,10 @@ export interface ChromeValidationResult {
 export class PuppeteerConfigManager {
   private static instance: PuppeteerConfigManager;
   private currentOS: string;
-  private logger?: Logger;
+  // Remove logger dependency - use botLogger directly
 
   private constructor() {
     this.currentOS = os.platform();
-    // Logger will be injected later via setLogger() method
-    this.logger = undefined;
   }
 
   public static getInstance(): PuppeteerConfigManager {
@@ -45,26 +43,6 @@ export class PuppeteerConfigManager {
       PuppeteerConfigManager.instance = new PuppeteerConfigManager();
     }
     return PuppeteerConfigManager.instance;
-  }
-
-  /**
-   * Allow injection of external logger instance
-   * Useful when logger instance is already available in the application
-   */
-  public setLogger(logger: Logger): void {
-    this.logger = logger;
-  }
-
-  /**
-   * Safe logging method that handles cases where logger might not be available
-   */
-  private log(level: 'info' | 'warn' | 'error', message: string): void {
-    if (this.logger) {
-      this.logger[level](message);
-    } else {
-      // Fallback to console logging if logger is not available
-      console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](message);
-    }
   }
 
   /**
@@ -107,7 +85,7 @@ export class PuppeteerConfigManager {
         ].filter(Boolean);
 
       default:
-        this.log('warn', `Unsupported OS detected: ${this.currentOS}`);
+        botLogger.warn(`Unsupported OS detected: ${this.currentOS}`);
         return [];
     }
   }
@@ -190,13 +168,13 @@ export class PuppeteerConfigManager {
       if (result.isValid) {
         return customPath;
       } else {
-        this.log('warn', `Custom Chrome path invalid: ${customPath}`);
+        botLogger.warn(`Custom Chrome path invalid: ${customPath}`);
         // If custom path failed but alternatives were found, use the first one
         if (result.alternativePaths && result.alternativePaths.length > 0) {
           const altPath = result.alternativePaths[0];
           const altResult = this.validateChrome(altPath);
           if (altResult.isValid) {
-            this.log('info', `Using alternative Chrome path: ${altPath}`);
+            botLogger.info(`Using alternative Chrome path: ${altPath}`);
             return altPath;
           }
         }
@@ -213,7 +191,7 @@ export class PuppeteerConfigManager {
       }
     }
 
-    this.log('warn', "No valid Chrome installation found in default locations");
+    botLogger.warn("No valid Chrome installation found in default locations");
     return undefined;
   }
 

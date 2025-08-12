@@ -50,6 +50,7 @@ export interface EnvironmentConfig {
   BOT_TYPE: string;
   NODE_ENV: string;
   CHROME_PATH: string;
+  DEFAULT_FALLBACK_PHONE_NUMBER: string;
   DATA_ROOT: string;
   SESSION_PATH: string;
   QR_PATH: string;
