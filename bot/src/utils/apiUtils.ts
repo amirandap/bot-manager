@@ -2,16 +2,14 @@
  * API Server Utilities
  * Centralized functions for Express server management
  */
-
 import { Request, Response, NextFunction } from "express";
+import * as express from "express";
 import { BOT_PORT } from "../config/EnvironmentManager";
 import { setupRoutes } from "../routes/unified/messageRoutes";
 import { sendQRCode, hasQRCode, getQRCode, getQRStatus } from "./qrUtils";
 import { getWhatsAppStatus, isWhatsAppClientReady, getWhatsAppClient } from "./whatsAppUtils";
 import { getClient } from "../config/clientExporter";
 import { botLogger } from "./loggerWrapper";
-import * as express from "express";
-
 interface BotConfig {
   BOT_ID: string;
   BOT_NAME: string;

@@ -3,11 +3,8 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendToGroups, sendToPhones } from "../controllers/MessageHandlerController";
-import { MessageErrorHandler } from "../utils/errorHandler";
+import { MessageErrorHandler, separateRecipients, botLogger } from "../utils";
 import { SendMessageRequestBody } from "../types/types";
-import { separateRecipients } from "../utils/recipientFormatting";
-import { botLogger } from "../utils/loggerWrapper";
-
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 

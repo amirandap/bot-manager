@@ -1,5 +1,5 @@
-import { botLogger } from '../utils/loggerWrapper';
 
+import { botLogger, sendErrorMessage, shouldSendFallback, MessageErrorHandler, validateWhatsAppError, sendTextMessage } from "../utils";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -11,13 +11,8 @@ import {
   sendAudioMessage,
   sendVideoMessage,
 } from "../services/MediaMessagingService";
-import { sendTextMessage } from "../utils/textMessaging";
-import { sendErrorMessage, shouldSendFallback } from "../utils/errorHandler";
-import { MessageErrorHandler } from "../utils/errorHandler";
-import { validateWhatsAppError } from "../utils/errorHandler";
 import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
 import { MediaResult, MessageHandlerResult, MessageType } from "../types/types";
-
 /**
  * Message Handler Controller
  * Unified message handler that integrates error handling and fallback mechanisms

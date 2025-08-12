@@ -1,12 +1,12 @@
-import { botLogger } from '../utils/loggerWrapper';\n\n/**
+
+import { botLogger } from "./loggerWrapper";
+/**
  * PM2 Utilities - Centralized PM2 process communication
  * Handles metrics updates and failure notifications for PM2 monitoring
  * Falls back to JSON file logging when PM2 is not available
  */
-
-import * as fs from 'fs';
-import * as path from 'path';
-
+import * as fs from "fs";
+import * as path from "path";
 // Track if we've already warned about PM2 not being available
 let pm2WarningShown = false;
 let jsonFallbackInitialized = false;

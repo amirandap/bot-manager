@@ -1,4 +1,26 @@
-import { botLogger } from '../utils/loggerWrapper';
+
+import { botLogger, MessageErrorHandler, separateRecipients } from "../utils";
+import RequestValidator from "../utils/requestValidator";
+import { Request, Response } from "express";
+import { getClient } from "../config/clientExporter";
+import {
+  sendToPhones,
+  sendToGroups,
+  sendMessageWithErrorHandling,
+  sendImageFromUrl
+} from "./MessageHandlerController";
+import {
+  sendImageMessage,
+  sendDocumentMessage,
+  sendAudioMessage,
+  sendVideoMessage,
+} from "../services/MediaMessagingService";
+import {
+  MessageType,
+  SendResponse,
+  MediaSendResponse,
+  BaseMessageRequestBody,
+} from "../types/types";
 
 /**
  * Centralized Message Controller - CONSOLIDATED VERSION
@@ -10,30 +32,27 @@ import { botLogger } from '../utils/loggerWrapper';
  * - Unified client checking (NO duplicate validateClient methods)
  */
 
-import { Request, Response } from "express";
-import { getClient } from "../config/clientExporter";
-import { MessageErrorHandler } from "../utils/errorHandler";
-import {
-  sendToPhones,
-  sendToGroups,
-  sendMessageWithErrorHandling,
-} from "./MessageHandlerController";
-import {
-  sendImageMessage,
-  sendDocumentMessage,
-  sendAudioMessage,
-  sendVideoMessage,
-} from "../services/MediaMessagingService";
-import { separateRecipients } from "../utils/recipientFormatting";
-import RequestValidator from "../utils/requestValidator";
-import {
-  MessageType,
-  SendResponse,
-  MediaSendResponse,
-  BaseMessageRequestBody,
-} from "../types/types";
-
 export class MessageController {
+  /**
+   * Unified client validation - eliminates 5 duplicate checks
+   */
+  private static validateClientAndReturn(res: Response): { client: any; requestId: string } | null {
+    const client = getClient();
+    const requestId = Date.now().toString(36);
+    
+    if (!client) {
+      res.status(503).json({
+        success: false,
+        error: "WhatsApp client not ready",
+        requestId,
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+    
+    return { client, requestId };
+  }
+
   /**
    * Extract recipients from request body - consolidated logic
    */
@@ -110,18 +129,11 @@ export class MessageController {
    * Send to phone numbers only - consolidated validation
    */
   public static async sendToPhone(req: Request, res: Response): Promise<void> {
-    // Single client check - no duplicate methods
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Unified client validation
+    const clientValidation = MessageController.validateClientAndReturn(res);
+    if (!clientValidation) return;
+    
+    const { client, requestId } = clientValidation;
 
     // Use RequestValidator - no duplicate validation
     const validation = RequestValidator.validateMessageRequest(req, res, true);
@@ -129,8 +141,6 @@ export class MessageController {
 
     const recipientValidation = RequestValidator.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
-
-    const requestId = Date.now().toString(36);
     const { message } = validation.body!;
     const file = validation.file;
     const recipients = MessageController.extractRecipients(recipientValidation.body!);
@@ -178,17 +188,11 @@ export class MessageController {
    * Send to groups only - consolidated validation
    */
   public static async sendToGroup(req: Request, res: Response): Promise<void> {
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Unified client validation
+    const clientValidation = MessageController.validateClientAndReturn(res);
+    if (!clientValidation) return;
+    
+    const { client, requestId } = clientValidation;
 
     const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
@@ -196,7 +200,6 @@ export class MessageController {
     const recipientValidation = RequestValidator.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
-    const requestId = Date.now().toString(36);
     const { message } = validation.body!;
     const file = validation.file;
     const recipients = MessageController.extractRecipients(recipientValidation.body!);
@@ -243,17 +246,11 @@ export class MessageController {
    * Send broadcast to both phones and groups - consolidated logic
    */
   public static async sendBroadcast(req: Request, res: Response): Promise<void> {
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Unified client validation
+    const clientValidation = MessageController.validateClientAndReturn(res);
+    if (!clientValidation) return;
+    
+    const { client, requestId } = clientValidation;
 
     const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
@@ -261,7 +258,6 @@ export class MessageController {
     const recipientValidation = RequestValidator.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
-    const requestId = Date.now().toString(36);
     const { message } = validation.body!;
     const file = validation.file;
     const recipients = MessageController.extractRecipients(recipientValidation.body!);
@@ -310,17 +306,11 @@ export class MessageController {
     res: Response,
     mediaType: "image" | "document" | "audio" | "video"
   ): Promise<void> {
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Unified client validation
+    const clientValidation = MessageController.validateClientAndReturn(res);
+    if (!clientValidation) return;
+    
+    const { client, requestId } = clientValidation;
 
     const fileValidation = RequestValidator.validateFileUpload(
       req,
@@ -333,7 +323,6 @@ export class MessageController {
     const recipientValidation = RequestValidator.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
-    const requestId = Date.now().toString(36);
     const file = fileValidation.file!;
     const recipients = MessageController.extractRecipients(recipientValidation.body!);
 
@@ -387,22 +376,15 @@ export class MessageController {
    * Simple message endpoint for testing
    */
   public static async sendSimpleMessage(req: Request, res: Response): Promise<void> {
-    const client = getClient();
-    if (!client) {
-      const requestId = Date.now().toString(36);
-      res.status(503).json({
-        success: false,
-        error: "WhatsApp client not ready",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    // Unified client validation
+    const clientValidation = MessageController.validateClientAndReturn(res);
+    if (!clientValidation) return;
+    
+    const { client, requestId } = clientValidation;
 
     const validation = RequestValidator.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const requestId = Date.now().toString(36);
     const { message, phoneNumber, to } = validation.body!;
     
     let recipients: string[] = [];

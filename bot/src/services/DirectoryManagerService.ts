@@ -3,11 +3,9 @@
  * Handles file system operations and directory management
  * CONSOLIDATED - uses unified botLogger directly
  */
-
 import * as fs from "fs";
-import { botLogger } from "../utils/loggerWrapper";
+import { botLogger } from "../utils";
 import { SESSION_PATH, QR_PATH, LOGS_PATH } from "../config/EnvironmentManager";
-
 export class DirectoryManagerService {
   public ensureDirectoriesExist(): void {
     const directories = [SESSION_PATH, QR_PATH, LOGS_PATH];
@@ -16,9 +14,9 @@ export class DirectoryManagerService {
       try {
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
-          botLogger.directoryCreated(dir);
+          botLogger.logDirectory('created', dir);
         } else {
-          botLogger.directoryExists(dir);
+          botLogger.logDirectory('exists', dir);
         }
       } catch (error) {
         botLogger.errorWithContext(`Failed to create directory ${dir}`, error);
@@ -54,7 +52,7 @@ export class DirectoryManagerService {
     try {
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
-        botLogger.directoryCreated(dirPath);
+        botLogger.logDirectory('created', dirPath);
       }
     } catch (error) {
       botLogger.errorWithContext(`Failed to create directory ${dirPath}`, error);
@@ -67,9 +65,9 @@ export class DirectoryManagerService {
     directories.forEach((dir) => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        botLogger.directoryCreated(dir);
+        botLogger.logDirectory('created', dir);
       } else {
-        botLogger.directoryExists(dir);
+        botLogger.logDirectory('exists', dir);
       }
     });
   }
@@ -78,10 +76,10 @@ export class DirectoryManagerService {
     try {
       if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory, { recursive: true });
-        botLogger.directoryCreated(directory);
+        botLogger.logDirectory('created', directory);
         return true;
       } else {
-        botLogger.directoryExists(directory);
+        botLogger.logDirectory('exists', directory);
         return true;
       }
     } catch (error) {

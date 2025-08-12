@@ -3,9 +3,7 @@
 import express from "express";
 import { getClient } from "../config/clientExporter";
 import { GroupChat } from "whatsapp-web.js";
-import { getGroupDetails } from "../utils/groupUtils";
-import { botLogger } from "../utils/loggerWrapper";
-
+import { getGroupDetails, botLogger } from "../utils";
 const router = express.Router();
 
 router.get("/", async (req, res) => {

@@ -1,10 +1,9 @@
-import { botLogger } from '../utils/loggerWrapper';
 
+import { botLogger } from "../utils";
 import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import { EnvironmentConfig } from "../types/types";
-
 export class EnvironmentManager {
   private static instance: EnvironmentManager;
   private config: EnvironmentConfig;
