@@ -119,32 +119,26 @@ class UnifiedLogger {
   }
 
   // ===== BOT-SPECIFIC METHODS =====
-  public requestReceived(endpoint: string, requestId: string): void {
-    this.info(`${endpoint} request ${requestId} received`, "📥");
+  // Unified request logging
+  public logRequest(endpoint: string, requestId: string, status: 'received' | 'completed' | 'failed'): void {
+    const emojis = { received: "📥", completed: "✅", failed: "❌" };
+    const messages = { 
+      received: "received", 
+      completed: "completed", 
+      failed: "failed" 
+    };
+    
+    if (status === 'failed') {
+      this.error(`${endpoint} request ${requestId} ${messages[status]}`);
+    } else {
+      this.info(`${endpoint} request ${requestId} ${messages[status]}`, emojis[status]);
+    }
   }
 
-  public requestCompleted(endpoint: string, requestId: string): void {
-    this.info(`${endpoint} request ${requestId} completed`, "✅");
-  }
-
-  public requestFailed(endpoint: string, requestId: string): void {
-    this.error(`${endpoint} request ${requestId} failed`);
-  }
-
-  public messageProcessing(action: string, recipient: string): void {
-    this.info(`${action}: ${recipient}`, "💬");
-  }
-
-  public mediaProcessing(mediaType: string, recipient: string): void {
-    this.info(`${mediaType} processing for: ${recipient}`, "📎");
-  }
-
-  public groupOperation(action: string, groupId: string): void {
-    this.info(`${action} group: ${groupId}`, "🏢");
-  }
-
-  public phoneNumberProcessing(action: string, phoneNumber: string): void {
-    this.info(`${action}: ${phoneNumber}`, "📱");
+  // Unified processing logging
+  public logProcessing(type: 'message' | 'media' | 'group' | 'phone', action: string, target: string): void {
+    const emojis = { message: "💬", media: "📎", group: "🏢", phone: "📱" };
+    this.info(`${action}: ${target}`, emojis[type]);
   }
 
   public environmentInfo(message: string): void {
@@ -172,77 +166,44 @@ class UnifiedLogger {
     this.info(`${name}: ${pathValue}`, "📁");
   }
 
-  // Chrome validation specific
-  public chromeCheck(pathValue: string): void {
-    this.info(`Checking Chrome executable at: ${pathValue}`, "🔍");
+  // Unified Chrome validation logging
+  public logChrome(action: 'check' | 'found' | 'notFound' | 'notExecutable' | 'success' | 'alternatives', pathValue?: string, error?: unknown): void {
+    switch (action) {
+      case 'check':
+        this.info(`Checking Chrome executable at: ${pathValue}`, "🔍");
+        break;
+      case 'found':
+        this.info(`Found: ${pathValue}`, "   ");
+        break;
+      case 'notFound':
+        this.error(`Chrome executable not found at: ${pathValue}`);
+        break;
+      case 'notExecutable':
+        this.error(`Chrome executable found but not executable: ${pathValue}`);
+        this.error(`   Error: ${error}`);
+        break;
+      case 'success':
+        this.success(`Chrome executable validated successfully: ${pathValue}`);
+        break;
+      case 'alternatives':
+        this.info("Available alternatives:", "💡");
+        break;
+    }
   }
 
-  public chromeNotFound(pathValue: string): void {
-    this.error(`Chrome executable not found at: ${pathValue}`);
-  }
-
-  public chromeAlternatives(): void {
-    this.info("Available alternatives:", "💡");
-  }
-
-  public chromeFound(pathValue: string): void {
-    this.info(`Found: ${pathValue}`, "   ");
-  }
-
-  public chromeSuccess(pathValue: string): void {
-    this.success(`Chrome executable validated successfully: ${pathValue}`);
-  }
-
-  public chromeNotExecutable(pathValue: string, error: unknown): void {
-    this.error(`Chrome executable found but not executable: ${pathValue}`);
-    this.error(`   Error: ${error}`);
-  }
-
-  // Directory operations
-  public directoryCreated(pathValue: string): void {
-    this.info(`Created directory: ${pathValue}`, "📁");
-  }
-
-  public directoryExists(pathValue: string): void {
-    this.info(`Directory exists: ${pathValue}`, "✅");
+  // Unified directory operations
+  public logDirectory(action: 'created' | 'exists', pathValue: string): void {
+    const messages = { created: "Created directory", exists: "Directory exists" };
+    const emoji = action === 'created' ? "📁" : "✅";
+    this.info(`${messages[action]}: ${pathValue}`, emoji);
   }
 }
 
-// Create unified logger instance for simple usage (maintains backward compatibility)
+// Create unified logger instance for direct usage - eliminates wrapper overhead
 const unifiedLoggerInstance = UnifiedLogger.getInstance();
 
-export const botLogger = {
-  // Core methods
-  info: (message: string, emoji?: string) => unifiedLoggerInstance.info(message, emoji),
-  error: (message: string) => unifiedLoggerInstance.error(message),
-  warn: (message: string) => unifiedLoggerInstance.warn(message),
-  success: (message: string) => unifiedLoggerInstance.success(message),
-  lifecycle: (message: string) => unifiedLoggerInstance.lifecycle(message),
-
-  // Bot-specific methods
-  requestReceived: (endpoint: string, requestId: string) => unifiedLoggerInstance.requestReceived(endpoint, requestId),
-  requestCompleted: (endpoint: string, requestId: string) => unifiedLoggerInstance.requestCompleted(endpoint, requestId),
-  requestFailed: (endpoint: string, requestId: string) => unifiedLoggerInstance.requestFailed(endpoint, requestId),
-  messageProcessing: (action: string, recipient: string) => unifiedLoggerInstance.messageProcessing(action, recipient),
-  mediaProcessing: (mediaType: string, recipient: string) => unifiedLoggerInstance.mediaProcessing(mediaType, recipient),
-  groupOperation: (action: string, groupId: string) => unifiedLoggerInstance.groupOperation(action, groupId),
-  phoneNumberProcessing: (action: string, phoneNumber: string) => unifiedLoggerInstance.phoneNumberProcessing(action, phoneNumber),
-  environmentInfo: (message: string) => unifiedLoggerInstance.environmentInfo(message),
-  errorWithContext: (message: string, error: unknown) => unifiedLoggerInstance.errorWithContext(message, error),
-
-  // Startup and validation methods
-  startupHeader: (title: string) => unifiedLoggerInstance.startupHeader(title),
-  environmentVar: (name: string, value: string | number, source: string) => unifiedLoggerInstance.environmentVar(name, value, source),
-  filePath: (name: string, pathValue: string) => unifiedLoggerInstance.filePath(name, pathValue),
-  chromeCheck: (pathValue: string) => unifiedLoggerInstance.chromeCheck(pathValue),
-  chromeNotFound: (pathValue: string) => unifiedLoggerInstance.chromeNotFound(pathValue),
-  chromeAlternatives: () => unifiedLoggerInstance.chromeAlternatives(),
-  chromeFound: (pathValue: string) => unifiedLoggerInstance.chromeFound(pathValue),
-  chromeSuccess: (pathValue: string) => unifiedLoggerInstance.chromeSuccess(pathValue),
-  chromeNotExecutable: (pathValue: string, error: unknown) => unifiedLoggerInstance.chromeNotExecutable(pathValue, error),
-  directoryCreated: (pathValue: string) => unifiedLoggerInstance.directoryCreated(pathValue),
-  directoryExists: (pathValue: string) => unifiedLoggerInstance.directoryExists(pathValue),
-};
+// Export directly for maximum efficiency
+export const botLogger = unifiedLoggerInstance;
 
 // Export the class for advanced usage (with config)
 export { UnifiedLogger };
@@ -250,4 +211,4 @@ export { UnifiedLogger };
 // Export Logger class for backward compatibility
 export const Logger = UnifiedLogger;
 
-export default botLogger;
+export default unifiedLoggerInstance;

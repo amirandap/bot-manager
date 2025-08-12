@@ -3,11 +3,9 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendVideoMessage } from "../services/MediaMessagingService";
-import { MessageErrorHandler } from "../utils/errorHandler";
+import { MessageErrorHandler, botLogger } from "../utils";
 import RequestValidator from "../utils/requestValidator";
 import { RecipientProcessor } from "../utils/recipientFormatting";
-import { botLogger } from "../utils/loggerWrapper";
-
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),

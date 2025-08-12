@@ -5,11 +5,9 @@
  * browser initialization across different operating systems (macOS, Linux, Windows).
  * Consolidated Chrome validation - single source of truth for all Chrome-related operations.
  */
-
 import * as fs from "fs";
 import * as os from "os";
-import { botLogger } from "../utils/loggerWrapper";
-
+import { botLogger } from "../utils";
 export interface PuppeteerConfiguration {
   executablePath?: string;
   args: string[];

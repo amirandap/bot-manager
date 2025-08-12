@@ -66,10 +66,8 @@ function applyCountrySpecificFormatting(number: string): string {
   for (const config of COUNTRY_CONFIGS) {
     if (config.pattern.test(number)) {
       const formatted = config.formatter(number);
-      botLogger.phoneNumberProcessing(
-        `${config.name} number detected`,
-        formatted
-      );
+      botLogger.logProcessing('phone', 
+        `${config.name} number detected`, formatted);
       return formatted;
     }
   }
@@ -77,7 +75,7 @@ function applyCountrySpecificFormatting(number: string): string {
   for (const domPattern of DOMINICAN_PATTERNS) {
     if (domPattern.pattern.test(number)) {
       const formatted = domPattern.handler(number);
-      botLogger.phoneNumberProcessing(
+      botLogger.logProcessing('phone', 
         `Dominican number (${domPattern.name}) detected`,
         formatted
       );
@@ -87,9 +85,7 @@ function applyCountrySpecificFormatting(number: string): string {
 
   if (REGEX_PATTERNS.INTERNATIONAL.test(number) && !number.startsWith("+")) {
     const formatted = ensureCountryCodePrefix(number);
-    botLogger.phoneNumberProcessing(
-      "International number detected, adding +",
-      formatted
+    botLogger.logProcessing('phone', "International number detected, adding +", formatted
     );
     return formatted;
   }
@@ -124,16 +120,16 @@ function createResult(
 export function cleanAndFormatPhoneNumber(
   phoneNumber: string
 ): PhoneNumberValidation {
-  botLogger.phoneNumberProcessing("Processing phone number", phoneNumber);
+  botLogger.logProcessing('phone', "Processing phone number", phoneNumber);
 
   const cleaned = sanitizePhoneNumber(phoneNumber);
-  botLogger.phoneNumberProcessing("Cleaned number", cleaned);
+  botLogger.logProcessing('phone', "Cleaned number", cleaned);
 
   const formatted = applyCountrySpecificFormatting(cleaned);
-  botLogger.phoneNumberProcessing("Final formatted number", formatted);
+  botLogger.logProcessing('phone', "Final formatted number", formatted);
 
   const isValid = validatePhoneNumber(formatted);
-  botLogger.phoneNumberProcessing(
+  botLogger.logProcessing('phone',
     `Number validation: ${isValid ? "VALID" : "INVALID"}`,
     formatted
   );

@@ -13,10 +13,15 @@ export * from "./textMessaging";
 
 // Recipient processing
 export * from "./recipientFormatting";
-export * from "./recipientProcessor";
 
 // Error handling
-export { WhatsAppErrorHandler, MessageErrorHandler } from "./errorHandler";
+export { 
+  WhatsAppErrorHandler, 
+  MessageErrorHandler, 
+  sendErrorMessage, 
+  shouldSendFallback, 
+  validateWhatsAppError 
+} from "./errorHandler";
 
 // Validation utilities
 export { default as RequestValidator } from "./requestValidator";

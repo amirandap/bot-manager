@@ -1,29 +1,29 @@
 {
   "process_info": {
-    "pid": 83033,
-    "started_at": "2025-08-11T15:43:08.781Z",
+    "pid": 63299,
+    "started_at": "2025-08-12T14:23:55.496Z",
     "running_with_pm2": false,
     "node_version": "v22.11.0",
     "working_directory": "/Users/amiranda/Github/bot-manager-amp/bot"
   },
   "current_status": {
-    "overall_status": "starting",
-    "current_step": "qr_code_ready",
-    "progress_percentage": 60,
-    "last_update": "2025-08-11T15:45:32.064Z",
+    "overall_status": "running",
+    "current_step": "startup_complete",
+    "progress_percentage": 100,
+    "last_update": "2025-08-12T14:23:58.648Z",
     "bot_ready": true,
     "api_ready": true,
     "whatsapp_connected": false
   },
   "metrics_history": [
     {
-      "timestamp": "2025-08-11T15:43:08.782Z",
+      "timestamp": "2025-08-12T14:23:55.496Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.781Z",
+          "timestamp": "2025-08-12T14:23:55.495Z",
           "message": "Validating environment and dependencies"
         },
         "current_step": "startup_validation",
@@ -32,13 +32,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.782Z",
+      "timestamp": "2025-08-12T14:23:55.496Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.782Z",
+          "timestamp": "2025-08-12T14:23:55.496Z",
           "message": "Step 0/7: startup_validation",
           "progress": 0,
           "details": {
@@ -53,13 +53,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.783Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Environment validation completed successfully"
         },
         "current_step": "startup_validation",
@@ -68,13 +68,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.783Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Step 1/7: startup_validation",
           "progress": 14,
           "details": {
@@ -89,13 +89,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.783Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "bot_lifecycle_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Initializing QR code system"
         },
         "current_step": "bot_lifecycle_initialization",
@@ -104,13 +104,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.783Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "bot_lifecycle_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Step 1/7: bot_lifecycle_initialization",
           "progress": 14,
           "details": {
@@ -125,13 +125,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.783Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "bot_lifecycle_initialization",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "QR code system initialized successfully"
         },
         "current_step": "bot_lifecycle_initialization",
@@ -140,13 +140,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.784Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "bot_lifecycle_initialization",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:08.783Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Step 2/7: bot_lifecycle_initialization",
           "progress": 29,
           "details": {
@@ -161,13 +161,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.784Z",
+      "timestamp": "2025-08-12T14:23:55.498Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.784Z",
+          "timestamp": "2025-08-12T14:23:55.498Z",
           "message": "Initializing WhatsApp client"
         },
         "current_step": "whatsapp_client_initialization",
@@ -176,13 +176,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:08.784Z",
+      "timestamp": "2025-08-12T14:23:55.499Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:08.784Z",
+          "timestamp": "2025-08-12T14:23:55.499Z",
           "message": "Step 2/7: whatsapp_client_initialization",
           "progress": 29,
           "details": {
@@ -197,13 +197,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.085Z",
+      "timestamp": "2025-08-12T14:23:58.576Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.085Z",
+          "timestamp": "2025-08-12T14:23:58.576Z",
           "message": "QR code generated and ready for scanning",
           "progress": 60,
           "details": {
@@ -217,13 +217,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.098Z",
+      "timestamp": "2025-08-12T14:23:58.589Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.098Z",
+          "timestamp": "2025-08-12T14:23:58.589Z",
           "message": "QR code generated and ready for scanning",
           "progress": 60,
           "details": {
@@ -237,13 +237,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.100Z",
+      "timestamp": "2025-08-12T14:23:58.591Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.100Z",
+          "timestamp": "2025-08-12T14:23:58.591Z",
           "message": "WhatsApp client initialized successfully"
         },
         "current_step": "whatsapp_client_initialization",
@@ -252,13 +252,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.100Z",
+      "timestamp": "2025-08-12T14:23:58.591Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.100Z",
+          "timestamp": "2025-08-12T14:23:58.591Z",
           "message": "Step 3/7: whatsapp_client_initialization",
           "progress": 43,
           "details": {
@@ -273,13 +273,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.591Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.591Z",
           "message": "Validating WhatsApp initialization status"
         },
         "current_step": "initialization_error_check",
@@ -288,13 +288,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.592Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.592Z",
           "message": "Step 3/7: initialization_error_check",
           "progress": 43,
           "details": {
@@ -309,13 +309,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.592Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.592Z",
           "message": "WhatsApp started with recoverable error: qr_ready",
           "details": {
             "lifecycle_state": "qr_ready",
@@ -329,13 +329,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.592Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.592Z",
           "message": "Step 4/7: initialization_error_check",
           "progress": 57,
           "details": {
@@ -350,13 +350,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.592Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.592Z",
           "message": "Setting up API server"
         },
         "current_step": "express_api_setup",
@@ -365,13 +365,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.101Z",
+      "timestamp": "2025-08-12T14:23:58.592Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.101Z",
+          "timestamp": "2025-08-12T14:23:58.592Z",
           "message": "Step 4/7: express_api_setup",
           "progress": 57,
           "details": {
@@ -386,13 +386,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.198Z",
+      "timestamp": "2025-08-12T14:23:58.647Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.198Z",
+          "timestamp": "2025-08-12T14:23:58.647Z",
           "message": "API server running on port 7260"
         },
         "current_step": "express_api_setup",
@@ -401,13 +401,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.199Z",
+      "timestamp": "2025-08-12T14:23:58.647Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.198Z",
+          "timestamp": "2025-08-12T14:23:58.647Z",
           "message": "Step 5/7: express_api_setup",
           "progress": 71,
           "details": {
@@ -422,13 +422,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.199Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.199Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Setting up shutdown handlers"
         },
         "current_step": "graceful_shutdown_setup",
@@ -437,13 +437,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.199Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-11T15:43:12.199Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Step 5/7: graceful_shutdown_setup",
           "progress": 71,
           "details": {
@@ -458,13 +458,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.199Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.199Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Shutdown handlers configured"
         },
         "current_step": "graceful_shutdown_setup",
@@ -473,13 +473,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.199Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.199Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Step 6/7: graceful_shutdown_setup",
           "progress": 86,
           "details": {
@@ -494,13 +494,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.200Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_complete",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.200Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Bot startup completed successfully",
           "progress": 100,
           "details": {
@@ -515,13 +515,13 @@
       }
     },
     {
-      "timestamp": "2025-08-11T15:43:12.200Z",
+      "timestamp": "2025-08-12T14:23:58.648Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_complete",
           "status": "success",
-          "timestamp": "2025-08-11T15:43:12.200Z",
+          "timestamp": "2025-08-12T14:23:58.648Z",
           "message": "Bot startup completed successfully",
           "progress": 100,
           "details": {
@@ -533,206 +533,6 @@
         "current_step": "startup_complete",
         "overall_status": "success",
         "progress_percentage": 100
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:12.044Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:12.044Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:12.061Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:12.061Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:32.037Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:32.036Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:32.054Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:32.053Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:52.028Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:52.028Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:44:52.044Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:44:52.044Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:45:12.048Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:45:12.048Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:45:12.069Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:45:12.069Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:45:32.047Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:45:32.046Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-11T15:45:32.064Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-11T15:45:32.064Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
       }
     }
   ],

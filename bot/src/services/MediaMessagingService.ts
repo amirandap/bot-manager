@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client, MessageMedia } from "whatsapp-web.js";
-import { formatRecipient } from "../utils/recipientFormatting";
-import { WhatsAppErrorHandler } from "../utils/errorHandler";
-import { createMessageMedia, createMessageMediaFromUrl } from "../utils/mediaUtils";
+import { 
+  formatRecipient, 
+  WhatsAppErrorHandler, 
+  createMessageMedia, 
+  createMessageMediaFromUrl, 
+  botLogger 
+} from "../utils";
 import { MediaResult } from "../types/types";
-import { botLogger } from "../utils/loggerWrapper";
-
 /**
  * Media messaging service
  * Updated to use the new centralized error handler
