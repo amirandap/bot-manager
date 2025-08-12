@@ -1,4 +1,4 @@
-import express from "express";
+import { botLogger } from '../utils/loggerWrapper';\n\nimport express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { formatRecipient } from "../utils/recipientFormatting";
@@ -33,14 +33,14 @@ router.post("/", upload.single("media"), async (req, res) => {
       });
     }
 
-    console.log(`📱 [BOT] Simple message request ${requestId}: ${phone}`);
+    botLogger.info(`📱 [BOT] Simple message request ${requestId}: ${phone}`, '💬');
 
     // Simple message sending
     try {
       const chatId = formatRecipient(phone);
       await client.sendMessage(chatId, message);
 
-      console.log(`✅ [BOT] Request ${requestId} completed successfully`);
+      botLogger.info(`✅ [BOT] Request ${requestId} completed successfully`, '✅');
 
       res.json({
         success: true,
@@ -50,7 +50,7 @@ router.post("/", upload.single("media"), async (req, res) => {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(`❌ [BOT] Request ${requestId} send error:`, error);
+      botLogger.error(`❌ [BOT] Request ${requestId} send error:`);
 
       // Use the new error handler
       const { errorType, errorDetails } =
@@ -71,7 +71,7 @@ router.post("/", upload.single("media"), async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(`❌ [BOT] Request ${requestId} critical error:`, error);
+    botLogger.error(`❌ [BOT] Request ${requestId} critical error:`);
 
     const { errorType, errorDetails } =
       await MessageErrorHandler.handleCriticalError(

@@ -2,10 +2,11 @@
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
-import { sendToGroups, sendToPhones } from "../controllers/messageHandler";
+import { sendToGroups, sendToPhones } from "../controllers/MessageHandlerController";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { SendMessageRequestBody } from "../types/types";
 import { separateRecipients } from "../utils/recipientFormatting";
+import { botLogger } from "../utils/loggerWrapper";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -34,7 +35,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       });
     }
 
-    console.log(`📢 [BOT] Broadcast message request ${requestId} received`);
+    botLogger.info(`📢 [BOT] Broadcast message request ${requestId} received`);
 
     const { to, message } = req.body as SendMessageRequestBody & {
       to: string[];
@@ -43,7 +44,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Validation
     if (!to || !Array.isArray(to) || to.length === 0) {
-      console.error(`❌ [BOT] Request ${requestId}: to array is required`);
+      botLogger.error(`❌ [BOT] Request ${requestId}: to array is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: to is required (non-empty array)",
@@ -53,7 +54,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     if (!message || typeof message !== "string") {
-      console.error(`❌ [BOT] Request ${requestId}: message is required`);
+      botLogger.error(`❌ [BOT] Request ${requestId}: message is required`);
       return res.status(400).json({
         success: false,
         error: "VALIDATION_ERROR: message is required (string)",
@@ -65,11 +66,11 @@ router.post("/", upload.single("file"), async (req, res) => {
     // Separate groups and phone numbers
     const { groups, phoneNumbers } = separateRecipients(to);
 
-    console.log(
+    botLogger.info(
       `📢 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) + ${groups.length} group(s)`
     );
 
-    // Send to groups and phone numbers using messageHandler
+    // Send to groups and phone numbers using MessageHandlerController
     const groupResults = await sendToGroups(client, groups, message, file);
     const phoneResults = await sendToPhones(
       client,
@@ -98,7 +99,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     const statusCode =
       allErrors.length === 0 ? 200 : allMessagesSent.length === 0 ? 500 : 207; // 207 = Multi-Status
 
-    console.log(
+    botLogger.success(
       `✅ [BOT] Request ${requestId} completed: ${allMessagesSent.length} sent, ${allErrors.length} errors`
     );
 
@@ -118,7 +119,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error(`❌ [BOT] Request ${requestId} failed:`, error);
+    botLogger.error(`❌ [BOT] Request ${requestId} failed: ${error}`);
 
     const { errorType, errorDetails } =
       await MessageErrorHandler.handleCriticalError(

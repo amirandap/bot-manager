@@ -4,6 +4,7 @@ import { formatRecipient } from "../utils/recipientFormatting";
 import { WhatsAppErrorHandler } from "../utils/errorHandler";
 import { createMessageMedia, createMessageMediaFromUrl } from "../utils/mediaUtils";
 import { MediaResult } from "../types/types";
+import { botLogger } from "../utils/loggerWrapper";
 
 /**
  * Media messaging service
@@ -50,7 +51,7 @@ export async function sendImageMessage(
     try {
       const formattedRecipient = formatRecipient(recipient);
       // eslint-disable-next-line no-console
-      console.log(`🖼️ [BOT] Sending image to: ${formattedRecipient}`);
+      botLogger.info(`🖼️ [BOT] Sending image to: ${formattedRecipient}`);
 
       // For images, WhatsApp uses sendMessage with media and optional caption
       if (caption && caption.trim()) {
@@ -60,7 +61,7 @@ export async function sendImageMessage(
       }
 
       // eslint-disable-next-line no-console
-      console.log(`✅ [BOT] Image sent successfully to: ${formattedRecipient}`);
+      botLogger.success(`✅ [BOT] Image sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
@@ -73,7 +74,7 @@ export async function sendImageMessage(
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log(
+        botLogger.info(
           "✅ [BOT] Treating image send as successful despite post-send error"
         );
         continue;
@@ -81,7 +82,7 @@ export async function sendImageMessage(
 
       // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
-      console.error(`❌ [BOT] Error sending image to ${recipient}:`, error);
+      botLogger.error(`❌ [BOT] Error sending image to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",
@@ -120,7 +121,7 @@ export async function sendDocumentMessage(
     try {
       const formattedRecipient = formatRecipient(recipient);
       // eslint-disable-next-line no-console
-      console.log(`📄 [BOT] Sending document to: ${formattedRecipient}`);
+      botLogger.info(`📄 [BOT] Sending document to: ${formattedRecipient}`);
 
       // For documents, send the file first, then optionally send a message
       await client.sendMessage(formattedRecipient, media);
@@ -130,7 +131,7 @@ export async function sendDocumentMessage(
       }
 
       // eslint-disable-next-line no-console
-      console.log(
+      botLogger.success(
         `✅ [BOT] Document sent successfully to: ${formattedRecipient}`
       );
       messagesSent.push(formattedRecipient);
@@ -145,7 +146,7 @@ export async function sendDocumentMessage(
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log(
+        botLogger.info(
           "✅ [BOT] Document send successful despite post-send error"
         );
         continue;
@@ -153,7 +154,7 @@ export async function sendDocumentMessage(
 
       // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
-      console.error(`❌ [BOT] Error sending document to ${recipient}:`, error);
+      botLogger.error(`❌ [BOT] Error sending document to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",
@@ -192,7 +193,7 @@ export async function sendAudioMessage(
     try {
       const formattedRecipient = formatRecipient(recipient);
       // eslint-disable-next-line no-console
-      console.log(`🎵 [BOT] Sending audio to: ${formattedRecipient}`);
+      botLogger.info(`🎵 [BOT] Sending audio to: ${formattedRecipient}`);
 
       // For audio, send as voice message (ptt: true) or regular audio
       const options: any = { media };
@@ -209,7 +210,7 @@ export async function sendAudioMessage(
       }
 
       // eslint-disable-next-line no-console
-      console.log(`✅ [BOT] Audio sent successfully to: ${formattedRecipient}`);
+      botLogger.success(`✅ [BOT] Audio sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
@@ -222,7 +223,7 @@ export async function sendAudioMessage(
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log(
+        botLogger.info(
           "✅ [BOT] Treating audio send as successful despite post-send error"
         );
         continue;
@@ -230,7 +231,7 @@ export async function sendAudioMessage(
 
       // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
-      console.error(`❌ [BOT] Error sending audio to ${recipient}:`, error);
+      botLogger.error(`❌ [BOT] Error sending audio to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",
@@ -269,7 +270,7 @@ export async function sendVideoMessage(
     try {
       const formattedRecipient = formatRecipient(recipient);
       // eslint-disable-next-line no-console
-      console.log(`🎬 [BOT] Sending video to: ${formattedRecipient}`);
+      botLogger.info(`🎬 [BOT] Sending video to: ${formattedRecipient}`);
 
       // For videos, WhatsApp uses sendMessage with media and optional caption
       if (caption && caption.trim()) {
@@ -279,7 +280,7 @@ export async function sendVideoMessage(
       }
 
       // eslint-disable-next-line no-console
-      console.log(`✅ [BOT] Video sent successfully to: ${formattedRecipient}`);
+      botLogger.success(`✅ [BOT] Video sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
@@ -292,7 +293,7 @@ export async function sendVideoMessage(
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
-        console.log(
+        botLogger.info(
           "✅ [BOT] Treating video send as successful despite post-send error"
         );
         continue;
@@ -300,7 +301,7 @@ export async function sendVideoMessage(
 
       // Critical error - actual delivery failure
       // eslint-disable-next-line no-console
-      console.error(`❌ [BOT] Error sending video to ${recipient}:`, error);
+      botLogger.error(`❌ [BOT] Error sending video to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",

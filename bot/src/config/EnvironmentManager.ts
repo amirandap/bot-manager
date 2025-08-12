@@ -32,7 +32,7 @@ export class EnvironmentManager {
     } else {
       // Fallback to default dotenv behavior
       dotenv.config();
-      console.log("📁 Using default .env file loading");
+      botLogger.environmentInfo("📁 Using default .env file loading");
     }
   }
 
@@ -61,6 +61,10 @@ export class EnvironmentManager {
       // eslint-disable-next-line node/no-process-env
       process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
 
+    // Phone number configuration
+    // eslint-disable-next-line node/no-process-env
+    const DEFAULT_FALLBACK_PHONE_NUMBER = process.env.FALLBACKNUMBER || "+18298870174";
+
     // Centralized data paths
     const DATA_ROOT = path.join(__dirname, "../../../../data");
     const SESSION_PATH = path.join(DATA_ROOT, "sessions", BOT_ID);
@@ -74,6 +78,7 @@ export class EnvironmentManager {
       BOT_TYPE,
       NODE_ENV,
       CHROME_PATH,
+      DEFAULT_FALLBACK_PHONE_NUMBER,
       DATA_ROOT,
       SESSION_PATH,
       QR_PATH,
@@ -148,6 +153,7 @@ export const {
   BOT_TYPE,
   NODE_ENV,
   CHROME_PATH,
+  DEFAULT_FALLBACK_PHONE_NUMBER,
   DATA_ROOT,
   SESSION_PATH,
   QR_PATH,

@@ -24,8 +24,13 @@ export { default as RequestValidator } from "./requestValidator";
 // Media utilities
 export * from "./mediaUtils";
 
+// Bot lifecycle utilities
+export * from "./whatsAppUtils";
+export * from "./qrUtils";
+export * from "./apiUtils";
+export * from "./browserUtils";
+
 // Other utilities
-export * from "./fallbackUtils";
 export * from "./pm2Utils";
 export * from "./groupUtils";
 export * from "./messageFormatter";

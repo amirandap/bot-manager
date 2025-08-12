@@ -3,7 +3,7 @@
  * Handles fetching user data from external APIs
  */
 
-import { URL } from '../constants/URL';
+import { URL } from '../config/URL';
 import { User } from '../types';
 
 /**

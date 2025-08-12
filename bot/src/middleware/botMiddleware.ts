@@ -73,8 +73,8 @@ export function logRequest(
   const { method, originalUrl } = req;
   const requestId = req.bot?.requestId;
 
-  console.log(
-    `🔄 [BOT] ${method} ${originalUrl} - Request ${requestId} started`
+  botLogger.info(
+    `${method} ${originalUrl} - Request ${requestId} started`
   );
 
   // Log response
@@ -82,10 +82,10 @@ export function logRequest(
   res.json = function (body: any) {
     const duration = Date.now() - (req.bot?.startTime || 0);
     const success = body?.success !== false;
-    const emoji = success ? "✅" : "❌";
+    const logMethod = success ? botLogger.success : botLogger.error;
 
-    console.log(
-      `${emoji} [BOT] ${method} ${originalUrl} - Request ${requestId} completed in ${duration}ms`
+    logMethod(
+      `${method} ${originalUrl} - Request ${requestId} completed in ${duration}ms`
     );
 
     return originalSend.call(this, body);

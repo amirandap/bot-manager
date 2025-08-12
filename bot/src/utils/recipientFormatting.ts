@@ -1,6 +1,7 @@
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
-import { fetchUserData } from "./userDataService";
+import { fetchUserData } from "../services/UserDataService";
 import { BaseMessageRequestBody } from "../types/types";
+import { botLogger } from "./loggerWrapper";
 
 /**
  * Recipient formatting and processing utilities
@@ -44,10 +45,8 @@ export function separateRecipients(recipients: string[]): {
     }
   });
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `📋 [FORMATTER] Processing ${groups.length} groups and ` +
-      `${phoneNumbers.length} phone numbers`
+  botLogger.info(
+    `Processing ${groups.length} groups and ${phoneNumbers.length} phone numbers`
   );
 
   return { phoneNumbers, groups };

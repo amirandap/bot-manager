@@ -15,7 +15,7 @@ import { sendTextMessage } from "../utils/textMessaging";
 import { sendErrorMessage, shouldSendFallback } from "../utils/errorHandler";
 import { MessageErrorHandler } from "../utils/errorHandler";
 import { validateWhatsAppError } from "../utils/errorHandler";
-import { getFallbackNumber } from "../utils/fallbackUtils";
+import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
 import { MediaResult, MessageHandlerResult, MessageType } from "../types/types";
 
 /**
@@ -148,16 +148,14 @@ export class MessageHandlerController {
           );
           result.fallbackSent = true;
         } catch (errorHandlerError: any) {
-          console.error(
-            "❌ [MESSAGE_HANDLER] Error handler failed:",
-            errorHandlerError
+          botLogger.error(
+            `Error handler failed: ${errorHandlerError}`
           );
         }
       }
     } catch (criticalError: any) {
-      console.error(
-        "❌ [MESSAGE_HANDLER] Critical error in message handling:",
-        criticalError
+      botLogger.error(
+        `Critical error in message handling: ${criticalError}`
       );
 
       // Validate if it's a WhatsApp-specific error
@@ -188,11 +186,10 @@ export class MessageHandlerController {
 
         await sendErrorMessage(client, fallbackMessage);
         result.fallbackSent = true;
-        console.log("✅ [MESSAGE_HANDLER] Critical error sent to fallback");
+        botLogger.success("Critical error sent to fallback");
       } catch (fallbackError: any) {
-        console.error(
-          "❌ [MESSAGE_HANDLER] Failed to send critical error to fallback:",
-          fallbackError
+        botLogger.error(
+          `Failed to send critical error to fallback: ${fallbackError}`
         );
       }
     }
@@ -242,25 +239,24 @@ export class MessageHandlerController {
     isError: boolean = false
   ): Promise<void> {
     if (!client) {
-      console.error("❌ [SYSTEM_NOTIFICATION] Client not initialized");
+      botLogger.error("Client not initialized");
       return;
     }
 
-    const fallbackNumber = getFallbackNumber();
+    const fallbackNumber = DEFAULT_FALLBACK_PHONE_NUMBER;
     const prefix = isError ? "🚨 BOT ERROR 🚨" : "ℹ️ BOT NOTIFICATION";
     const fullMessage = `${prefix}\n\n${message}\n\nTime: ${new Date().toISOString()}`;
 
     try {
       await sendErrorMessage(client, fullMessage, fallbackNumber);
-      console.log(
-        `✅ [SYSTEM_NOTIFICATION] ${
+      botLogger.success(
+        `${
           isError ? "Error" : "Info"
         } notification sent to fallback`
       );
     } catch (error: any) {
-      console.error(
-        "❌ [SYSTEM_NOTIFICATION] Failed to send notification:",
-        error
+      botLogger.error(
+        `Failed to send notification: ${error}`
       );
     }
   }
@@ -296,14 +292,14 @@ export class MessageHandlerController {
     let totalErrors = 0;
     let successfulBatches = 0;
 
-    console.log(
-      `📦 [BATCH_HANDLER] Starting batch send of ${batches.length} batches`
+    botLogger.info(
+      `Starting batch send of ${batches.length} batches`
     );
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      console.log(
-        `📤 [BATCH_HANDLER] Processing batch ${i + 1}/${batches.length}`
+      botLogger.info(
+        `Processing batch ${i + 1}/${batches.length}`
       );
 
       try {
@@ -349,8 +345,8 @@ export class MessageHandlerController {
 
     const overallSuccess = successfulBatches > 0 && totalErrors === 0;
 
-    console.log(
-      `📊 [BATCH_HANDLER] Batch complete: ${successfulBatches}/${batches.length} successful, ${totalMessagesSent} messages sent, ${totalErrors} errors`
+    botLogger.info(
+      `Batch complete: ${successfulBatches}/${batches.length} successful, ${totalMessagesSent} messages sent, ${totalErrors} errors`
     );
 
     return {
@@ -409,8 +405,8 @@ export class MessageHandlerController {
 
         let sendResult;
         if (file) {
-          console.log(
-            `📎 [BOT] Sending file to group: ${file.originalname} (${file.mimetype})`
+          botLogger.info(
+            `Sending file to group: ${file.originalname} (${file.mimetype})`
           );
           sendResult = await client.sendMessage(
             groupId,
@@ -418,11 +414,11 @@ export class MessageHandlerController {
             { caption: message }
           );
         } else {
-          console.log("💬 [BOT] Sending text message to group");
+          botLogger.info("Sending text message to group");
           sendResult = await client.sendMessage(groupId, message);
         }
 
-        console.log("🔍 [BOT] Send result:", sendResult);
+        botLogger.info(`Send result: ${JSON.stringify(sendResult)}`);
         messagesSent.push(groupId);
         botLogger.info(`✅ [BOT] Group message sent successfully to: ${groupId}`, '✅');
       } catch (error: unknown) {
@@ -436,18 +432,18 @@ export class MessageHandlerController {
         if (!sendFallback) {
           // Post-send error - message was likely delivered successfully
           messagesSent.push(groupId);
-          console.log(
-            "✅ [BOT] Treating as successful send despite post-send error"
+          botLogger.success(
+            "Treating as successful send despite post-send error"
           );
         } else {
           // Critical error - actual delivery failure
-          console.error(
-            `❌ [BOT] Critical error sending message to group ${groupId}:`
+          botLogger.error(
+            `Critical error sending message to group ${groupId}:`
           );
           botLogger.error(`   Error Type: ${typeof error}`);
           botLogger.error(`   Error Message: ${reason}`);
           botLogger.error(`   Error Stack: ${errorStack}`);
-          console.error("   Full Error Object:", error);
+          botLogger.error(`   Full Error Object: ${JSON.stringify(error)}`);
 
           errors.push({
             recipient: groupId,
