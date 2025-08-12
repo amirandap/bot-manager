@@ -1,13 +1,6 @@
 /**
  * QR Code Utilities
- * Centralized func    botLogger.info(`QR Code saved to: ${qrCodePath}`, "💾");
-    botLogger.info(`QR available at: http://localhost:${botPort}/qr-code`, "🌐");
-  } catch (error) {
-    botLogger.error(`Error handling QR code: ${error}`);
-    markStepFailure("QR_CODE_GENERATION", error);
-    throw error;
-  }
-}r QR code management
+ * Centralized functions for QR code management
  */
 
 import * as fs from "fs";
@@ -16,6 +9,7 @@ import * as QRCode from "qrcode";
 import { botLogger } from "./loggerWrapper";
 import { QR_PATH } from "../config/EnvironmentManager";
 import { updatePM2Metrics, markStepFailure } from "./pm2Utils";
+import { DirectoryManagerService } from "../services/DirectoryManagerService";
 
 // Global QR state
 let currentQRCode: string | null = null;
@@ -25,7 +19,17 @@ let qrCodePath: string | null = null;
  * Initialize QR code system
  */
 export function initializeQRCode(botId: string, botPort: number): void {
-  qrCodePath = path.join(QR_PATH, `${botId}.png`);
+  try {
+    // Use DirectoryManagerService to ensure QR directory exists
+    const directoryManager = new DirectoryManagerService();
+    directoryManager.createDirectoryIfNotExists(QR_PATH);
+    
+    qrCodePath = path.join(QR_PATH, `${botId}.png`);
+    botLogger.info(`QR code system initialized for bot: ${botId}`, "📱");
+  } catch (error) {
+    botLogger.error(`Failed to initialize QR code system: ${error}`);
+    throw new Error(`QR code system initialization failed: ${error}`);
+  }
 }
 
 /**
@@ -36,25 +40,39 @@ export async function handleQRGenerated(
   botPort: number
 ): Promise<void> {
   if (!qrCodePath) {
-    throw new Error("QR code system not initialized. Call initializeQRCode first.");
+    const error = new Error("QR code system not initialized. Call initializeQRCode first.");
+    botLogger.error(`QR handling failed: ${error.message}`);
+    markStepFailure('qr_code_generation', error);
+    throw error;
   }
 
   try {
+    botLogger.info("Processing QR code generation...", "⏳");
     currentQRCode = qr;
+    
     await saveQRCode(qr);
     
     // Update PM2 with QR code ready status
     updatePM2Metrics('qr_code_ready', 'success', 'QR code generated and ready for scanning', 60, {
       qr_available: true,
-      qr_endpoint: `http://localhost:${botPort}/qr-code`
+      qr_endpoint: `http://localhost:${botPort}/qr-code`,
+      qr_file_path: qrCodePath
     });
 
     botLogger.info(`QR Code saved to: ${qrCodePath}`, "💾");
     botLogger.info(`QR available at: http://localhost:${botPort}/qr-code`, "🌐");
+    botLogger.success("QR code generation completed successfully", "✅");
+    
   } catch (error) {
-    botLogger.error(`Error handling QR code: ${error}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    botLogger.error(`Error handling QR code: ${errorMessage}`);
+    
+    // Provide more context for debugging
+    botLogger.error(`QR code path: ${qrCodePath}`);
+    botLogger.error(`QR directory exists: ${fs.existsSync(path.dirname(qrCodePath!))}`);
+    
     markStepFailure('qr_code_generation', error as Error);
-    throw error;
+    throw new Error(`QR code handling failed: ${errorMessage}`);
   }
 }
 
@@ -66,26 +84,40 @@ async function saveQRCode(qr: string): Promise<void> {
     throw new Error("QR code path not initialized");
   }
 
-  return new Promise((resolve, reject) => {
-    QRCode.toFile(
-      qrCodePath!,
-      qr,
-      {
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
+  try {
+    // Use DirectoryManagerService to ensure directory exists before saving
+    const directoryManager = new DirectoryManagerService();
+    const qrDir = path.dirname(qrCodePath);
+    directoryManager.createDirectoryIfNotExists(qrDir);
+
+    // Generate QR code file
+    return new Promise((resolve, reject) => {
+      QRCode.toFile(
+        qrCodePath!,
+        qr,
+        {
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+          width: 512,
         },
-        width: 512,
-      },
-      (error) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
+        (error) => {
+          if (error) {
+            botLogger.error(`QR code file generation failed: ${error}`);
+            reject(new Error(`Failed to save QR code: ${error.message}`));
+          } else {
+            botLogger.success(`QR code saved successfully: ${qrCodePath}`);
+            resolve();
+          }
         }
-      }
-    );
-  });
+      );
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    botLogger.error(`QR code save operation failed: ${errorMessage}`);
+    throw new Error(`QR code save failed: ${errorMessage}`);
+  }
 }
 
 /**
@@ -93,9 +125,13 @@ async function saveQRCode(qr: string): Promise<void> {
  */
 export function cleanupQRCode(): void {
   try {
-    if (qrCodePath && fs.existsSync(qrCodePath)) {
-      fs.unlinkSync(qrCodePath);
-      botLogger.info("QR code file cleaned up after successful connection", "🧹");
+    if (qrCodePath) {
+      const directoryManager = new DirectoryManagerService();
+      const wasDeleted = directoryManager.cleanupFile(qrCodePath);
+      
+      if (wasDeleted) {
+        botLogger.info("QR code file cleaned up after successful connection", "🧹");
+      }
     }
     currentQRCode = null;
   } catch (error) {
@@ -139,7 +175,9 @@ export function getQRStatus() {
  * Send QR code as response
  */
 export function sendQRCode(res: any): void {
-  if (!hasQRCode() || !qrCodePath || !fs.existsSync(qrCodePath)) {
+  const directoryManager = new DirectoryManagerService();
+  
+  if (!hasQRCode() || !qrCodePath || !directoryManager.fileExists(qrCodePath)) {
     res.status(404).json({ error: "QR Code not available" });
     return;
   }
@@ -158,6 +196,11 @@ export async function generateQRCode(
       throw new Error("QR code system not initialized");
     }
 
+    // Use DirectoryManagerService to ensure directory exists
+    const directoryManager = new DirectoryManagerService();
+    const qrDir = path.dirname(qrCodePath);
+    directoryManager.createDirectoryIfNotExists(qrDir);
+
     await QRCode.toFile(qrCodePath, qrData, {
       errorCorrectionLevel: 'M',
       type: 'png',
@@ -170,13 +213,16 @@ export async function generateQRCode(
 
     const dataUrl = await QRCode.toDataURL(qrData);
     
+    botLogger.success(`QR code generated successfully: ${qrCodePath}`);
+    
     return {
       success: true,
       filePath: qrCodePath,
       dataUrl: dataUrl
     };
   } catch (error) {
-    botLogger.error(`Error generating QR code: ${error}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    botLogger.error(`Error generating QR code: ${errorMessage}`);
     return { success: false };
   }
 }
