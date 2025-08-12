@@ -4,6 +4,22 @@ import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
 import { EnvironmentConfig } from "../types/types";
+/**
+ * Environment Manager - Multi-Instance Bot Configuration
+ * 
+ * This class manages environment variables for multiple bot instances.
+ * Each bot instance can have different configurations:
+ * 
+ * - Development: Uses .env file with different BOT_ID, BOT_PORT, etc.
+ * - Production: Uses PM2 ecosystem with environment-specific variables
+ * 
+ * The centralized exports at the bottom allow easy access to configuration
+ * variables throughout the codebase without needing to call getConfig() 
+ * repeatedly in every file.
+ * 
+ * Example usage in other files:
+ * import { BOT_ID, BOT_PORT, SESSION_PATH } from "../config/EnvironmentManager";
+ */
 export class EnvironmentManager {
   private static instance: EnvironmentManager;
   private config: EnvironmentConfig;
@@ -140,27 +156,55 @@ export class EnvironmentManager {
   }
 }
 
-// Centralized environment exports
+/**
+ * ============================================================================
+ * CENTRALIZED EXPORTS FOR MULTI-INSTANCE BOT DEPLOYMENT
+ * ============================================================================
+ * 
+ * These exports allow each bot instance to access its specific configuration
+ * easily throughout the codebase. This is essential for:
+ * 
+ * 1. Development: Multiple .env files with different BOT_ID/PORT combinations
+ * 2. Production: PM2 ecosystem with per-instance environment variables
+ * 3. Testing: Different configurations for different test scenarios
+ * 
+ * Usage examples:
+ * - import { BOT_ID, BOT_PORT } from "../config/EnvironmentManager";
+ * - import { SESSION_PATH, QR_PATH } from "../config/EnvironmentManager";
+ * - import { ENV_CONFIG } from "../config/EnvironmentManager"; // Full config
+ */
+
+// Initialize singleton instance and get configuration
 const envManager = EnvironmentManager.getInstance();
 const config = envManager.getConfig();
 
-// Export individual variables for direct import
+// Core bot identification variables (change per instance)
 export const {
-  BOT_ID,
-  BOT_NAME,
-  BOT_PORT,
-  BOT_TYPE,
-  NODE_ENV,
-  CHROME_PATH,
-  DEFAULT_FALLBACK_PHONE_NUMBER,
-  DATA_ROOT,
-  SESSION_PATH,
-  QR_PATH,
-  LOGS_PATH,
+  BOT_ID,                    // Unique identifier for this bot instance
+  BOT_NAME,                  // Display name for this bot instance
+  BOT_PORT,                  // HTTP port for this bot instance
+  BOT_TYPE,                  // Type of bot (whatsapp, telegram, etc.)
 } = config;
 
-// Export the config object for those who need the full configuration
-export { config as ENV_CONFIG };
+// Environment and runtime configuration
+export const {
+  NODE_ENV,                  // Environment (development, production, test)
+  CHROME_PATH,               // Path to Chrome executable
+} = config;
 
-// Export the singleton instance for advanced usage
-export { envManager as ENV_MANAGER };
+// Bot-specific configuration
+export const {
+  DEFAULT_FALLBACK_PHONE_NUMBER,  // Fallback phone number for errors
+} = config;
+
+// Instance-specific file paths (derived from BOT_ID)
+export const {
+  DATA_ROOT,                 // Root data directory
+  SESSION_PATH,              // WhatsApp session storage path
+  QR_PATH,                   // QR code storage path  
+  LOGS_PATH,                 // Log files path
+} = config;
+
+// Alternative export formats for different usage patterns
+export { config as ENV_CONFIG };        // Complete configuration object
+export { envManager as ENV_MANAGER };   // Singleton instance for advanced usage

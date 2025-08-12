@@ -519,3 +519,119 @@ export function getStartupProgressSummary(): {
 export function getTotalStartupSteps(): number {
   return Object.keys(STARTUP_STEPS).length;
 }
+
+/**
+ * MASTER STEP HANDLER
+ * Single function that handles all step status updates based on parameters
+ * Replaces all individual step functions with unified behavior
+ */
+export function handleStep(
+  step: keyof typeof STARTUP_STEPS,
+  action: 'start' | 'progress' | 'complete' | 'fail',
+  options?: {
+    message?: string;
+    error?: Error;
+    details?: any;
+    shouldRestart?: boolean;
+  }
+): void {
+  const stepName = STARTUP_STEPS[step];
+  const totalSteps = getTotalStartupSteps();
+  const stepNumber = Object.keys(STARTUP_STEPS).indexOf(step) + 1;
+  const { message, error, details, shouldRestart = false } = options || {};
+  
+  // Calculate progress percentage based on action
+  let progress: number;
+  let pm2Status: 'in_progress' | 'success' | 'failure';
+  
+  switch (action) {
+    case 'start':
+    case 'progress':
+      progress = Math.round(((stepNumber - 1) / totalSteps) * 100);
+      pm2Status = 'in_progress';
+      break;
+    case 'complete':
+      progress = Math.round((stepNumber / totalSteps) * 100);
+      pm2Status = 'success';
+      break;
+    case 'fail':
+      progress = Math.round(((stepNumber - 1) / totalSteps) * 100);
+      pm2Status = 'failure';
+      break;
+  }
+
+  // Generate default message if not provided
+  const defaultMessage = message || `Step ${stepNumber}/${totalSteps}: ${stepName}`;
+  
+  // Log to console with appropriate emoji and level
+  switch (action) {
+    case 'start':
+      botLogger.info(`🚀 [${stepNumber}/${totalSteps}] Starting: ${defaultMessage}`, "🔄");
+      break;
+    case 'progress':
+      botLogger.info(`⏳ [${stepNumber}/${totalSteps}] ${defaultMessage}`, "🔄");
+      break;
+    case 'complete':
+      botLogger.success(`✅ [${stepNumber}/${totalSteps}] ${defaultMessage}`);
+      break;
+    case 'fail':
+      botLogger.error(`❌ [${stepNumber}/${totalSteps}] ${defaultMessage}`);
+      if (error) {
+        botLogger.error(`   Error: ${error.message}`);
+        if (error.stack) {
+          botLogger.error(`   Stack: ${error.stack}`);
+        }
+      }
+      break;
+  }
+
+  // Update PM2 metrics with unified call
+  updatePM2Metrics(
+    stepName,
+    pm2Status,
+    defaultMessage,
+    progress,
+    {
+      step_number: stepNumber,
+      total_steps: totalSteps,
+      startup_phase: true,
+      action,
+      ...details
+    }
+  );
+
+  // Handle failures with PM2 alerts (only for 'fail' action)
+  if (action === 'fail' && error) {
+    alertPM2Failure(error, `step_${step.toLowerCase()}`, shouldRestart, stepName);
+  }
+}
+
+/**
+ * CONVENIENCE EXPORTS (Optional - for backward compatibility and cleaner code)
+ * These are thin wrappers around the master function for common use cases
+ */
+export function startStep(step: keyof typeof STARTUP_STEPS, message?: string): void {
+  handleStep(step, 'start', { message });
+}
+
+export function progressStep(step: keyof typeof STARTUP_STEPS, message?: string): void {
+  handleStep(step, 'progress', { message });
+}
+
+export function completeStep(step: keyof typeof STARTUP_STEPS, message?: string, details?: any): void {
+  handleStep(step, 'complete', { message, details });
+}
+
+export function failStep(
+  step: keyof typeof STARTUP_STEPS, 
+  error: Error, 
+  shouldRestart: boolean = false,
+  details?: any
+): void {
+  handleStep(step, 'fail', { 
+    message: `Failed: ${error.message}`, 
+    error, 
+    shouldRestart, 
+    details 
+  });
+}
