@@ -6,7 +6,6 @@
 
 import { Client, LocalAuth } from "whatsapp-web.js";
 import * as QRCode from "qrcode";
-import * as fs from "fs";
 import * as path from "path";
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 import { botLogger } from "./loggerWrapper";
@@ -64,7 +63,7 @@ function initializeQRCodePath(botId: string): void {
 /**
  * Handle QR code generation (internal function)
  */
-async function handleQRGenerated(qr: string, botPort: number): Promise<void> {
+async function handleQRGenerated(qr: string): Promise<void> {
   if (!qrCodePath) {
     throw new Error("QR code path not initialized");
   }
@@ -78,12 +77,10 @@ async function handleQRGenerated(qr: string, botPort: number): Promise<void> {
     // Update PM2 with QR code ready status
     updatePM2Metrics('qr_code_ready', 'success', 'QR code generated and ready for scanning', 60, {
       qr_available: true,
-      qr_endpoint: `http://localhost:${botPort}/qr-code`,
       qr_file_path: qrCodePath
     });
 
     botLogger.info(`QR Code saved to: ${qrCodePath}`, "💾");
-    botLogger.info(`QR available at: http://localhost:${botPort}/qr-code`, "🌐");
     botLogger.success("QR code generation completed successfully", "✅");
     
   } catch (error) {
@@ -102,38 +99,11 @@ async function saveQRCode(qr: string): Promise<void> {
   }
 
   try {
-    // Ensure directory exists before saving
-    const directoryManager = new DirectoryManagerService();
-    const qrDir = path.dirname(qrCodePath);
-    directoryManager.createDirectoryIfNotExists(qrDir);
-
-    // Generate QR code file
-    return new Promise((resolve, reject) => {
-      QRCode.toFile(
-        qrCodePath!,
-        qr,
-        {
-          color: {
-            dark: "#000000",
-            light: "#FFFFFF",
-          },
-          width: 512,
-        },
-        (error) => {
-          if (error) {
-            botLogger.error(`QR code file generation failed: ${error}`);
-            reject(new Error(`Failed to save QR code: ${error.message}`));
-          } else {
-            botLogger.success(`QR code saved successfully: ${qrCodePath}`);
-            resolve();
-          }
-        }
-      );
-    });
+    await QRCode.toFile(qrCodePath, qr);
+    botLogger.success(`QR code saved to: ${qrCodePath}`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    botLogger.error(`QR code save operation failed: ${errorMessage}`);
-    throw new Error(`QR code save failed: ${errorMessage}`);
+    botLogger.error(`Failed to save QR code: ${error}`);
+    throw error;
   }
 }
 
@@ -141,19 +111,18 @@ async function saveQRCode(qr: string): Promise<void> {
  * Clean up QR code file (internal function)
  */
 function cleanupQRCode(): void {
-  try {
-    if (qrCodePath) {
-      const directoryManager = new DirectoryManagerService();
-      const wasDeleted = directoryManager.cleanupFile(qrCodePath);
-      
-      if (wasDeleted) {
-        botLogger.info("QR code file cleaned up after successful connection", "🧹");
+  if (qrCodePath) {
+    try {
+      const fs = require("fs");
+      if (fs.existsSync(qrCodePath)) {
+        fs.unlinkSync(qrCodePath);
+        botLogger.info("QR code file cleaned up");
       }
+    } catch (error) {
+      botLogger.warn(`Failed to cleanup QR code: ${error}`);
     }
-    currentQRCode = null;
-  } catch (error) {
-    botLogger.warn(`Could not clean up QR code file: ${error}`);
   }
+  currentQRCode = null;
 }
 
 /**
@@ -176,7 +145,14 @@ export async function initializeWhatsAppClient(
     // Initialize QR code path internally
     initializeQRCodePath(config.BOT_ID);
 
+    // Get pre-validated Puppeteer configuration (Chrome already validated in startup)
     const puppeteerOptions = puppeteerConfig.getConfiguration();
+    
+    // Log Puppeteer configuration details
+    botLogger.info(`Puppeteer config for ${process.platform}:`);
+    botLogger.info(`  - Chrome path: ${puppeteerOptions.executablePath || "system default"}`);
+    botLogger.info(`  - Headless: ${puppeteerOptions.headless}`);
+    botLogger.info(`  - Args count: ${puppeteerOptions.args.length}`);
     
     whatsappClient = new Client({
       authStrategy: new LocalAuth({
@@ -194,7 +170,7 @@ export async function initializeWhatsAppClient(
     whatsappClient.on("qr", async (qr) => {
       try {
         updateWhatsAppState(BotLifecycleState.WAITING_FOR_QR, "QR Code generated");
-        await handleQRGenerated(qr, parseInt(config.BOT_PORT));
+        await handleQRGenerated(qr);
         updateWhatsAppState(BotLifecycleState.QR_READY, "QR Code ready for scanning");
         
         if (onQRGenerated) {
@@ -331,17 +307,6 @@ export function getQRStatus() {
     path: qrCodePath,
     code: currentQRCode
   };
-}
-
-export function sendQRCode(res: any): void {
-  const directoryManager = new DirectoryManagerService();
-  
-  if (!hasQRCode() || !qrCodePath || !directoryManager.fileExists(qrCodePath)) {
-    res.status(404).json({ error: "QR Code not available" });
-    return;
-  }
-
-  res.sendFile(qrCodePath);
 }
 
 /**

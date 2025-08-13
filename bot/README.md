@@ -1,205 +1,190 @@
-# WhatsApp Web API with Express
+# WhatsApp Bot Manager - Documentación
 
-This project demonstrates how to interact with WhatsApp Web using the `whatsapp-web.js` library and an Express.js server. You can send messages, receive messages, and even send images with captions to WhatsApp contacts programmatically.
+## 📋 Información del Proyecto
 
-## Getting Started
+Este repositorio contiene un **WhatsApp Bot completamente funcional** con arquitectura modular y sistema de error handling robusto.
 
-Follow these steps to set up and run the application:
+## 🚨 IMPORTANTE - LEE ANTES DE CONTRIBUIR
 
-### Prerequisites
+**⚠️ Este proyecto tiene una arquitectura consolidada y completamente migrada. Antes de hacer cualquier cambio, lee la documentación completa:**
 
-- Node.js and npm installed on your machine.
+### 📖 Documentación Obligatoria
 
-### Installation
+1. **[`docs/architecture/ARCHITECTURE_GUIDE.md`](./docs/architecture/ARCHITECTURE_GUIDE.md)** - Reglas de arquitectura
+2. **[`docs/architecture/MIGRATION_STATUS.md`](./docs/architecture/MIGRATION_STATUS.md)** - Estado actual 
+3. **[`docs/api/API_REFERENCE.md`](./docs/api/API_REFERENCE.md)** - Documentación de API
 
-1. Clone the repository to your local machine:
+### ✅ Sistemas Establecidos - REUTILIZAR
 
-   ```bash
-   git clone https://github.com/yourusername/whatsapp-web-api.git
-   ```
-   
-2. Change to the project directory:
+- **Error Handling:** `MessageErrorHandlerService` 
+- **Logging:** `botLogger` 
+- **Media Services:** `MediaMessagingService`
+- **Validation:** Servicios de validación existentes
 
-   ```bash
-   cd whatsapp-web-api
-   ```
+## 🚀 Inicio Rápido
 
-3. Install the dependencies:
+### Instalación
+```bash
+npm install
+```
 
-   ```bash
-   npm install
-   ```
+### Configuración
+```bash
+cp .env.example .env
+# Editar .env con tus configuraciones
+```
 
-4. Change bot library:
+### Desarrollo
+```bash
+npm run dev
+```
 
-   ```bash
-   // Web-whatsapp.js
-   node change-client-bot.js BC=WW
+### Producción
+```bash
+npm run build
+npm start
+```
 
-   // Venom-bot
-   node change-client-bot.js BC=VB
-   ```
+## 📱 API Endpoints
 
-5. Start the Express server:
+Base URL: `http://localhost:3000`
 
-   ```bash
-   npm start
-   ```
+### Mensajes
+- `POST /send-message` - Enviar mensaje de texto
+- `POST /send-broadcast` - Enviar a múltiples destinatarios
+- `POST /send-to-group` - Enviar a grupo específico
+- `POST /send-to-phone` - Enviar a teléfono específico
 
-### Usage
+### Media
+- `POST /send-image` - Enviar imagen
+- `POST /send-video` - Enviar video  
+- `POST /send-audio` - Enviar audio
+- `POST /send-document` - Enviar documento
 
-After starting the server, open your browser and navigate to http://localhost:5000 to access the application.
+### Información
+- `GET /get-groups` - Obtener lista de grupos
 
-Scan the QR code with your phone using the WhatsApp app to authenticate.
+**Ver documentación completa:** [`docs/api/API_REFERENCE.md`](./docs/api/API_REFERENCE.md)
 
-Once authenticated, the application will be ready to send and receive WhatsApp messages programmatically.
+## 🏗️ Arquitectura
 
-### Endpoints
+```
+src/
+├── config/          # Configuraciones
+├── types/           # Tipos TypeScript
+├── utils/           # ✅ SOLO funciones puras
+├── services/        # ✅ TODAS las clases con estado
+├── controllers/     # Lógica de aplicación
+├── routes/          # Endpoints Express
+├── middleware/      # Middlewares
+└── validators/      # Validadores
+```
 
-#### **1. `/status`**
-- **Method**: `GET`
-- **Description**: Retrieves the bot's current status, including uptime, root folder, port, and fallback number.
-- **Response**:
-  ```json
-  {
-    "status": "Bot is running",
-    "rootFolder": "/path/to/root",
-    "port": 7260,
-    "uptime": "3600 seconds",
-    "fallbackNumber": "1234567890"
-  }
-  ```
+### Principios Fundamentales
 
-#### **2. `/restart`**
-- **Method**: `POST`
-- **Description**: Restarts the bot. Useful for applying configuration changes.
-- **Response**:
-  ```json
-  {
-    "message": "Bot is restarting..."
-  }
-  ```
+1. **`utils/` = funciones puras solamente** (sin clases)
+2. **`services/` = todas las clases y lógica con estado**
+3. **Sistema de logging unificado** (`botLogger`)
+4. **Sistema de error handling centralizado** (`MessageErrorHandlerService`)
 
-#### **3. `/change-fallback-number`**
-- **Method**: `POST`
-- **Description**: Updates the fallback phone number used when a valid number is unavailable.
-- **Request Body**:
-  ```json
-  {
-    "newFallbackNumber": "9876543210"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Fallback number updated successfully",
-    "fallbackNumber": "9876543210"
-  }
-  ```
+## 🔧 Scripts Disponibles
 
-#### **4. `/change-port`**
-- **Method**: `POST`
-- **Description**: Changes the server's port and restarts the bot to apply the change.
-- **Request Body**:
-  ```json
-  {
-    "newPort": 8080
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Server port will change to 8080. Restarting..."
-  }
-  ```
+```bash
+npm run dev          # Desarrollo con hot reload
+npm run build        # Compilar TypeScript
+npm start           # Iniciar en producción
+npm run pm2:start   # Iniciar con PM2
+npm run pm2:stop    # Detener PM2
+npm run pm2:restart # Reiniciar PM2
+```
 
-#### **5. `/qr-code`**
-- **Method**: `GET`
-- **Description**: Retrieves the QR code for WhatsApp Web authentication.
-- **Response**:
-  - If QR code is available:
-    ```html
-    <img src="data:image/png;base64,..." alt="QR Code" />
-    ```
-  - If QR code is unavailable:
-    ```html
-    <h1>QR code not found, try refreshing</h1>
-    ```
+## 📊 Estructura del Proyecto
 
-#### **6. `/send-message`**
-- **Method**: `POST`
-- **Description**: Sends a WhatsApp message to a specific contact.
-- **Request Body**:
-  ```json
-  {
-    "phoneNumber": "+1234567890",
-    "message": "Hello, this is a test message!"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Message sent successfully"
-  }
-  ```
+### Servicios Principales
+- **LoggerService** - Sistema de logging unificado
+- **WhatsAppErrorHandlerService** - Manejo de errores
+- **MediaMessagingService** - Envío de multimedia
+- **DirectoryManagerService** - Gestión de directorios
 
-#### **7. `/receive-image-and-json`**
-- **Method**: `POST`
-- **Description**: Sends an image and a JSON object as a WhatsApp message.
-- **Request Body**:
-  ```json
-  {
-    "phoneNumber": "+1234567890",
-    "image": "base64EncodedImage",
-    "name": "John Doe",
-    "rank": "1"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Message sent successfully"
-  }
-  ```
+### Controladores
+- **MessageController** - Lógica de mensajes
+- **MessageHandlerController** - Orquestación de envíos
 
-#### **8. `/confirmation`**
-- **Method**: `POST`
-- **Description**: Sends a confirmation message to a user based on their Discord ID or phone number.
-- **Request Body**:
-  ```json
-  {
-    "discorduserid": "123456789",
-    "phoneNumber": "+1234567890",
-    "message": "Your confirmation message here"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "message": "Confirmation message sent successfully"
-  }
-  ```
+### Rutas
+- Todas las rutas usan el patrón establecido
+- Error handling consistente
+- Logging unificado
 
-### Notes:
-- Ensure the server is running on the correct port (`BASE_URL` in `.env`).
-- Use appropriate headers (`Content-Type: application/json`) for POST requests.
-- For troubleshooting, refer to the server logs.
+## 🚫 Reglas de Contribución
 
-### Additional Configuration
+### Prohibido
+1. Crear clases en `utils/` 
+2. Duplicar funcionalidad existente
+3. Usar `console.log` (usar `botLogger`)
+4. Modificar arquitectura establecida
+5. Crear nuevos sistemas de error handling o logging
 
-You can customize the behavior of the WhatsApp client by modifying the code in `app.js`.
+### Permitido
+1. Optimizar funciones existentes
+2. Agregar documentación
+3. Agregar tests
+4. Mejorar performance
+5. Simplificar código existente
 
-### Troubleshooting
+## 🔧 Tecnologías
 
-If you encounter any issues or errors, please check the console for error messages.
+- **Node.js** - Runtime
+- **TypeScript** - Lenguaje 
+- **Express.js** - Framework web
+- **whatsapp-web.js** - Integración WhatsApp
+- **PM2** - Gestión de procesos
+- **Puppeteer** - Control de navegador
 
-### License
+## 📱 Características
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### ✅ Funcionalidades Implementadas
+- Envío de mensajes de texto
+- Envío de multimedia (imagen, video, audio, documentos)
+- Envío a grupos y individuos
+- Broadcast a múltiples destinatarios
+- Sistema robusto de error handling
+- Logging completo con emojis
+- Validación de números de teléfono
+- Reintentos automáticos
+- API REST completa
 
-### Acknowledgments
+### 🎯 Casos de Uso
+- Notificaciones automáticas
+- Marketing masivo
+- Soporte al cliente
+- Automatización de comunicaciones
+- Integración con sistemas existentes
 
-- **whatsapp-web.js**: WhatsApp Web API library used in this project.
-- **Express.js**: Web framework for Node.js used to build the server.
-- **axios**: HTTP client for making requests to external APIs.
-- **qrcode-terminal**: Library for displaying QR codes in the terminal.
+## 🔍 Monitoring y Logs
+
+Los logs incluyen emojis para fácil identificación:
+- 📥 Solicitud recibida
+- ✅ Mensaje enviado exitosamente
+- ❌ Error en envío
+- 📱 Procesando teléfono
+- 🏢 Procesando grupo
+- 🔄 Proceso en curso
+
+## ⚡ Performance
+
+- Procesamiento asíncrono
+- Reintentos inteligentes
+- Validación de números
+- Gestión eficiente de memoria
+- Logs estructurados
+
+## 🤝 Soporte
+
+Para preguntas o problemas:
+1. Revisa la documentación en `docs/`
+2. Verifica que sigues las reglas de arquitectura
+3. Asegúrate de reutilizar sistemas existentes
+
+---
+
+**Recuerda:** Este es un sistema completamente funcional y consolidado. El objetivo es mantener y optimizar, no recrear funcionalidad existente.

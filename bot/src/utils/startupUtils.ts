@@ -107,7 +107,7 @@ export async function initializeStartup(): Promise<boolean> {
     // Step 1: Print environment variables
     printEnvironmentVariables();
 
-    // Step 2: Validate Chrome
+    // Step 2: Validate Chrome (only once here)
     if (!validateChrome()) {
       return false;
     }
@@ -115,7 +115,7 @@ export async function initializeStartup(): Promise<boolean> {
     // Step 3: Create directories
     createStartupDirectories();
 
-    botLogger.success("All pre-flight checks passed. Ready to start bot.");
+    botLogger.success("✅ All pre-flight checks passed. Ready to start bot.");
     return true;
   } catch (error) {
     botLogger.error(`Startup failed: ${error}`);

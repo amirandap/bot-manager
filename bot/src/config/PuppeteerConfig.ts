@@ -30,6 +30,7 @@ export interface ChromeValidationResult {
 export class PuppeteerConfigManager {
   private static instance: PuppeteerConfigManager;
   private currentOS: string;
+  private validatedChromePath: string | null = null; // Cache validated Chrome path
   // Remove logger dependency - use botLogger directly
 
   private constructor() {
@@ -158,12 +159,19 @@ export class PuppeteerConfigManager {
 
   /**
    * Find a valid Chrome executable path with comprehensive validation
+   * Now uses cached result to avoid re-validation
    */
   public findChromePath(customPath?: string): string | undefined {
+    // Return cached path if available and no custom path requested
+    if (!customPath && this.validatedChromePath) {
+      return this.validatedChromePath;
+    }
+
     // If custom path is provided, validate it first
     if (customPath) {
       const result = this.validateChrome(customPath);
       if (result.isValid) {
+        this.validatedChromePath = customPath; // Cache the result
         return customPath;
       } else {
         botLogger.warn(`Custom Chrome path invalid: ${customPath}`);
@@ -173,6 +181,7 @@ export class PuppeteerConfigManager {
           const altResult = this.validateChrome(altPath);
           if (altResult.isValid) {
             botLogger.info(`Using alternative Chrome path: ${altPath}`);
+            this.validatedChromePath = altPath; // Cache the result
             return altPath;
           }
         }
@@ -185,6 +194,7 @@ export class PuppeteerConfigManager {
     for (const chromePath of defaultPaths) {
       const result = this.validateChrome(chromePath);
       if (result.isValid) {
+        this.validatedChromePath = chromePath; // Cache the result
         return chromePath;
       }
     }
@@ -330,6 +340,7 @@ export class PuppeteerConfigManager {
       headless = true,
     } = options || {};
 
+    // Use cached Chrome path or find/validate new one
     const chromePath = this.findChromePath(customChromePath);
     const osArgs = this.getOSSpecificArgs();
     const envArgs = this.getEnvironmentArgs(isProduction);
@@ -344,17 +355,19 @@ export class PuppeteerConfigManager {
     if (chromePath) {
       config.executablePath = chromePath;
     } else {
-      console.warn("Using system default Chrome (may cause issues if not installed)");
+      botLogger.warn("Using system default Chrome (may cause issues if not installed)");
     }
 
-    // Log the configuration for debugging
-    botLogger.info(`Puppeteer config for ${this.currentOS}:`);
-    botLogger.info(`  - Chrome path: ${chromePath || "system default"}`);
-    botLogger.info(`  - Headless: ${headless}`);
-    botLogger.info(`  - Args count: ${config.args.length}`);
-    
-    if (process.env.NODE_ENV === "development") {
-      botLogger.info(`  - Full args: ${config.args.join(" ")}`);
+    // Only log configuration details in development or when debugging
+    if (process.env.NODE_ENV === "development" || process.env.DEBUG) {
+      botLogger.info(`Puppeteer config for ${this.currentOS}:`);
+      botLogger.info(`  - Chrome path: ${chromePath || "system default"}`);
+      botLogger.info(`  - Headless: ${headless}`);
+      botLogger.info(`  - Args count: ${config.args.length}`);
+      
+      if (process.env.NODE_ENV === "development") {
+        botLogger.info(`  - Full args: ${config.args.join(" ")}`);
+      }
     }
 
     return config;
@@ -372,7 +385,6 @@ export class PuppeteerConfigManager {
   } {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
-    const usedMem = totalMem - freeMem;
 
     return {
       platform: this.currentOS,
@@ -412,8 +424,8 @@ export class PuppeteerConfigManager {
     // Check disk space (where temp files are stored)
     const tmpDir = os.tmpdir();
     try {
-      const stats = fs.statSync(tmpDir);
-      // This is a basic check - you might want to use a library like 'fs-extra' for better disk space checking
+      fs.accessSync(tmpDir, fs.constants.F_OK | fs.constants.W_OK);
+      // Temp directory is accessible and writable
     } catch (error) {
       issues.push("Cannot access temporary directory");
       recommendations.push("Ensure temp directory is accessible and writable");
