@@ -113,6 +113,93 @@ export class BotStatusController {
     }
   }
 
+  // GET /api/bots/:id/qr-code/image - Get QR code image (returns raw PNG)
+  public async getBotQRCodeImage(req: Request, res: Response): Promise<void> {
+    try {
+      const botId = req.params.id;
+
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required in URL path" });
+        return;
+      }
+
+      // Validate bot exists in configuration
+      const botConfig = this.configService.getBotById(botId);
+      if (!botConfig) {
+        res.status(404).json({
+          error: "Bot not found",
+          botId: botId,
+        });
+        return;
+      }
+
+      // Get QR code buffer from data directory
+      const { buffer, status } = this.qrCodeService.getQRCodeBuffer(botId);
+
+      if (!buffer || !status.available) {
+        res.status(404).json({
+          error: "QR code not available",
+          botId: botId,
+          status: status,
+        });
+        return;
+      }
+
+      // Set appropriate headers for PNG image
+      res.set("Content-Type", "image/png");
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+      res.set("Content-Disposition", `inline; filename="qr-${botId}.png"`);
+
+      res.status(200).send(buffer);
+    } catch (error) {
+      console.error("Error getting bot QR code image:", error);
+      res.status(500).json({
+        error: "Failed to get QR code image",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  // GET /api/bots/:id/qr-code/status - Get QR code status (returns JSON)
+  public async getBotQRCodeStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const botId = req.params.id;
+
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required in URL path" });
+        return;
+      }
+
+      // Validate bot exists in configuration
+      const botConfig = this.configService.getBotById(botId);
+      if (!botConfig) {
+        res.status(404).json({
+          error: "Bot not found",
+          botId: botId,
+        });
+        return;
+      }
+
+      // Get QR code status from data directory
+      const status = this.qrCodeService.getQRCodeStatus(botId);
+
+      res.json({
+        botId: botId,
+        botName: botConfig.name,
+        qrCode: status,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error getting bot QR code status:", error);
+      res.status(500).json({
+        error: "Failed to get QR code status",
+        details: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
   // GET /api/bots/:id/status - Get bot status using route parameter
   public async getBotStatusById(req: Request, res: Response): Promise<void> {
     try {

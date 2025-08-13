@@ -6,6 +6,7 @@
  */
 
 import { botLogger } from "./loggerWrapper";
+import { logWhatsAppOperation } from "./pm2Utils";
 import { EnvironmentManager } from "../config/EnvironmentManager";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
 import { DirectoryManagerService } from "../services/DirectoryManagerService";
@@ -115,7 +116,7 @@ export async function initializeStartup(): Promise<boolean> {
     // Step 3: Create directories
     createStartupDirectories();
 
-    botLogger.success("✅ All pre-flight checks passed. Ready to start bot.");
+    botLogger.success("All pre-flight checks passed. Ready to start bot.");
     return true;
   } catch (error) {
     botLogger.error(`Startup failed: ${error}`);

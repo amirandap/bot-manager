@@ -3,70 +3,22 @@
  * Centralized functions for browser/Chrome management
  */
 
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
-import { execSync } from "child_process";
 import { botLogger } from "./loggerWrapper";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
-import { 
-  STARTUP_STEPS,
-  handleStep
-} from "./pm2Utils";
 
 /**
  * Validate Chrome installation and environment
+ * Note: This function is deprecated - Chrome validation is now done in PuppeteerConfig
  */
 export async function validateBrowserEnvironment(): Promise<boolean> {
   try {
-    botLogger.startupHeader("🔍 CHROME EXECUTABLE VALIDATION");
-
-    const result = puppeteerConfig.validate();
-
-    if (!result.isValid) {
-      botLogger.error("Chrome validation failed:");
-      result.logs.forEach(log => {
-        if (log.includes("❌")) {
-          botLogger.error(`   ${log}`);
-        } else if (log.includes("⚠️")) {
-          botLogger.warn(`   ${log}`);
-        } else {
-          botLogger.info(`   ${log}`);
-        }
-      });
-
-      const error = new Error("Chrome executable validation failed");
-      handleStep('VALIDATION', 'fail', {
-        error,
-        details: { 
-          chrome_validation: false,
-          chrome_issues: result.logs.filter(log => log.includes("❌"))
-        }
-      });
-      
-      return false;
-    }
-
-    // Log success details
-    result.logs.forEach(log => {
-      if (log.includes("✅")) {
-        botLogger.success(`   ${log}`);
-      } else {
-        botLogger.info(`   ${log}`);
-      }
-    });
-
-    botLogger.success("Chrome validation completed successfully");
+    // This validation is now handled by PuppeteerConfig in startup
+    // Keeping this function for compatibility but it's no longer used
+    botLogger.info("Browser environment validation (legacy method - now handled by PuppeteerConfig)");
     return true;
 
   } catch (error) {
     botLogger.error(`Chrome validation error: ${error}`);
-    handleStep('VALIDATION', 'fail', {
-      error: error as Error,
-      details: { 
-        chrome_validation_error: true 
-      }
-    });
     return false;
   }
 }
@@ -130,7 +82,7 @@ export function getSystemInfo(): void {
     const systemInfo = puppeteerConfig.getSystemInfo();
     
     botLogger.info("System Information:", "💻");
-    botLogger.info(`   Platform: ${systemInfo.platform} ${systemInfo.arch}`, "💻");
+    botLogger.info(`   Platform: ${systemInfo.platform} ${systemInfo.arch}`);
     botLogger.info(`   Node.js: ${systemInfo.nodeVersion}`, "💚");
     botLogger.info(`   Memory: ${systemInfo.availableMemory}`, "🧠");
     

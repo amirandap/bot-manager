@@ -21,7 +21,7 @@ const JSON_FALLBACK_CONFIG = {
 interface BotStatusEntry {
   timestamp: string;
   type: 'metric' | 'failure' | 'shutdown';
-  data: any;
+  data: Record<string, unknown>;
 }
 
 interface BotStatusFile {
@@ -240,7 +240,7 @@ export function alertPM2Failure(
   } else {
     // Fallback to JSON file
     updateJsonFallback('failure', failureData);
-    botLogger.error(`🚨 CRITICAL FAILURE [${context}]: ${error.message}`);
+    botLogger.error(`🚨 CRITICAL FAILURE [${context}]: ${error.message.split('\n')[0]}`);
   }
 }
 
@@ -520,7 +520,7 @@ export function handleStep(
       botLogger.info(`⏳ [${stepNumber}/${totalSteps}] ${defaultMessage}`, "🔄");
       break;
     case 'complete':
-      botLogger.success(`✅ [${stepNumber}/${totalSteps}] ${defaultMessage}`);
+      botLogger.success(`[${stepNumber}/${totalSteps}] ${defaultMessage}`);
       break;
     case 'fail':
       botLogger.error(`❌ [${stepNumber}/${totalSteps}] ${defaultMessage}`);
@@ -566,7 +566,7 @@ export function progressStep(step: keyof typeof STARTUP_STEPS, message?: string)
   handleStep(step, 'progress', { message });
 }
 
-export function completeStep(step: keyof typeof STARTUP_STEPS, message?: string, details?: any): void {
+export function completeStep(step: keyof typeof STARTUP_STEPS, message?: string, details?: Record<string, unknown>): void {
   handleStep(step, 'complete', { message, details });
 }
 
@@ -582,4 +582,46 @@ export function failStep(
     shouldRestart, 
     details 
   });
+}
+
+/**
+ * Centralized logging function for WhatsApp operations
+ * All WhatsApp state changes should go through this
+ */
+export function logWhatsAppOperation(
+  operation: string,
+  status: 'start' | 'progress' | 'success' | 'error' | 'warning',
+  message: string,
+  details?: Record<string, unknown>,
+  error?: Error
+): void {
+  switch (status) {
+    case 'start':
+      botLogger.info(`🚀 ${operation}: ${message}`, "🤖");
+      break;
+    case 'progress':
+      botLogger.info(`⏳ ${operation}: ${message}`, "🔄");
+      break;
+    case 'success':
+      botLogger.success(`${operation}: ${message}`);
+      break;
+    case 'error':
+      botLogger.error(`${operation}: ${message}`);
+      if (error) {
+        botLogger.error(`   Error details: ${error.message}`);
+      }
+      break;
+    case 'warning':
+      botLogger.warn(`${operation}: ${message}`);
+      break;
+  }
+
+  // Update PM2 metrics for tracking
+  if (details) {
+    updatePM2Metrics(operation.toLowerCase().replace(/\s+/g, '_'), 
+                     status === 'success' ? 'success' : status === 'error' ? 'failure' : 'in_progress',
+                     message, 
+                     details.progress as number, 
+                     details);
+  }
 }

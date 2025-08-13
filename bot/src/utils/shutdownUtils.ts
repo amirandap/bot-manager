@@ -10,7 +10,7 @@ import {
 } from "./whatsAppUtils";
 import { shutdownAPIServer } from "./apiUtils";
 import { notifyPM2Shutdown, alertPM2Failure } from "./pm2Utils";
-import { botLogger } from "./loggerWrapper";
+import { logWhatsAppOperation } from "./pm2Utils";
 
 // Global state flag - ideally this should be managed by a ShutdownService
 let isShuttingDown = false;
@@ -38,14 +38,14 @@ export async function gracefulShutdown(
   error?: Error
 ): Promise<void> {
   if (isShuttingDown) {
-    botLogger.warn("Shutdown already in progress");
+    logWhatsAppOperation('shutdown', 'warning', 'Shutdown already in progress', { signal });
     return;
   }
 
   setShutdownStatus(true);
 
   try {
-    botLogger.info(`🛑 Initiating graceful shutdown${signal ? ` (${signal})` : ''}...`);
+    logWhatsAppOperation('shutdown', 'start', `Initiating graceful shutdown${signal ? ` (${signal})` : ''}...`, { signal });
     
     // Shutdown API server
     await shutdownAPIServer();
@@ -53,15 +53,21 @@ export async function gracefulShutdown(
     // Shutdown WhatsApp client
     await shutdownWhatsAppClient();
     
-    // Clean up QR code
-    cleanupQRCodeAfterConnection();
+    // Clean up QR code only if it makes sense (not during early startup failures)
+    if (!error || signal) {
+      // Normal shutdown or signal-based shutdown - safe to cleanup QR
+      cleanupQRCodeAfterConnection();
+    } else {
+      // Error-based shutdown - only cleanup if WhatsApp was actually initialized
+      logWhatsAppOperation('shutdown', 'warning', 'Skipping QR cleanup due to early startup failure', { signal, error });
+    }
     
     // Notify PM2 about shutdown
     notifyPM2Shutdown(signal, error, error ? 'error_triggered' : 'manual');
     
-    botLogger.success("✅ Graceful shutdown completed");
+    logWhatsAppOperation('shutdown', 'success', 'Graceful shutdown completed', { signal });
   } catch (shutdownError) {
-    botLogger.error(`❌ Error during shutdown: ${shutdownError}`);
+    logWhatsAppOperation('shutdown', 'error', `Error during shutdown: ${shutdownError}`, { signal, shutdownError });
     alertPM2Failure(shutdownError as Error, 'shutdown');
   }
 }
@@ -80,5 +86,5 @@ export function setupShutdownHandlers(
   process.on("SIGINT", () => handleShutdown("SIGINT"));
   process.on("SIGTERM", () => handleShutdown("SIGTERM"));
   
-  botLogger.info("Shutdown handlers configured for SIGINT and SIGTERM");
+  logWhatsAppOperation('shutdown', 'success', 'Shutdown handlers configured for SIGINT and SIGTERM', {});
 }
