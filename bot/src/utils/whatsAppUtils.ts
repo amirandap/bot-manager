@@ -8,7 +8,7 @@ import { Client, LocalAuth } from "whatsapp-web.js";
 import * as QRCode from "qrcode";
 import * as path from "path";
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
-import { updatePM2Metrics, logWhatsAppOperation } from "./pm2Utils";
+import { logPM2Event, setShutdownContext } from "./pm2Utils_unified";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
 import { QR_PATH } from "../config/EnvironmentManager";
 import { DirectoryManagerService } from "../services/DirectoryManagerService";
@@ -24,37 +24,26 @@ let qrCodePath: string | null = null;
 
 /**
  * Update WhatsApp state with proper logging
+ * OPTIMIZED - Delegates to PM2 centralized logging with context awareness
  */
 export const updateWhatsAppState = (state: BotLifecycleState, info: string = ""): void => {
   currentState = state;
   
-  const isError = state === BotLifecycleState.ERROR_CONNECTION || state === BotLifecycleState.ERROR_AUTHENTICATION || state === BotLifecycleState.ERROR_VALIDATION;
-  const status = isError ? 'failure' : 'success';
-  const message = `Estado: ${state}${info ? ` - ${info}` : ''}`;
-  
-  updatePM2Metrics('whatsapp_state', status, message, undefined, { state, info });
-  
-  if (isError) {
-    logWhatsAppOperation('updateState', 'error', message, { state, info });
-  } else {
-    logWhatsAppOperation('updateState', 'success', message, { state, info });
-  }
+  // Log state change via PM2
+  logPM2Event('whatsapp', 'info', `WhatsApp state: ${state} - ${info}`, { state, info });
 };
 
 /**
  * Initialize QR code system (internal function)
  */
-function initializeQRCodePath(botId: string): void {
+export async function initializeQRCodePath(botId: string): Promise<string> {
   try {
-    // Use DirectoryManagerService to ensure QR directory exists
-    const directoryManager = new DirectoryManagerService();
-    directoryManager.createDirectoryIfNotExists(QR_PATH);
-    
-    qrCodePath = path.join(QR_PATH, `${botId}.png`);
-    logWhatsAppOperation('initQRPath', 'success', `QR code path initialized: ${qrCodePath}`, { qrCodePath, botId });
+    qrCodePath = path.join(QR_PATH, `qr-code-${botId}.png`);
+    logPM2Event('startup', 'info', `QR code path initialized: ${qrCodePath}`, { qrCodePath, botId });
+    return qrCodePath;
   } catch (error) {
-    logWhatsAppOperation('initQRPath', 'error', `Failed to initialize QR code path: ${error}`, { botId, error });
-    throw new Error(`QR code path initialization failed: ${error}`);
+    logPM2Event('startup', 'error', `Failed to initialize QR code path: ${error}`, { botId, error });
+    throw error;
   }
 }
 
@@ -67,22 +56,22 @@ async function handleQRGenerated(qr: string): Promise<void> {
   }
 
   try {
-    logWhatsAppOperation('generateQR', 'progress', 'Processing QR code generation...', { qrCodePath });
+    logPM2Event('whatsapp', 'info', 'Processing QR code generation...', { qrCodePath });
     currentQRCode = qr;
     
     await saveQRCode(qr);
     
     // Update PM2 with QR code ready status
-    updatePM2Metrics('qr_code_ready', 'success', 'QR code generated and ready for scanning', 60, {
+    logPM2Event('whatsapp', 'info', 'QR code generated and ready for scanning', {
       qr_available: true,
       qr_file_path: qrCodePath
     });
 
-    logWhatsAppOperation('generateQR', 'success', `QR Code saved to: ${qrCodePath}`, { qrCodePath });
+    logPM2Event('whatsapp', 'success', `QR Code saved to: ${qrCodePath}`, { qrCodePath });
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logWhatsAppOperation('generateQR', 'error', `Error handling QR code: ${errorMessage}`, { qrCodePath, error });
+    logPM2Event('whatsapp', 'error', `Error handling QR code: ${errorMessage}`, { qrCodePath, error });
     throw new Error(`QR code handling failed: ${errorMessage}`);
   }
 }
@@ -97,9 +86,9 @@ async function saveQRCode(qr: string): Promise<void> {
 
   try {
     await QRCode.toFile(qrCodePath, qr);
-    logWhatsAppOperation('saveQR', 'success', `QR code saved to: ${qrCodePath}`, { qrCodePath });
+    logPM2Event('whatsapp', 'success', `QR code saved to: ${qrCodePath}`, { qrCodePath });
   } catch (error) {
-    logWhatsAppOperation('saveQR', 'error', `Failed to save QR code: ${error}`, { qrCodePath, error });
+    logPM2Event('whatsapp', 'error', `Failed to save QR code: ${error}`, { qrCodePath, error });
     throw error;
   }
 }
@@ -113,10 +102,10 @@ function cleanupQRCode(): void {
       const fs = require("fs");
       if (fs.existsSync(qrCodePath)) {
         fs.unlinkSync(qrCodePath);
-        logWhatsAppOperation('cleanupQR', 'success', 'QR code file cleaned up', { qrCodePath });
+        logPM2Event('whatsapp', 'success', 'QR code file cleaned up', { qrCodePath });
       }
     } catch (error) {
-      logWhatsAppOperation('cleanupQR', 'warning', `Failed to cleanup QR code: ${error}`, { qrCodePath, error });
+      logPM2Event('whatsapp', 'error', `Failed to cleanup QR code: ${error}`, { qrCodePath, error });
     }
   }
   currentQRCode = null;
@@ -131,12 +120,12 @@ export async function initializeWhatsAppClient(
   onQRGenerated?: (qr: string) => Promise<void>
 ): Promise<Client> {
   if (whatsappClient && currentState !== BotLifecycleState.INITIALIZING) {
-    logWhatsAppOperation('initClient', 'warning', 'WhatsApp client already initialized or initialization in progress', { currentState });
+    logPM2Event('whatsapp', 'info', 'WhatsApp client already initialized or initialization in progress', { currentState });
     return whatsappClient;
   }
 
   try {
-    logWhatsAppOperation('initClient', 'start', 'WHATSAPP CLIENT INITIALIZATION', { botId: config.BOT_ID });
+    logPM2Event('whatsapp', 'info', 'WHATSAPP CLIENT INITIALIZATION', { botId: config.BOT_ID });
     updateWhatsAppState(BotLifecycleState.BROWSER_LAUNCHING, "Starting WhatsApp Web browser");
 
     // Initialize QR code path internally
@@ -146,7 +135,7 @@ export async function initializeWhatsAppClient(
     const puppeteerOptions = puppeteerConfig.getConfiguration();
     
     // Log Puppeteer configuration details (Chrome path already shown in startup)
-    logWhatsAppOperation('initClient', 'progress', `Puppeteer config for ${process.platform}`, {
+    logPM2Event('whatsapp', 'info', `Puppeteer config for ${process.platform}`, {
       platform: process.platform,
       headless: puppeteerOptions.headless,
       argsCount: puppeteerOptions.args.length
@@ -175,7 +164,7 @@ export async function initializeWhatsAppClient(
           await onQRGenerated(qr);
         }
       } catch (error) {
-        logWhatsAppOperation('qrGeneration', 'error', `QR generation error: ${error}`, { error });
+        logPM2Event('whatsapp', 'error', `QR generation error: ${error}`, { error });
         updateWhatsAppState(BotLifecycleState.ERROR_CONNECTION, `QR Code generation failed: ${error}`);
       }
     });
@@ -198,10 +187,10 @@ export async function initializeWhatsAppClient(
         const clientInfo = whatsappClient!.info;
         if (clientInfo) {
           const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(clientInfo.wid.user);
-          logWhatsAppOperation('clientReady', 'success', `WhatsApp connected as: ${cleanedPhoneNumber}`, { phoneNumber: cleanedPhoneNumber });
+          logPM2Event('whatsapp', 'success', `WhatsApp connected as: ${cleanedPhoneNumber}`, { phoneNumber: cleanedPhoneNumber });
         }
       } catch (error) {
-        logWhatsAppOperation('clientReady', 'warning', `Could not get client info: ${error}`, { error });
+        logPM2Event('whatsapp', 'info', `Could not get client info: ${error}`, { error });
       }
     });
 
@@ -232,16 +221,16 @@ export async function initializeWhatsAppClient(
 
 /**
  * Shutdown WhatsApp client
+ * ULTRA-OPTIMIZED - Silent shutdown, orchestrator handles all logging
  */
 export async function shutdownWhatsAppClient(): Promise<void> {
   if (!whatsappClient) {
-    logWhatsAppOperation('shutdown', 'warning', 'WhatsApp client not initialized, nothing to shutdown', {});
-    return;
+    return; // Silent return
   }
 
   try {
-    logWhatsAppOperation('shutdown', 'start', 'Shutting down WhatsApp client...', {});
-    updateWhatsAppState(BotLifecycleState.DISCONNECTED, "Shutting down WhatsApp client");
+    // Silent state update - no logging during shutdown
+    currentState = BotLifecycleState.DISCONNECTED;
     
     // Check if client has a destroy method and is not null
     if (whatsappClient && typeof whatsappClient.destroy === 'function') {
@@ -250,20 +239,17 @@ export async function shutdownWhatsAppClient(): Promise<void> {
       } catch (destroyError) {
         // Handle specific whatsapp-web.js internal errors
         const errorMessage = destroyError instanceof Error ? destroyError.message : String(destroyError);
-        if (errorMessage.includes("Cannot read properties of null") && errorMessage.includes("close")) {
-          logWhatsAppOperation('shutdown', 'warning', 'WhatsApp client browser was already closed or not properly initialized', { error: errorMessage });
-        } else {
-          logWhatsAppOperation('shutdown', 'error', `Error during WhatsApp client destroy: ${errorMessage}`, { error: destroyError });
+        if (!errorMessage.includes("Cannot read properties of null") && !errorMessage.includes("close")) {
+          // Only log unexpected errors
+          logPM2Event('shutdown', 'error', `Error during WhatsApp client destroy: ${errorMessage}`, { error: destroyError });
         }
       }
     }
     
     whatsappClient = null;
-    currentState = BotLifecycleState.DISCONNECTED;
     
-    logWhatsAppOperation('shutdown', 'success', 'WhatsApp client shutdown completed', {});
   } catch (error) {
-    logWhatsAppOperation('shutdown', 'error', `Error during WhatsApp client shutdown: ${error}`, { error });
+    logPM2Event('shutdown', 'error', `Error during WhatsApp client shutdown: ${error}`, { error });
     whatsappClient = null;
     currentState = BotLifecycleState.ERROR_CONNECTION;
   }
@@ -323,14 +309,12 @@ export function getQRStatus() {
 
 /**
  * Clean up QR code (public export for shutdown procedures)
- * Only cleans if QR was actually generated
+ * ULTRA-OPTIMIZED - Silent cleanup during shutdown
  */
 export function cleanupQRCodeAfterConnection(): void {
   // Only cleanup if QR code was actually generated and saved
   if (currentQRCode && qrCodePath) {
-    logWhatsAppOperation('cleanup', 'progress', 'Cleaning up QR code after connection...', { qrCodePath });
-    cleanupQRCode();
-  } else {
-    logWhatsAppOperation('cleanup', 'success', 'No QR code to cleanup - was never generated or saved', {});
+    cleanupQRCode(); // Silent cleanup - no logging
   }
+  // No logging during shutdown - orchestrator handles all logging
 }

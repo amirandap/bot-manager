@@ -9,8 +9,7 @@ import {
   cleanupQRCodeAfterConnection
 } from "./whatsAppUtils";
 import { shutdownAPIServer } from "./apiUtils";
-import { notifyPM2Shutdown, alertPM2Failure } from "./pm2Utils";
-import { logWhatsAppOperation } from "./pm2Utils";
+import { notifyPM2Shutdown, alertPM2Failure, logPM2Event, setShutdownContext } from "./pm2Utils_unified";
 
 // Global state flag - ideally this should be managed by a ShutdownService
 let isShuttingDown = false;
@@ -32,43 +31,47 @@ export function setShutdownStatus(status: boolean): void {
 /**
  * Graceful shutdown utility
  * Orchestrates the shutdown process of all system components
+ * OPTIMIZED - PM2 context-aware logging to minimize shutdown logs
  */
 export async function gracefulShutdown(
   signal?: string, 
   error?: Error
 ): Promise<void> {
   if (isShuttingDown) {
-    logWhatsAppOperation('shutdown', 'warning', 'Shutdown already in progress', { signal });
+    logPM2Event('shutdown', 'info', 'Shutdown ya en progreso', { signal });
     return;
   }
 
   setShutdownStatus(true);
+  
+  // Set shutdown context in PM2 for intelligent logging
+  setShutdownContext(true);
 
   try {
-    logWhatsAppOperation('shutdown', 'start', `Initiating graceful shutdown${signal ? ` (${signal})` : ''}...`, { signal });
+    logPM2Event('shutdown', 'info', `Iniciando shutdown graceful${signal ? ` (${signal})` : ''}...`, { signal });
     
-    // Shutdown API server
+    // Shutdown API server (silent)
     await shutdownAPIServer();
     
-    // Shutdown WhatsApp client
+    // Shutdown WhatsApp client (now context-aware)
     await shutdownWhatsAppClient();
     
     // Clean up QR code only if it makes sense (not during early startup failures)
     if (!error || signal) {
       // Normal shutdown or signal-based shutdown - safe to cleanup QR
       cleanupQRCodeAfterConnection();
-    } else {
-      // Error-based shutdown - only cleanup if WhatsApp was actually initialized
-      logWhatsAppOperation('shutdown', 'warning', 'Skipping QR cleanup due to early startup failure', { signal, error });
     }
     
     // Notify PM2 about shutdown
     notifyPM2Shutdown(signal, error, error ? 'error_triggered' : 'manual');
     
-    logWhatsAppOperation('shutdown', 'success', 'Graceful shutdown completed', { signal });
+    logPM2Event('shutdown', 'success', 'Shutdown graceful completado', { signal });
   } catch (shutdownError) {
-    logWhatsAppOperation('shutdown', 'error', `Error during shutdown: ${shutdownError}`, { signal, shutdownError });
+    logPM2Event('shutdown', 'error', `Error durante shutdown: ${shutdownError}`, { signal, shutdownError });
     alertPM2Failure(shutdownError as Error, 'shutdown');
+  } finally {
+    // Reset shutdown context
+    setShutdownContext(false);
   }
 }
 
@@ -86,5 +89,5 @@ export function setupShutdownHandlers(
   process.on("SIGINT", () => handleShutdown("SIGINT"));
   process.on("SIGTERM", () => handleShutdown("SIGTERM"));
   
-  logWhatsAppOperation('shutdown', 'success', 'Shutdown handlers configured for SIGINT and SIGTERM', {});
+  logPM2Event('shutdown', 'info', 'Handlers de shutdown configurados para SIGINT y SIGTERM');
 }
