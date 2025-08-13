@@ -1,4 +1,7 @@
 1. Verifica el cleanandformatphone number para validar si realmente tiene que ser tan complicado
 
 
-actualiza las instrucciones de copilot como sea necesario, pq veo que en un prompt creas un archivo, en otro prompt borras ese archivo, creo que esta migracion va en un aspecto circular, y no estas recordando la metodologia y arquitectura que vamos usando para reutilizar las cosas que ya hemos creados, y asegurar la migracion sea complete, quizas aparte de las isntrucciones de copilot, crear un folder de documentacion, que haga referencia
+Documenta las rutas ahora de como enviar y acceder a las funciones mediante el api
+npm run lint
+validar que botlogger no se usa y eliminar
+validar que pm2 util es el unico que hace logs

@@ -1,29 +1,29 @@
 {
   "process_info": {
-    "pid": 88299,
-    "started_at": "2025-08-13T19:59:21.964Z",
+    "pid": 5705,
+    "started_at": "2025-08-13T20:27:37.876Z",
     "running_with_pm2": false,
     "node_version": "v22.11.0",
     "working_directory": "/Users/amiranda/Github/bot-manager-amp/bot"
   },
   "current_status": {
     "overall_status": "starting",
-    "current_step": "initclient",
+    "current_step": "initClient",
     "progress_percentage": 0,
-    "last_update": "2025-08-13T19:59:21.967Z",
+    "last_update": "2025-08-13T20:27:37.878Z",
     "bot_ready": false,
     "api_ready": false,
     "whatsapp_connected": false
   },
   "metrics_history": [
     {
-      "timestamp": "2025-08-13T19:59:21.965Z",
+      "timestamp": "2025-08-13T20:27:37.876Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-13T19:59:21.964Z",
+          "timestamp": "2025-08-13T20:27:37.875Z",
           "message": "Validating environment and dependencies",
           "progress": 0,
           "details": {
@@ -39,13 +39,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.966Z",
+      "timestamp": "2025-08-13T20:27:37.877Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-13T19:59:21.966Z",
+          "timestamp": "2025-08-13T20:27:37.877Z",
           "message": "Environment validation completed successfully",
           "progress": 17,
           "details": {
@@ -61,13 +61,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.966Z",
+      "timestamp": "2025-08-13T20:27:37.878Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-13T19:59:21.966Z",
+          "timestamp": "2025-08-13T20:27:37.878Z",
           "message": "Initializing WhatsApp client and QR system",
           "progress": 17,
           "details": {
@@ -83,31 +83,31 @@
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.966Z",
+      "timestamp": "2025-08-13T20:27:37.878Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "initclient",
-          "status": "in_progress",
-          "timestamp": "2025-08-13T19:59:21.966Z",
+          "step": "initClient",
+          "status": "success",
+          "timestamp": "2025-08-13T20:27:37.878Z",
           "message": "WHATSAPP CLIENT INITIALIZATION",
           "details": {
             "botId": "whatsapp-bot-1"
           }
         },
-        "current_step": "initclient",
-        "overall_status": "in_progress",
+        "current_step": "initClient",
+        "overall_status": "success",
         "progress_percentage": 0
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.966Z",
+      "timestamp": "2025-08-13T20:27:37.878Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_state",
           "status": "success",
-          "timestamp": "2025-08-13T19:59:21.966Z",
+          "timestamp": "2025-08-13T20:27:37.878Z",
           "message": "Estado: browser_launching - Starting WhatsApp Web browser",
           "details": {
             "state": "browser_launching",
@@ -120,51 +120,32 @@
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.966Z",
+      "timestamp": "2025-08-13T20:27:37.878Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "updatestate",
+          "step": "initQRPath",
           "status": "success",
-          "timestamp": "2025-08-13T19:59:21.966Z",
-          "message": "Estado: browser_launching - Starting WhatsApp Web browser",
-          "details": {
-            "state": "browser_launching",
-            "info": "Starting WhatsApp Web browser"
-          }
-        },
-        "current_step": "updatestate",
-        "overall_status": "success",
-        "progress_percentage": 0
-      }
-    },
-    {
-      "timestamp": "2025-08-13T19:59:21.967Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "initqrpath",
-          "status": "success",
-          "timestamp": "2025-08-13T19:59:21.967Z",
+          "timestamp": "2025-08-13T20:27:37.878Z",
           "message": "QR code path initialized: /Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png",
           "details": {
             "qrCodePath": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png",
             "botId": "whatsapp-bot-1"
           }
         },
-        "current_step": "initqrpath",
+        "current_step": "initQRPath",
         "overall_status": "success",
         "progress_percentage": 0
       }
     },
     {
-      "timestamp": "2025-08-13T19:59:21.967Z",
+      "timestamp": "2025-08-13T20:27:37.878Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "initclient",
-          "status": "in_progress",
-          "timestamp": "2025-08-13T19:59:21.967Z",
+          "step": "initClient",
+          "status": "success",
+          "timestamp": "2025-08-13T20:27:37.878Z",
           "message": "Puppeteer config for darwin",
           "details": {
             "platform": "darwin",
@@ -172,8 +153,8 @@
             "argsCount": 17
           }
         },
-        "current_step": "initclient",
-        "overall_status": "in_progress",
+        "current_step": "initClient",
+        "overall_status": "success",
         "progress_percentage": 0
       }
     }

@@ -1,10 +1,16 @@
-// Simplified WhatsApp Bot Starter - Refactored with Utility Functions
+// Simplified WhatsApp Bot Starter - Refactored with unified logging system
 import { 
-  alertPM2Failure, 
-  markStartupComplete,
-  // Master step handler function
-  handleStep
-} from "./utils/pm2Utils";
+  alertPM2Failure,
+  logPM2Event
+} from "./utils/pm2Utils_unified";
+
+// Nuevo sistema unificado de logging y métricas
+import {
+  logEvent,
+  reportFailure,
+  markComponentReady,
+  getAllComponentsStatus
+} from "./utils/unifiedLogger";
 
 // Import startup utilities instead of StartupManager service
 import {
@@ -40,22 +46,23 @@ async function startBot(): Promise<void> {
   try {
     // Step 1: Startup validation (Environment, Chrome, Directories) - CONSOLIDATED
     botLogger.startupHeader("🔍 STARTUP VALIDATION");
-    handleStep('VALIDATION', 'progress', { message: "Validating environment and dependencies" });
+    logEvent('startup', 'info', "Iniciando validación de entorno y dependencias");
     
     // Single comprehensive startup validation (includes Chrome, directories, env vars)
     const startupSuccess = await initializeStartup();
     if (!startupSuccess) {
       const error = new Error("Startup validation failed - check Chrome installation and environment variables");
-      handleStep('VALIDATION', 'fail', { error, shouldRestart: false });
+      logEvent('startup', 'error', "Falló la validación de startup - verificar instalación de Chrome y variables de entorno");
+      reportFailure(error, 'startup', true);
       throw error;
     }
 
-    handleStep('VALIDATION', 'complete', { message: "Environment validation completed successfully" });
+    markComponentReady('startup', "Validación de entorno completada exitosamente");
 
     const config = getStartupConfig();
     
     // Step 2: Initialize WhatsApp client (includes QR code management)
-    handleStep('WHATSAPP_CLIENT', 'progress', { message: "Initializing WhatsApp client and QR system" });
+    logPM2Event('whatsapp', 'info', "Inicializando cliente WhatsApp y sistema QR");
     
     // Show system information
     getSystemInfo();
@@ -63,10 +70,10 @@ async function startBot(): Promise<void> {
     // Initialize WhatsApp client with QR callback (QR is now handled internally)
     await initializeWhatsAppClient(config);
     
-    handleStep('WHATSAPP_CLIENT', 'complete', { message: "WhatsApp client initialized successfully" });
+    logPM2Event('whatsapp', 'success', "Cliente WhatsApp inicializado exitosamente");
     
     // Step 3: Check for critical initialization errors
-    handleStep('ERROR_CHECK', 'progress', { message: "Validating WhatsApp initialization status" });
+    logPM2Event('validation', 'info', "Validando estado de inicialización de WhatsApp");
     
     const whatsappStatus = getWhatsAppStatus();
     
@@ -74,37 +81,31 @@ async function startBot(): Promise<void> {
     if (!whatsappStatus.isReady && !whatsappStatus.hasClient) {
       // Critical errors prevent successful startup
       const error = new Error(`Critical WhatsApp initialization failed: State ${whatsappStatus.state}`);
-      handleStep('ERROR_CHECK', 'fail', { 
-        error, 
-        shouldRestart: false, 
-        details: { 
-          lifecycle_state: whatsappStatus.state,
-          error_type: 'critical',
-          can_proceed: false 
-        }
+      logPM2Event('whatsapp', 'error', `Falló inicialización crítica de WhatsApp: Estado ${whatsappStatus.state}`, {
+        lifecycle_state: whatsappStatus.state,
+        error_type: 'critical',
+        can_proceed: false 
       });
+      alertPM2Failure(error, 'whatsapp_critical', false);
       throw error;
     } else if (whatsappStatus.hasClient && !whatsappStatus.isReady) {
       // Recoverable errors - log warning but allow startup to continue
       botLogger.warn(`⚠️ WhatsApp started with recoverable error: State ${whatsappStatus.state}`);
-      handleStep('ERROR_CHECK', 'complete', { 
-        message: `WhatsApp started with recoverable error: ${whatsappStatus.state}`, 
-        details: { 
-          lifecycle_state: whatsappStatus.state,
-          error_type: 'recoverable',
-          can_proceed: true 
-        }
+      logPM2Event('whatsapp', 'warning', `WhatsApp iniciado con error recuperable: ${whatsappStatus.state}`, {
+        lifecycle_state: whatsappStatus.state,
+        error_type: 'recoverable',
+        can_proceed: true 
       });
     } else if (whatsappStatus.isReady) {
       // Fully operational
-      handleStep('ERROR_CHECK', 'complete', { message: "WhatsApp initialization completed successfully" });
+      logPM2Event('whatsapp', 'success', "Inicialización de WhatsApp completada exitosamente");
     } else {
       // WhatsApp is in progress, not yet ready
-      handleStep('ERROR_CHECK', 'complete', { message: "WhatsApp initialization in progress, no critical errors detected" });
+      logPM2Event('whatsapp', 'info', "Inicialización de WhatsApp en progreso, sin errores críticos detectados");
     }
 
     // Step 4: Setup and start API server
-    handleStep('API_SETUP', 'progress', { message: "Setting up API server" });
+    logPM2Event('api', 'info', "Configurando servidor API");
     
     // Setup Express API
     await setupExpressAPI(config);
@@ -116,18 +117,18 @@ async function startBot(): Promise<void> {
     botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
     botLogger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
     
-    handleStep('API_SETUP', 'complete', { message: `API server running on port ${config.BOT_PORT}` });
+    logPM2Event('api', 'success', `Servidor API ejecutándose en puerto ${config.BOT_PORT}`);
 
     // Step 5: Setup shutdown handlers
-    handleStep('SHUTDOWN_HANDLERS', 'progress', { message: "Setting up shutdown handlers" });
+    logPM2Event('system', 'info', "Configurando manejadores de shutdown");
     
     // Setup shutdown handlers using utility function
     setupShutdownHandlers(async (signal: string) => {
       await performGracefulShutdown(signal);
     });
     
-    handleStep('SHUTDOWN_HANDLERS', 'complete', { message: "Shutdown handlers configured" });
-    markStartupComplete();
+    logPM2Event('system', 'success', "Manejadores de shutdown configurados");
+    logPM2Event('startup', 'success', "Startup del bot completado exitosamente");
     
     // Final startup validation and status reporting
     const finalWhatsAppStatus = getWhatsAppStatus();
@@ -135,21 +136,22 @@ async function startBot(): Promise<void> {
     if (finalWhatsAppStatus.isReady) {
       botLogger.success("🎉 Bot startup completed successfully! All systems operational.");
       cleanupQRCodeAfterConnection(); // Clean QR code after successful connection
-      markStartupComplete();
+      logPM2Event('system', 'success', "Todos los sistemas operacionales - Bot listo");
     } else {
       botLogger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
       botLogger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
-      markStartupComplete();
+      logPM2Event('system', 'warning', `Bot completado pero WhatsApp no listo. Estado: ${finalWhatsAppStatus.state}`);
     }
     
   } catch (error) {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
     botLogger.error(`Critical startup failure: ${error}`);
+    logPM2Event('startup', 'error', `Fallo crítico en startup: ${(error as Error).message}`);
     
     await performGracefulShutdown(undefined, error as Error);
     
     // Alert PM2 about the critical startup failure
-    alertPM2Failure(error as Error, 'critical_startup', false, 'startup_failure');
+    alertPM2Failure(error as Error, 'critical_startup', false);
     throw error;
   }
 }
