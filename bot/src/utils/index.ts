@@ -29,18 +29,6 @@ export {
   createErrorSummary,
 } from "./errorHandlerUtils";
 
-// Backward compatibility exports (deprecated)
-export {
-  validateWhatsAppError,
-  shouldSendFallback,
-  logWhatsAppError,
-  categorizeError,
-  sendErrorMessage,
-  WhatsAppErrorClassifier,
-  WhatsAppErrorHandler,
-  MessageErrorHandler,
-} from "./errorHandler";
-
 // Validation utilities
 // Note: RequestValidator moved to services/RequestValidationService
 

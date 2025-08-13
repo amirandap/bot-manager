@@ -424,7 +424,7 @@ export function cleanupStaleStatusFile(): boolean {
     try {
       if (fs.existsSync(JSON_FALLBACK_CONFIG.filePath)) {
         fs.unlinkSync(JSON_FALLBACK_CONFIG.filePath);
-        console.log('🧹 Cleaned up stale status file from previous run');
+        botLogger.info('Cleaned up stale status file from previous run', '🧹');
         return true;
       }
     } catch (error) {

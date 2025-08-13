@@ -1,10 +1,15 @@
 
-import { botLogger, formatRecipient, MessageErrorHandler } from "../utils";
+import { botLogger } from "../utils";
+import { formatRecipient } from "../utils/recipientFormattingUtils";
+import { MessageErrorHandlerService } from "../services";
 import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Initialize error handler service
+const messageErrorHandler = new MessageErrorHandlerService();
 
 router.post("/", upload.single("media"), async (req, res) => {
   const requestId = Date.now();
@@ -51,19 +56,18 @@ router.post("/", upload.single("media"), async (req, res) => {
       botLogger.error(`❌ [BOT] Request ${requestId} send error:`);
 
       // Use the new error handler
-      const { errorType, errorDetails } =
-        await MessageErrorHandler.handleCriticalError(
-          client,
-          error,
-          req.body,
-          "/send-message"
-        );
+      const errorResult = await messageErrorHandler.handleMessageError(
+        error as Error,
+        "/send-message",
+        req.body.phoneNumber,
+        "text"
+      );
 
       res.status(500).json({
         success: false,
         error: "Failed to send message",
-        errorType,
-        details: errorDetails.troubleshooting,
+        errorType: "MESSAGE_SEND_ERROR",
+        details: errorResult.errorMessage,
         requestId,
         timestamp: new Date().toISOString(),
       });
@@ -71,19 +75,18 @@ router.post("/", upload.single("media"), async (req, res) => {
   } catch (error) {
     botLogger.error(`❌ [BOT] Request ${requestId} critical error:`);
 
-    const { errorType, errorDetails } =
-      await MessageErrorHandler.handleCriticalError(
-        client,
-        error,
-        req.body,
-        "/send-message"
-      );
+    const errorResult2 = await messageErrorHandler.handleMessageError(
+      error as Error,
+      "/send-message-critical",
+      "unknown",
+      "text"
+    );
 
     res.status(500).json({
       success: false,
       error: "Internal server error",
-      errorType,
-      details: errorDetails.troubleshooting,
+      errorType: "CRITICAL_ERROR",
+      details: errorResult2.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
     });

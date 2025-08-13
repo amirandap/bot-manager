@@ -335,3 +335,38 @@ export function createErrorSummary(
 
   return summary;
 }
+
+// ============================================================================
+// LEGACY COMPATIBILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Log WhatsApp error and return validation result
+ * Provides compatibility with older code
+ */
+export function logWhatsAppError(
+  error: any,
+  context: string,
+  recipient?: string
+): ErrorValidationResult {
+  const validation = validateErrorSeverity(error);
+  
+  // For now, just return the validation result
+  // The actual logging should be handled by the caller using LoggerService
+  return validation;
+}
+
+/**
+ * Determines if fallback should be sent (legacy interface)
+ * Simplified to use our validation logic
+ */
+export function shouldSendFallback(
+  error: any,
+  context: string,
+  recipient?: string,
+): boolean {
+  const validation = validateErrorSeverity(error);
+  
+  // Return true if it's not a post-send error (meaning fallback should be sent)
+  return !validation.isPostSendError;
+}

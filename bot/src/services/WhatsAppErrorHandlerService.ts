@@ -395,8 +395,8 @@ export class WhatsAppErrorHandlerService {
     context: string
   ): Promise<void> {
     try {
-      // Simple console notification for now
-      console.log("✅ [ERROR_HANDLER] Fallback notification sent");
+      // Simple notification for now
+      botLogger.success("Fallback notification sent");
     } catch (notificationError) {
       botLogger.error(
         "Failed to send error notification:",

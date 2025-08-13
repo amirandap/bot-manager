@@ -2,11 +2,11 @@
 import { Client, MessageMedia } from "whatsapp-web.js";
 import { 
   formatRecipient, 
-  validateWhatsAppError, 
   createMessageMedia, 
   createMessageMediaFromUrl, 
   botLogger 
 } from "../utils";
+import { WhatsAppErrorHandlerService } from "./WhatsAppErrorHandlerService";
 import { MediaResult } from "../types/types";
 /**
  * Media messaging service
@@ -14,7 +14,7 @@ import { MediaResult } from "../types/types";
  */
 
 // Get error handler instance
-// No need for error handler instance anymore - use pure functions
+const errorHandler = new WhatsAppErrorHandlerService();
 
 /**
  * Send image message to multiple recipients
@@ -67,25 +67,25 @@ export async function sendImageMessage(
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const errorValidation = validateWhatsAppError(error instanceof Error ? error : new Error(String(error)));
+      const whatsappError = await errorHandler.handleError(error, "IMAGE_MESSAGE", {
+        recipient,
+        enableFallback: false, // We handle errors manually here
+      });
 
-      if (errorValidation.isPostSendError) {
+      if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
-        // eslint-disable-next-line no-console
-        botLogger.info(
-          "✅ [BOT] Treating image send as successful despite post-send error"
+        botLogger.warn(
+          `Post-send error for image to ${recipient} (treating as success)`
         );
         continue;
       }
 
-      // Critical error - actual delivery failure
-      // eslint-disable-next-line no-console
-      botLogger.error(`❌ [BOT] Error sending image to ${recipient}: ${error}`);
+      // Real error - add to errors array
       errors.push({
         recipient,
         error: error.message || "Unknown error",
-        errorType: errorValidation.errorType,
+        errorType: whatsappError.errorType,
         timestamp: new Date().toISOString(),
       });
     }
@@ -136,12 +136,12 @@ export async function sendDocumentMessage(
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const errorValidation = validateWhatsAppError(error instanceof Error ? error : new Error(String(error)));
+      const whatsappError = await errorHandler.handleError(error, "DOCUMENT_MESSAGE", {
+        recipient,
+        enableFallback: false, // We handle errors manually here
+      });
 
-      // Check if this is a post-send error using the classification
-      const isPostSendError = errorValidation.isPostSendError;
-
-      if (isPostSendError) {
+      if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
@@ -157,7 +157,7 @@ export async function sendDocumentMessage(
       errors.push({
         recipient,
         error: error.message || "Unknown error",
-        errorType: errorValidation.errorType,
+        errorType: whatsappError.errorType,
         timestamp: new Date().toISOString(),
       });
     }
@@ -213,9 +213,12 @@ export async function sendAudioMessage(
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const errorValidation = validateWhatsAppError(error instanceof Error ? error : new Error(String(error)));
+      const whatsappError = await errorHandler.handleError(error, "AUDIO_MESSAGE", {
+        recipient,
+        enableFallback: false, // We handle errors manually here
+      });
 
-      if (errorValidation.isPostSendError) {
+      if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
@@ -231,7 +234,7 @@ export async function sendAudioMessage(
       errors.push({
         recipient,
         error: error.message || "Unknown error",
-        errorType: errorValidation.errorType,
+        errorType: whatsappError.errorType,
         timestamp: new Date().toISOString(),
       });
     }
@@ -280,9 +283,12 @@ export async function sendVideoMessage(
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const errorValidation = validateWhatsAppError(error instanceof Error ? error : new Error(String(error)));
+      const whatsappError = await errorHandler.handleError(error, "VIDEO_MESSAGE", {
+        recipient,
+        enableFallback: false, // We handle errors manually here
+      });
 
-      if (errorValidation.isPostSendError) {
+      if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
         // eslint-disable-next-line no-console
@@ -298,7 +304,7 @@ export async function sendVideoMessage(
       errors.push({
         recipient,
         error: error.message || "Unknown error",
-        errorType: errorValidation.errorType,
+        errorType: whatsappError.errorType,
         timestamp: new Date().toISOString(),
       });
     }
