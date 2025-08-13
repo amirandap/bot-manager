@@ -1,36 +1,61 @@
 import { Request, Response } from "express";
 import { BotCommunicationService } from "../../services/botProxy/BotCommunicationService";
 import { ErrorHandlingService } from "../../services/botProxy/ErrorHandlingService";
+import { QRCodeService } from "../../services/QRCodeService";
+import { ConfigService } from "../../services/configService";
 
 export class BotStatusController {
   private botCommunicationService: BotCommunicationService;
   private errorHandlingService: ErrorHandlingService;
+  private qrCodeService: QRCodeService;
+  private configService: ConfigService;
 
   constructor() {
     this.botCommunicationService = new BotCommunicationService();
     this.errorHandlingService = new ErrorHandlingService();
+    this.qrCodeService = new QRCodeService();
+    this.configService = ConfigService.getInstance();
   }
 
   // GET/POST /api/bots/qr-code - Get QR code (returns HTML)
   public async getBotQRCode(req: Request, res: Response): Promise<void> {
     try {
       // Support both GET (query parameter) and POST (request body)
-      const botId = req.method === 'GET' ? req.query.botId as string : req.body.botId;
-      
+      const botId =
+        req.method === "GET" ? (req.query.botId as string) : req.body.botId;
+
       if (!botId) {
-        const errorMessage = req.method === 'GET' 
-          ? "Bot ID is required as query parameter (?botId=your-bot-id)" 
-          : "Bot ID is required in request body";
+        const errorMessage =
+          req.method === "GET"
+            ? "Bot ID is required as query parameter (?botId=your-bot-id)"
+            : "Bot ID is required in request body";
         res.status(400).json({ error: errorMessage });
         return;
       }
-      
-      const result = await this.botCommunicationService.forwardRequest({
+
+      // Validate bot exists in configuration
+      const botConfig = this.configService.getBotById(botId);
+      if (!botConfig) {
+        res.status(404).send(`
+          <h1>Bot Not Found</h1>
+          <p>Bot with ID <strong>${botId}</strong> was not found in the configuration.</p>
+        `);
+        return;
+      }
+
+      // Generate HTML response with QR code from data directory
+      const htmlContent = this.qrCodeService.generateQRCodeHTML(
         botId,
-        endpoint: "/qr-code",
-        method: "GET"
-      });
-      res.send(result); // Send HTML directly
+        botConfig.name
+      );
+
+      // Set appropriate headers for HTML content
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
+      res.status(200).send(htmlContent);
     } catch (error) {
       console.error("Error getting bot QR code:", error);
       res
@@ -47,18 +72,35 @@ export class BotStatusController {
   public async getBotQRCodeById(req: Request, res: Response): Promise<void> {
     try {
       const botId = req.params.id;
-      
+
       if (!botId) {
         res.status(400).json({ error: "Bot ID is required in URL path" });
         return;
       }
-      
-      const result = await this.botCommunicationService.forwardRequest({
+
+      // Validate bot exists in configuration
+      const botConfig = this.configService.getBotById(botId);
+      if (!botConfig) {
+        res.status(404).send(`
+          <h1>Bot Not Found</h1>
+          <p>Bot with ID <strong>${botId}</strong> was not found in the configuration.</p>
+        `);
+        return;
+      }
+
+      // Generate HTML response with QR code from data directory
+      const htmlContent = this.qrCodeService.generateQRCodeHTML(
         botId,
-        endpoint: "/qr-code",
-        method: "GET"
-      });
-      res.send(result); // Send HTML directly
+        botConfig.name
+      );
+
+      // Set appropriate headers for HTML content
+      res.set("Content-Type", "text/html; charset=utf-8");
+      res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.set("Pragma", "no-cache");
+      res.set("Expires", "0");
+
+      res.status(200).send(htmlContent);
     } catch (error) {
       console.error("Error getting bot QR code:", error);
       res
@@ -75,32 +117,37 @@ export class BotStatusController {
   public async getBotStatusById(req: Request, res: Response): Promise<void> {
     try {
       const botId = req.params.id;
-      
+
       if (!botId) {
         res.status(400).json({ error: "Bot ID is required in URL path" });
         return;
       }
-      
+
       const result = await this.botCommunicationService.forwardRequest({
         botId,
         endpoint: "/status",
-        method: "GET"
+        method: "GET",
       });
-      
+
       // Check if the result indicates an error
-      if (result && typeof result === 'object' && 'error' in result && result.error) {
+      if (
+        result &&
+        typeof result === "object" &&
+        "error" in result &&
+        result.error
+      ) {
         // Bot is not reachable or returned an error, but don't crash the backend
         res.status(503).json({
           error: true,
           botId: botId,
-          status: result.status || 'offline',
-          message: result.message || 'Bot is not responding',
-          code: result.code || 'BOT_UNREACHABLE',
-          timestamp: result.timestamp || new Date().toISOString()
+          status: result.status || "offline",
+          message: result.message || "Bot is not responding",
+          code: result.code || "BOT_UNREACHABLE",
+          timestamp: result.timestamp || new Date().toISOString(),
         });
         return;
       }
-      
+
       // Bot responded successfully
       res.json(result);
     } catch (error) {
@@ -108,8 +155,10 @@ export class BotStatusController {
       console.error(`Unexpected error in getBotStatusById:`, error);
       res.status(500).json({
         error: true,
-        message: `Failed to get bot status: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString()
+        message: `Failed to get bot status: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -126,11 +175,15 @@ export class BotStatusController {
         botId,
         endpoint: "/qr-code",
         method: "POST",
-        requestData: bodyData
+        requestData: bodyData,
       });
       res.json(result);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("update QR code", error, res);
+      this.errorHandlingService.handleControllerError(
+        "update QR code",
+        error,
+        res
+      );
     }
   }
 }

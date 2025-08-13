@@ -1,29 +1,29 @@
 {
   "process_info": {
-    "pid": 48675,
-    "started_at": "2025-08-13T17:15:04.799Z",
+    "pid": 51554,
+    "started_at": "2025-08-13T17:18:58.691Z",
     "running_with_pm2": false,
     "node_version": "v22.11.0",
     "working_directory": "/Users/amiranda/Github/bot-manager-amp/bot"
   },
   "current_status": {
-    "overall_status": "running",
-    "current_step": "startup_complete",
-    "progress_percentage": 100,
-    "last_update": "2025-08-13T17:15:08.570Z",
-    "bot_ready": true,
-    "api_ready": true,
+    "overall_status": "starting",
+    "current_step": "qr_code_ready",
+    "progress_percentage": 60,
+    "last_update": "2025-08-13T17:20:51.805Z",
+    "bot_ready": false,
+    "api_ready": false,
     "whatsapp_connected": false
   },
   "metrics_history": [
     {
-      "timestamp": "2025-08-13T17:15:04.800Z",
+      "timestamp": "2025-08-13T17:18:58.692Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-13T17:15:04.798Z",
+          "timestamp": "2025-08-13T17:18:58.691Z",
           "message": "Validating environment and dependencies",
           "progress": 0,
           "details": {
@@ -39,13 +39,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:04.801Z",
+      "timestamp": "2025-08-13T17:18:58.693Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-13T17:15:04.801Z",
+          "timestamp": "2025-08-13T17:18:58.693Z",
           "message": "Environment validation completed successfully",
           "progress": 17,
           "details": {
@@ -61,13 +61,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:04.801Z",
+      "timestamp": "2025-08-13T17:18:58.693Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-13T17:15:04.801Z",
+          "timestamp": "2025-08-13T17:18:58.693Z",
           "message": "Initializing WhatsApp client and QR system",
           "progress": 17,
           "details": {
@@ -83,18 +83,17 @@
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:08.483Z",
+      "timestamp": "2025-08-13T17:19:51.808Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-13T17:15:08.483Z",
+          "timestamp": "2025-08-13T17:19:51.808Z",
           "message": "QR code generated and ready for scanning",
           "progress": 60,
           "details": {
             "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
             "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
           }
         },
@@ -104,204 +103,90 @@
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:08.486Z",
+      "timestamp": "2025-08-13T17:20:11.819Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "whatsapp_client_initialization",
+          "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-13T17:15:08.486Z",
-          "message": "WhatsApp client initialized successfully",
-          "progress": 33,
+          "timestamp": "2025-08-13T17:20:11.819Z",
+          "message": "QR code generated and ready for scanning",
+          "progress": 60,
           "details": {
-            "step_number": 2,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "complete"
+            "qr_available": true,
+            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
           }
         },
-        "current_step": "whatsapp_client_initialization",
+        "current_step": "qr_code_ready",
         "overall_status": "success",
-        "progress_percentage": 33
+        "progress_percentage": 60
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:08.486Z",
+      "timestamp": "2025-08-13T17:20:31.805Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "initialization_error_check",
-          "status": "in_progress",
-          "timestamp": "2025-08-13T17:15:08.486Z",
-          "message": "Validating WhatsApp initialization status",
-          "progress": 33,
-          "details": {
-            "step_number": 3,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "initialization_error_check",
-        "overall_status": "in_progress",
-        "progress_percentage": 33
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.486Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "initialization_error_check",
+          "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-13T17:15:08.486Z",
-          "message": "WhatsApp started with recoverable error: qr_ready",
-          "progress": 50,
+          "timestamp": "2025-08-13T17:20:31.805Z",
+          "message": "QR code generated and ready for scanning",
+          "progress": 60,
           "details": {
-            "step_number": 3,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "complete",
-            "lifecycle_state": "qr_ready",
-            "error_type": "recoverable",
-            "can_proceed": true
+            "qr_available": true,
+            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
           }
         },
-        "current_step": "initialization_error_check",
+        "current_step": "qr_code_ready",
         "overall_status": "success",
-        "progress_percentage": 50
+        "progress_percentage": 60
       }
     },
     {
-      "timestamp": "2025-08-13T17:15:08.486Z",
+      "timestamp": "2025-08-13T17:20:51.805Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
-          "step": "express_api_setup",
-          "status": "in_progress",
-          "timestamp": "2025-08-13T17:15:08.486Z",
-          "message": "Setting up API server",
-          "progress": 50,
-          "details": {
-            "step_number": 4,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "express_api_setup",
-        "overall_status": "in_progress",
-        "progress_percentage": 50
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.568Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "express_api_setup",
+          "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-13T17:15:08.568Z",
-          "message": "API server running on port 7260",
-          "progress": 67,
+          "timestamp": "2025-08-13T17:20:51.805Z",
+          "message": "QR code generated and ready for scanning",
+          "progress": 60,
           "details": {
-            "step_number": 4,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "complete"
+            "qr_available": true,
+            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
           }
         },
-        "current_step": "express_api_setup",
+        "current_step": "qr_code_ready",
         "overall_status": "success",
-        "progress_percentage": 67
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.569Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "graceful_shutdown_setup",
-          "status": "in_progress",
-          "timestamp": "2025-08-13T17:15:08.569Z",
-          "message": "Setting up shutdown handlers",
-          "progress": 67,
-          "details": {
-            "step_number": 5,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "graceful_shutdown_setup",
-        "overall_status": "in_progress",
-        "progress_percentage": 67
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.569Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "graceful_shutdown_setup",
-          "status": "success",
-          "timestamp": "2025-08-13T17:15:08.569Z",
-          "message": "Shutdown handlers configured",
-          "progress": 83,
-          "details": {
-            "step_number": 5,
-            "total_steps": 6,
-            "startup_phase": true,
-            "action": "complete"
-          }
-        },
-        "current_step": "graceful_shutdown_setup",
-        "overall_status": "success",
-        "progress_percentage": 83
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.570Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "startup_complete",
-          "status": "success",
-          "timestamp": "2025-08-13T17:15:08.570Z",
-          "message": "Bot startup completed successfully",
-          "progress": 100,
-          "details": {
-            "startup_phase": false,
-            "bot_ready": true,
-            "api_ready": true
-          }
-        },
-        "current_step": "startup_complete",
-        "overall_status": "success",
-        "progress_percentage": 100
-      }
-    },
-    {
-      "timestamp": "2025-08-13T17:15:08.570Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "startup_complete",
-          "status": "success",
-          "timestamp": "2025-08-13T17:15:08.570Z",
-          "message": "Bot startup completed successfully",
-          "progress": 100,
-          "details": {
-            "startup_phase": false,
-            "bot_ready": true,
-            "api_ready": true
-          }
-        },
-        "current_step": "startup_complete",
-        "overall_status": "success",
-        "progress_percentage": 100
+        "progress_percentage": 60
       }
     }
   ],
-  "failures": []
+  "failures": [
+    {
+      "timestamp": "2025-08-13T17:18:58.814Z",
+      "type": "failure",
+      "data": {
+        "critical_failure": true,
+        "error_message": "Failed to launch the browser process!\n[51557:8211996:0813/131858.809927:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /Users/amiranda/Github/data/sessions/whatsapp-bot-1/session-whatsapp-bot-1/SingletonLock: File exists (17)\n[51557:8211996:0813/131858.810109:ERROR:chrome/app/chrome_main_delegate.cc:529] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n",
+        "error_context": "critical_startup",
+        "timestamp": "2025-08-13T17:18:58.813Z",
+        "should_restart": false,
+        "step": "startup_failure",
+        "stack_trace": "Error: Failed to launch the browser process!\n[51557:8211996:0813/131858.809927:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /Users/amiranda/Github/data/sessions/whatsapp-bot-1/session-whatsapp-bot-1/SingletonLock: File exists (17)\n[51557:8211996:0813/131858.810109:ERROR:chrome/app/chrome_main_delegate.cc:529] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n\n    at onClose (/Users/amiranda/Github/bot-manager-amp/bot/node_modules/puppeteer-core/src/node/BrowserRunner.ts:327:9)\n    at ChildProcess.<anonymous> (/Users/amiranda/Github/bot-manager-amp/bot/node_modules/puppeteer-core/src/node/BrowserRunner.ts:316:16)\n    at ChildProcess.emit (node:events:530:35)\n    at ChildProcess.emit (node:domain:489:12)\n    at Process.ChildProcess._handle.onexit (node:internal/child_process:293:12)"
+      }
+    }
+  ],
+  "last_shutdown": {
+    "timestamp": "2025-08-13T17:18:58.813Z",
+    "type": "shutdown",
+    "data": {
+      "graceful_shutdown": true,
+      "signal": "manual",
+      "error": "Failed to launch the browser process!\n[51557:8211996:0813/131858.809927:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /Users/amiranda/Github/data/sessions/whatsapp-bot-1/session-whatsapp-bot-1/SingletonLock: File exists (17)\n[51557:8211996:0813/131858.810109:ERROR:chrome/app/chrome_main_delegate.cc:529] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n",
+      "timestamp": "2025-08-13T17:18:58.813Z",
+      "reason": "error_triggered"
+    }
+  }
 }
