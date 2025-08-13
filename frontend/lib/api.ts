@@ -45,6 +45,11 @@ export const api = {
     // Core operations (ID-based)
     getBotStatus: (id: string) => `${API_BASE_URL}/api/bots/${id}/status`,
     getQRCode: () => `${API_BASE_URL}/api/bots/qr-code`,
+    getQRCodeById: (id: string) => `${API_BASE_URL}/api/bots/${id}/qr-code`,
+    getQRCodeImage: (id: string) =>
+      `${API_BASE_URL}/api/bots/${id}/qr-code/image`,
+    getQRCodeStatus: (id: string) =>
+      `${API_BASE_URL}/api/bots/${id}/qr-code/status`,
     updateQRCode: () => `${API_BASE_URL}/api/bots/qr-code/update`,
     changeFallbackNumber: () =>
       `${API_BASE_URL}/api/bots/change-fallback-number`,

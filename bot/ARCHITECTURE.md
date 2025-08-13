@@ -2,6 +2,7 @@
 
 ## 📋 Índice
 - [Principios de Modularidad](#principios-de-modularidad)
+- [Arquitectura de Logging Centralizado](#arquitectura-de-logging-centralizado)
 - [Estructura de Carpetas](#estructura-de-carpetas)
 - [Diferencias entre Utils y Services](#diferencias-entre-utils-y-services)
 - [Tipos y Interfaces](#tipos-y-interfaces)
@@ -38,6 +39,133 @@ middleware/ (cross-cutting concerns)
 - **L**iskov Substitution: Las clases derivadas deben ser sustituibles por sus clases base
 - **I**nterface Segregation: Interfaces específicas mejor que una interfaz general
 - **D**ependency Inversion: Depender de abstracciones, no de concreciones
+
+## 🏗️ Arquitectura de Logging Centralizado
+
+### 📊 **Principio Fundamental**
+**"Las funciones reportan a los PM2 utilities y estos son los que ejecutan el log"**
+
+### 🎯 **Concepto Central**
+- **❌ ANTES**: Cada función hacía logging directo + reporte a PM2 (duplicación)
+- **✅ AHORA**: Las funciones solo reportan a PM2 utilities, que centralizan el logging
+
+### 🔧 **Implementación**
+
+#### **Función Centralizada de Logging**
+```typescript
+// src/utils/pm2Utils.ts
+export function logWhatsAppOperation(
+  operation: string,
+  status: 'start' | 'progress' | 'success' | 'error' | 'warning',
+  message: string,
+  details?: Record<string, unknown>,
+  error?: Error
+): void {
+  // Logging centralizado a través de PM2
+  // Una sola fuente de verdad para todos los logs de WhatsApp
+}
+```
+
+#### **Patrón de Uso en Funciones**
+```typescript
+// ❌ ANTI-PATRÓN (Anterior)
+export function updateWhatsAppState(state: BotLifecycleState, info: string = ""): void {
+  // ... lógica ...
+  
+  // DUPLICACIÓN - Logging directo Y reporte a PM2
+  botLogger.info(message);        // ← Logging directo
+  updatePM2Metrics(...);          // ← Reporte a PM2
+}
+
+// ✅ PATRÓN CORRECTO (Actual)
+export function updateWhatsAppState(state: BotLifecycleState, info: string = ""): void {
+  // ... lógica ...
+  
+  // CENTRALIZADO - Solo reporte a PM2 utilities
+  logWhatsAppOperation('updateState', 'success', message, { state, info });
+  updatePM2Metrics('whatsapp_state', 'success', message, undefined, { state, info });
+}
+```
+
+### 📁 **Archivos Refactorizados**
+
+#### ✅ **Completamente Centralizados**
+- **`src/utils/whatsAppUtils.ts`**: Todas las funciones usan `logWhatsAppOperation()`
+- **`src/utils/shutdownUtils.ts`**: Todas las funciones usan `logWhatsAppOperation()`
+- **`src/utils/pm2Utils.ts`**: Contiene la función centralizada `logWhatsAppOperation()`
+
+#### ⚠️ **Parcialmente Centralizados**
+- **`src/utils/startupUtils.ts`**: Mantiene `botLogger` para métodos específicos (startupHeader, environmentVar, filePath)
+
+### 🎯 **Beneficios Arquitectónicos**
+
+1. **🚫 Eliminación de Duplicidades**
+   - No más logging dual (función + PM2)
+   - Reducción de ruido en logs
+   - Mejor performance
+
+2. **📊 Consistencia Total**
+   - Todos los logs de WhatsApp siguen el mismo formato
+   - Tracking uniforme de operaciones
+   - Métricas centralizadas
+
+3. **🔧 Mantenibilidad Mejorada**
+   - Cambios de logging en un solo lugar
+   - Fácil modificación de formato/destino
+   - Debugging centralizado
+
+4. **📈 Observabilidad Mejorada**
+   - Mejor tracking de operaciones críticas
+   - Correlación automática con métricas PM2
+   - Historia completa de operaciones
+
+### 🎨 **Tipos de Operaciones Soportadas**
+
+```typescript
+type LogStatus = 'start' | 'progress' | 'success' | 'error' | 'warning';
+
+// Ejemplos de uso:
+logWhatsAppOperation('initClient', 'start', 'WhatsApp client initialization', { botId });
+logWhatsAppOperation('generateQR', 'progress', 'Processing QR code generation...', { qrCodePath });
+logWhatsAppOperation('clientReady', 'success', 'WhatsApp connected', { phoneNumber });
+logWhatsAppOperation('shutdown', 'error', 'Error during shutdown', { error });
+logWhatsAppOperation('cleanup', 'warning', 'Skipping QR cleanup', { reason });
+```
+
+### 🔄 **Flujo de Logging**
+
+```mermaid
+graph TD
+    A[Función WhatsApp] --> B[logWhatsAppOperation]
+    A --> C[updatePM2Metrics]
+    B --> D[PM2 Logger]
+    C --> E[PM2 Metrics]
+    D --> F[Log Output]
+    E --> G[PM2 Dashboard]
+    F --> H[Archivo de Log]
+    G --> I[Métricas en Tiempo Real]
+```
+
+### 📋 **Reglas de Logging Centralizado**
+
+#### ✅ **DO (Hacer)**
+- Usar `logWhatsAppOperation()` para todas las operaciones de WhatsApp
+- Incluir contexto relevante en el parámetro `details`
+- Usar el `status` apropiado según el resultado de la operación
+- Mantener mensajes descriptivos pero concisos
+
+#### ❌ **DON'T (No Hacer)**
+- No usar `botLogger` directamente en funciones de WhatsApp
+- No duplicar logging (función + PM2)
+- No incluir información sensible en logs
+- No usar tipos de `status` incorrectos
+
+### 🚀 **Implementación Futura**
+Para nuevas funciones relacionadas con WhatsApp:
+1. Importar `logWhatsAppOperation` de `pm2Utils.ts`
+2. Llamar la función en puntos clave de la operación
+3. Usar `updatePM2Metrics` para métricas específicas
+4. NO importar ni usar `botLogger` directamente
 
 ## 📁 Estructura de Carpetas
 
@@ -77,7 +205,11 @@ middleware/ (cross-cutting concerns)
 - ✅ Fácil de testear unitariamente
 
 **Archivos**:
-- `loggerWrapper.ts` - Wrapper del sistema de logging
+- `loggerWrapper.ts` - Wrapper del sistema de logging (DEPRECADO para WhatsApp functions)
+- `pm2Utils.ts` - ⭐ **CENTRALIZADO**: Contiene `logWhatsAppOperation()` para logging centralizado
+- `whatsAppUtils.ts` - ⭐ **REFACTORIZADO**: Usa logging centralizado vía PM2 utilities
+- `shutdownUtils.ts` - ⭐ **REFACTORIZADO**: Usa logging centralizado vía PM2 utilities
+- `startupUtils.ts` - Utilidades de inicialización (mantiene botLogger para funciones específicas)
 - `cleanAndFormatPhoneNumber.ts` - Formateo de números telefónicos
 - `messageFormatter.ts` - Formateo de mensajes
 - `recipientFormatting.ts` - Formateo de destinatarios
@@ -86,8 +218,6 @@ middleware/ (cross-cutting concerns)
 - `groupUtils.ts` - Utilidades para grupos
 - `errorHandler.ts` - Manejo centralizado de errores
 - `requestValidator.ts` - Validación de requests
-- `pm2Utils.ts` - Utilidades para PM2 y métricas
-- `startupUtils.ts` - Utilidades de inicialización
 - `browserUtils.ts` - Utilidades del navegador
 
 **Anti-patrones**:
@@ -200,6 +330,23 @@ export class DirectoryManagerService {
 
 ## 🚫 Anti-Patrones Comunes
 
+### ❌ **Logging Duplicado (CRÍTICO)**
+```typescript
+// ❌ MAL - Logging dual (función + PM2)
+export function updateWhatsAppState(state: BotLifecycleState, info: string): void {
+  botLogger.info(`Estado: ${state}`);     // ← Logging directo
+  updatePM2Metrics(...);                 // ← Reporte a PM2
+  // RESULTADO: Logs duplicados, ruido, inconsistencia
+}
+
+// ✅ BIEN - Logging centralizado vía PM2
+export function updateWhatsAppState(state: BotLifecycleState, info: string): void {
+  logWhatsAppOperation('updateState', 'success', `Estado: ${state}`, { state, info });
+  updatePM2Metrics('whatsapp_state', 'success', message, undefined, { state, info });
+  // RESULTADO: Logging consistente, sin duplicación
+}
+```
+
 ### ❌ Utils que NO deben existir
 ```typescript
 // MAL - No es una función pura, tiene efectos secundarios
@@ -264,19 +411,30 @@ services → controllers, routes (NO)
 5. ¿Es configuración? → `config/`
 6. ¿Es una definición de tipo? → `types/`
 
-### 2. **Naming Conventions**
+### 2. **Reglas de Logging (IMPORTANTE)**
+
+**Para funciones relacionadas con WhatsApp**:
+- ✅ **USAR**: `logWhatsAppOperation()` de `pm2Utils.ts`
+- ❌ **NO USAR**: `botLogger` directamente
+- ✅ **PATRÓN**: Función reporta → PM2 utilities → Log execution
+
+**Para otras funciones**:
+- ✅ Usar `botLogger` para logs de startup, configuración, etc.
+- ✅ Usar `logWhatsAppOperation()` solo para operaciones de WhatsApp
+
+### 3. **Naming Conventions**
 - **Utils**: `camelCase` functions (ej: `formatPhoneNumber`)
 - **Services**: `PascalCase` classes ending in `Service` (ej: `MediaMessagingService`)
 - **Controllers**: `PascalCase` classes ending in `Controller` (ej: `MessageController`)
 - **Types**: `PascalCase` interfaces/types (ej: `MessageFormat`, `BotConfig`)
 
-### 3. **Testing Strategy**
+### 4. **Testing Strategy**
 - **Utils**: Unit tests (son funciones puras, fáciles de testear)
 - **Services**: Unit + Integration tests (mockear dependencias externas)
 - **Controllers**: Integration tests (testear orquestación)
 - **Routes**: E2E tests (testear endpoints completos)
 
-### 4. **Refactoring Guidelines**
+### 5. **Refactoring Guidelines**
 - Si un util necesita estado → mover a service
 - Si un service es solo funciones puras → mover a utils
 - Si hay duplicación entre modules → crear util compartido
@@ -296,8 +454,10 @@ services → controllers, routes (NO)
 - [ ] ¿Respeta la jerarquía de dependencias?
 - [ ] ¿Tiene una sola responsabilidad clara?
 - [ ] ¿Los nombres siguen las convenciones?
+- [ ] ¿Usa logging centralizado para operaciones WhatsApp?
+- [ ] ¿No hay duplicación de logging (función + PM2)?
 - [ ] ¿Los tests siguen funcionando?
 
 ---
 
-**Recuerda**: La modularidad no es solo organizar archivos, es crear un sistema mantenible, testeable y escalable. Cada decisión de arquitectura debe justificarse en términos de estas metas.
+**Recuerda**: La modularidad no es solo organizar archivos, es crear un sistema mantenible, testeable y escalable. El **logging centralizado** elimina duplicidades y mejora la observabilidad. Cada decisión de arquitectura debe justificarse en términos de estas metas.

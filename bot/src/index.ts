@@ -30,8 +30,7 @@ import {
 } from "./utils/shutdownUtils";
 
 import {
-  getSystemInfo,
-  validateEnvironmentForBrowser
+  getSystemInfo
 } from "./utils/browserUtils";
 
 // Import unified logger
@@ -60,9 +59,6 @@ async function startBot(): Promise<void> {
     
     // Show system information
     getSystemInfo();
-    
-    // Environment validation for browser (non-Chrome specific checks)
-    await validateEnvironmentForBrowser();
     
     // Initialize WhatsApp client with QR callback (QR is now handled internally)
     await initializeWhatsAppClient(config);
@@ -118,7 +114,7 @@ async function startBot(): Promise<void> {
     
     // Log API endpoints
     botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
-    botLogger.info(` Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
+    botLogger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
     
     handleStep('API_SETUP', 'complete', { message: `API server running on port ${config.BOT_PORT}` });
 
@@ -148,7 +144,7 @@ async function startBot(): Promise<void> {
     
   } catch (error) {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
-    botLogger.error(`❌ Critical startup failure: ${error}`);
+    botLogger.error(`Critical startup failure: ${error}`);
     
     await performGracefulShutdown(undefined, error as Error);
     
@@ -159,8 +155,7 @@ async function startBot(): Promise<void> {
 }
 
 // Start the bot
-startBot().catch((error) => {
-  botLogger.error("❌ Critical startup failure:", error);
+startBot().catch(() => {
   // eslint-disable-next-line no-process-exit
   process.exit(1);
 });

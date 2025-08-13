@@ -41,6 +41,90 @@ export function setBotProxyRoutes(app: Router) {
 
   /**
    * @swagger
+   * /api/bots/{id}/qr-code/image:
+   *   get:
+   *     summary: Get QR code image (raw PNG)
+   *     tags: [Bot Proxy - Core]
+   *     description: Get QR code image as raw PNG for frontend consumption
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
+   *     responses:
+   *       200:
+   *         description: QR code PNG image
+   *         content:
+   *           image/png:
+   *             schema:
+   *               type: string
+   *               format: binary
+   *       400:
+   *         description: Bot ID is required
+   *       404:
+   *         description: Bot not found or QR code not available
+   *       500:
+   *         description: Server error
+   */
+  app.get(
+    "/api/bots/:id/qr-code/image",
+    botProxyController.getBotQRCodeImage.bind(botProxyController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/{id}/qr-code/status:
+   *   get:
+   *     summary: Get QR code status (JSON)
+   *     tags: [Bot Proxy - Core]
+   *     description: Get QR code availability and metadata as JSON
+   *     parameters:
+   *       - $ref: '#/components/parameters/BotId'
+   *     responses:
+   *       200:
+   *         description: QR code status information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 botId:
+   *                   type: string
+   *                   example: "whatsapp-bot-1234567890"
+   *                 botName:
+   *                   type: string
+   *                   example: "WhatsApp Bot 1"
+   *                 qrCode:
+   *                   type: object
+   *                   properties:
+   *                     available:
+   *                       type: boolean
+   *                       example: true
+   *                     expired:
+   *                       type: boolean
+   *                       example: false
+   *                     ageMinutes:
+   *                       type: number
+   *                       example: 0.5
+   *                     createdAt:
+   *                       type: string
+   *                       format: date-time
+   *                       example: "2025-08-13T10:30:00Z"
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                   example: "2025-08-13T10:30:30Z"
+   *       400:
+   *         description: Bot ID is required
+   *       404:
+   *         description: Bot not found
+   *       500:
+   *         description: Server error
+   */
+  app.get(
+    "/api/bots/:id/qr-code/status",
+    botProxyController.getBotQRCodeStatus.bind(botProxyController)
+  );
+
+  /**
+   * @swagger
    * /api/bots/qr-code/update:
    *   post:
    *     summary: Update QR code (internal use)

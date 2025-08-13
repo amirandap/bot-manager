@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { 
-  BotStatusController, 
-  BotConfigController, 
-  BotMessagingController 
+import {
+  BotStatusController,
+  BotConfigController,
+  BotMessagingController,
 } from "./botProxy";
 
 /**
@@ -29,6 +29,14 @@ export class BotProxyController {
     return this.statusController.getBotQRCodeById(req, res);
   }
 
+  public async getBotQRCodeImage(req: Request, res: Response): Promise<void> {
+    return this.statusController.getBotQRCodeImage(req, res);
+  }
+
+  public async getBotQRCodeStatus(req: Request, res: Response): Promise<void> {
+    return this.statusController.getBotQRCodeStatus(req, res);
+  }
+
   public async getBotStatusById(req: Request, res: Response): Promise<void> {
     return this.statusController.getBotStatusById(req, res);
   }
@@ -38,7 +46,10 @@ export class BotProxyController {
   }
 
   // ===== CONFIGURATION OPERATIONS =====
-  public async changeFallbackNumber(req: Request, res: Response): Promise<void> {
+  public async changeFallbackNumber(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     return this.configController.changeFallbackNumber(req, res);
   }
 
@@ -67,7 +78,10 @@ export class BotProxyController {
     return this.messagingController.receiveImageAndJson(req, res);
   }
 
-  public async sendConfirmationMessage(req: Request, res: Response): Promise<void> {
+  public async sendConfirmationMessage(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     return this.messagingController.sendConfirmationMessage(req, res);
   }
 }

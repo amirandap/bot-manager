@@ -43,11 +43,11 @@ export class EnvironmentManager {
 
     if (fs.existsSync(envPath)) {
       dotenv.config({ path: envPath });
-      botLogger.environmentInfo(`📁 Loaded environment variables from: ${envPath}`);
+      botLogger.environmentInfo(`Loaded environment variables from: ${envPath}`);
     } else {
       // Fallback to default dotenv behavior
       dotenv.config();
-      botLogger.environmentInfo("📁 Using default .env file loading");
+      botLogger.environmentInfo("Using default .env file loading");
     }
   }
 

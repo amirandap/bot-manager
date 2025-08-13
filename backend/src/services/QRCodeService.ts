@@ -88,6 +88,33 @@ export class QRCodeService {
   }
 
   /**
+   * Get QR code image buffer for serving raw PNG
+   */
+  public getQRCodeBuffer(botId: string): {
+    buffer: Buffer | null;
+    status: {
+      available: boolean;
+      expired?: boolean;
+      ageMinutes?: number;
+      createdAt?: Date;
+    };
+  } {
+    const status = this.getQRCodeStatus(botId);
+
+    if (!status.available || !status.filePath) {
+      return { buffer: null, status };
+    }
+
+    try {
+      const buffer = fs.readFileSync(status.filePath);
+      return { buffer, status };
+    } catch (error) {
+      console.error(`Error reading QR code file for bot ${botId}:`, error);
+      return { buffer: null, status: { available: false } };
+    }
+  }
+
+  /**
    * Generate HTML response for QR code display
    */
   public generateQRCodeHTML(botId: string, botName?: string): string {
