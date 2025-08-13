@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from "whatsapp-web.js";
 import { formatRecipient } from "./recipientFormattingUtils";
-import { shouldSendFallback, logWhatsAppError } from "./errorHandler";
+import { shouldSendFallback, logWhatsAppError } from "./errorHandlerUtils";
 import { MediaResult } from "../types/types";
 import { botLogger } from "./loggerWrapper";
 

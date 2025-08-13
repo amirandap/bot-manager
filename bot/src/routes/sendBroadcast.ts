@@ -3,9 +3,12 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendToGroups, sendToPhones } from "../controllers/MessageHandlerController";
-import { MessageErrorHandler, separateRecipients, botLogger } from "../utils";
+import { MessageErrorHandlerService } from "../services";
+import { separateRecipients, botLogger } from "../utils";
 import { SendMessageRequestBody } from "../types/types";
+
 const router = express.Router();
+const messageErrorHandler = new MessageErrorHandlerService();
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
@@ -85,12 +88,12 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (allErrors.length > 0) {
-      await MessageErrorHandler.sendErrorReport(
-        client,
-        req.body,
-        allErrors,
-        "/send-broadcast"
-      );
+      const transformedErrors = allErrors.map((error) => ({
+        error: new Error(error.error),
+        context: "/send-broadcast",
+        recipient: error.recipient
+      }));
+      await messageErrorHandler.handleBatchErrors(transformedErrors);
     }
 
     const statusCode =
@@ -118,19 +121,18 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     botLogger.error(`❌ [BOT] Request ${requestId} failed: ${error}`);
 
-    const { errorType, errorDetails } =
-      await MessageErrorHandler.handleCriticalError(
-        client,
-        error,
-        req.body,
-        "/send-broadcast"
-      );
+    const errorResult = await messageErrorHandler.handleMessageError(
+      error instanceof Error ? error : new Error(String(error)),
+      "/send-broadcast",
+      undefined,
+      "broadcast"
+    );
 
     return res.status(500).json({
       success: false,
       error: "BROADCAST_SEND_ERROR: Internal server error",
-      errorType,
-      details: errorDetails.troubleshooting,
+      errorType: "CRITICAL_ERROR",
+      details: errorResult.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
     });

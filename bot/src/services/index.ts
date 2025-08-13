@@ -2,9 +2,12 @@
  * Services Barrel Export
  *
  * CONSOLIDATED - Eliminates duplicated services:
- * - Logger moved to utils/loggerWrapper.ts
+ * - Logger moved to services/LoggerService.ts
  * - StartupManager moved to utils/startupUtils.ts
  */
+
+// Core logging service
+export { LoggerService, LogLevel, LoggerConfig } from "./LoggerService";
 
 // Remaining specialized services
 export { DirectoryManagerService } from "./DirectoryManagerService";

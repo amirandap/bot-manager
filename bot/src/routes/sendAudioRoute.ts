@@ -3,10 +3,13 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendAudioMessage } from "../services/MediaMessagingService";
-import { MessageErrorHandler, botLogger } from "../utils";
+import { MessageErrorHandlerService } from "../services";
+import { botLogger } from "../utils";
 import { RequestValidationService } from "../services/RequestValidationService";
 import { RecipientProcessorService } from "../services/RecipientProcessorService";
+
 const router = express.Router();
+const messageErrorHandler = new MessageErrorHandlerService();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -106,12 +109,13 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      await MessageErrorHandler.sendErrorReport(
-        client,
-        req.body,
-        results.errors,
-        "/send-audio"
-      );
+      // Handle batch errors using new service  
+      const transformedErrors = results.errors.map((error) => ({
+        error: new Error(error.error),
+        context: "/send-audio",
+        recipient: error.recipient
+      }));
+      await messageErrorHandler.handleBatchErrors(transformedErrors);
     }
 
     const statusCode = RequestValidationService.getResponseStatus(
@@ -140,19 +144,18 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     botLogger.error(`❌ [BOT] Request ${requestId} failed: ${error}`);
 
-    const { errorType, errorDetails } =
-      await MessageErrorHandler.handleCriticalError(
-        client,
-        error,
-        req.body,
-        "/send-audio"
-      );
+    const errorResult = await messageErrorHandler.handleMessageError(
+      error instanceof Error ? error : new Error(String(error)),
+      "/send-audio",
+      undefined,
+      "audio"
+    );
 
     return res.status(500).json({
       success: false,
       error: "AUDIO_SEND_ERROR: Internal server error",
-      errorType,
-      details: errorDetails.troubleshooting,
+      errorType: "CRITICAL_ERROR",
+      details: errorResult.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
     });

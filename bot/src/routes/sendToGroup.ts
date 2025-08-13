@@ -3,10 +3,14 @@ import express from "express";
 import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendToGroups } from "../controllers/MessageHandlerController";
-import { MessageErrorHandler, botLogger } from "../utils";
+import { MessageErrorHandlerService } from "../services";
+import { botLogger } from "../utils";
 import { SendMessageRequestBody } from "../types/types";
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Create error handler instance
+const messageErrorHandler = new MessageErrorHandlerService();
 
 /**
  * POST /send-to-group
@@ -88,19 +92,15 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Send error report if needed
     if (results.errors.length > 0) {
-      // Transform errors to match expected format
+      // Transform errors to match expected format for new service
       const transformedErrors = results.errors.map((error) => ({
-        recipient: error.recipient, // Use recipient instead of phoneNumber
-        error: error.error,
-        errorType: error.errorType,
-        timestamp: error.timestamp,
+        error: new Error(error.error), // Convert string to Error object
+        context: "/send-to-group",
+        recipient: error.recipient
       }));
-      await MessageErrorHandler.sendErrorReport(
-        client,
-        req.body,
-        transformedErrors,
-        "/send-to-group"
-      );
+      
+      // Handle batch errors using new service
+      await messageErrorHandler.handleBatchErrors(transformedErrors);
     }
 
     const statusCode =
@@ -126,19 +126,19 @@ router.post("/", upload.single("file"), async (req, res) => {
   } catch (error: unknown) {
     botLogger.error(`Request ${requestId} failed: ${error}`);
 
-    const { errorType, errorDetails } =
-      await MessageErrorHandler.handleCriticalError(
-        client,
-        error,
-        req.body,
-        "/send-to-group"
-      );
+    // Use new error handling service
+    const errorResult = await messageErrorHandler.handleMessageError(
+      error instanceof Error ? error : new Error(String(error)),
+      "/send-to-group",
+      undefined, // no specific recipient for group errors
+      "group"
+    );
 
     return res.status(500).json({
       success: false,
       error: "GROUP_SEND_ERROR: Internal server error",
-      errorType,
-      details: errorDetails.troubleshooting,
+      errorType: "CRITICAL_ERROR",
+      details: errorResult.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
     });

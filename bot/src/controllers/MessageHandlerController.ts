@@ -16,6 +16,9 @@ import {
 } from "../services/MediaMessagingService";
 import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
 import { MediaResult, MessageHandlerResult, MessageType } from "../types/types";
+
+// Initialize error handler service
+const messageErrorHandler = new MessageErrorHandlerService();
 /**
  * Message Handler Controller
  * Unified message handler that integrates error handling and fallback mechanisms
@@ -138,12 +141,13 @@ export class MessageHandlerController {
       // Handle errors with centralized error handler
       if (result.errors.length > 0) {
         try {
-          await MessageErrorHandler.sendErrorReport(
-            client,
-            { messageType, recipients, content },
-            result.errors,
-            `message-handler-${messageType.toLowerCase()}`
-          );
+          const errorObjects = result.errors.map(err => ({
+            error: new Error(err.error),
+            context: `message-handler-${messageType.toLowerCase()}`,
+            recipient: err.recipient
+          }));
+          
+          await messageErrorHandler.handleBatchErrors(errorObjects);
           result.fallbackSent = true;
         } catch (errorHandlerError: any) {
           botLogger.error(
@@ -157,7 +161,7 @@ export class MessageHandlerController {
       );
 
       // Validate if it's a WhatsApp-specific error
-      const errorValidation = validateWhatsAppError(criticalError);
+      const errorValidation = validateErrorSeverity(criticalError);
 
       const criticalErrorObj = {
         recipient: "ALL",
@@ -182,7 +186,7 @@ export class MessageHandlerController {
           `Description: ${errorValidation.description}\n` +
           `Is Post-Send Error: ${errorValidation.isPostSendError ? "Yes" : "No"}`;
 
-        await sendErrorMessage(client, fallbackMessage);
+        await sendTextMessage(client, [DEFAULT_FALLBACK_PHONE_NUMBER], fallbackMessage);
         result.fallbackSent = true;
         botLogger.success("Critical error sent to fallback");
       } catch (fallbackError: any) {
@@ -246,7 +250,7 @@ export class MessageHandlerController {
     const fullMessage = `${prefix}\n\n${message}\n\nTime: ${new Date().toISOString()}`;
 
     try {
-      await sendErrorMessage(client, fullMessage, fallbackNumber);
+      await sendTextMessage(client, [fallbackNumber], fullMessage);
       botLogger.success(
         `${
           isError ? "Error" : "Info"
@@ -425,7 +429,7 @@ export class MessageHandlerController {
           error instanceof Error ? error.stack : "No stack trace";
 
         // Use standardized error validation to determine if fallback should be sent
-        const sendFallback = shouldSendFallback(error, "GROUP_MESSAGE", groupId);
+        const sendFallback = !isPostSendErrorType(error as Error);
 
         if (!sendFallback) {
           // Post-send error - message was likely delivered successfully
