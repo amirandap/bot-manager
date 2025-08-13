@@ -4,8 +4,8 @@ import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendDocumentMessage } from "../services/MediaMessagingService";
 import { MessageErrorHandler, botLogger } from "../utils";
-import RequestValidator from "../utils/requestValidator";
-import { RecipientProcessor } from "../utils/recipientFormatting";
+import { RequestValidationService } from "../services/RequestValidationService";
+import { RecipientProcessorService } from "../services/RecipientProcessorService";
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),

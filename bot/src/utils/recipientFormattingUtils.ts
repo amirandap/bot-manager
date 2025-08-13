@@ -1,11 +1,9 @@
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
-import { fetchUserData } from "../services/UserDataService";
-import { BaseMessageRequestBody } from "../types/types";
 import { botLogger } from "./loggerWrapper";
 
 /**
- * Recipient formatting and processing utilities
- * Consolidated from mediaHelpers, recipientProcessor, and formatting utilities
+ * Pure utility functions for recipient formatting and validation
+ * Contains only stateless, pure functions
  */
 
 /**
@@ -26,7 +24,6 @@ export function formatRecipient(recipient: string): string {
 
 /**
  * Separate phone numbers and group IDs from a list of recipients
- * Enhanced version from recipientProcessor
  * @param recipients Array of phone numbers and/or group IDs
  * @returns Object with separated phoneNumbers and groups arrays
  */
@@ -88,66 +85,4 @@ export function formatPhoneForWhatsApp(phoneNumber: string): string {
     ? cleanedPhoneNumber.slice(1)
     : cleanedPhoneNumber;
   return whatsappNumber.trim();
-}
-
-/**
- * RecipientProcessor class - handles complex recipient processing
- * Moved from recipientProcessor.ts for consolidation
- */
-export class RecipientProcessor {
-  /**
-   * Generic recipient processor for all message types
-   * Processes and normalizes recipients from various sources
-   */
-  public static async processRecipients(body: BaseMessageRequestBody): Promise<{
-    groups: string[];
-    phoneNumbers: string[];
-  }> {
-    const { discorduserid, phoneNumber, to, group_id } = body;
-    const userData = discorduserid ? await fetchUserData(discorduserid) : null;
-
-    // New unified recipient handling logic
-    const targetNumber = phoneNumber || to;
-    let allRecipients: string[] = [];
-
-    // Collect all recipients from different sources
-    if (typeof targetNumber === "string") {
-      allRecipients.push(targetNumber);
-    } else if (Array.isArray(targetNumber)) {
-      allRecipients.push(...targetNumber);
-    }
-
-    if (group_id) {
-      allRecipients.push(group_id);
-    }
-
-    if (discorduserid && userData?.celular) {
-      allRecipients.push(userData.celular);
-    }
-
-    // Remove duplicates
-    const uniqueRecipients = new Set(allRecipients);
-    allRecipients = Array.from(uniqueRecipients);
-
-    // Use consolidated function to separate recipients
-    const { phoneNumbers, groups } = separateRecipients(allRecipients);
-
-    return { groups, phoneNumbers };
-  }
-
-  /**
-   * Simple recipient processor for basic to/recipients arrays
-   * Uses the consolidated separateRecipients function
-   */
-  public static processSimpleRecipients(recipients: string | string[]): {
-    groups: string[];
-    phoneNumbers: string[];
-  } {
-    const allRecipients = Array.isArray(recipients) ? recipients : [recipients];
-
-    // Use consolidated function to separate recipients
-    const { phoneNumbers, groups } = separateRecipients(allRecipients);
-
-    return { groups, phoneNumbers };
-  }
 }

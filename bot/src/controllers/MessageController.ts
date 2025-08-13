@@ -1,6 +1,8 @@
 
-import { botLogger, MessageErrorHandler, separateRecipients } from "../utils";
-import RequestValidator from "../utils/requestValidator";
+import { botLogger } from "../utils";
+import { MessageErrorHandlerService } from "../services";
+import { separateRecipients } from "../utils/recipientFormattingUtils";
+import { RequestValidationService } from "../services/RequestValidationService";
 import { Request, Response } from "express";
 import { getClient } from "../config/clientExporter";
 import {
@@ -22,12 +24,15 @@ import {
   BaseMessageRequestBody,
 } from "../types/types";
 
+// Initialize error handler service
+const messageErrorHandler = new MessageErrorHandlerService();
+
 /**
  * Centralized Message Controller - CONSOLIDATED VERSION
  * 
  * ELIMINATES DUPLICATIONS BY USING:
  * - MessageHandlerController for message handling (NOT old messageHandler.ts)
- * - RequestValidator for validation (NOT internal duplicate methods)
+ * - RequestValidationService for validation (NOT internal duplicate methods)
  * - MessageErrorHandler for error handling
  * - Unified client checking (NO duplicate validateClient methods)
  */
@@ -71,14 +76,14 @@ export class MessageController {
   }
 
   /**
-   * Unified response formatting - uses RequestValidator methods
+   * Unified response formatting - uses RequestValidationService methods
    */
   private static formatResponse(
     results: { messagesSent: string[]; errors: any[] },
     requestId: string,
     additionalData?: Record<string, any>
   ): { statusCode: number; response: SendResponse | MediaSendResponse } {
-    const statusCode = RequestValidator.getResponseStatus(results.errors, results.messagesSent);
+    const statusCode = RequestValidationService.getResponseStatus(results.errors, results.messagesSent);
 
     const response = {
       success: results.errors.length === 0,
@@ -107,19 +112,18 @@ export class MessageController {
     botLogger.error(`❌ [BOT] Request ${requestId} failed:`);
 
     const client = getClient();
-    const { errorType, errorDetails } =
-      await MessageErrorHandler.handleCriticalError(
-        client,
-        error,
-        req.body,
-        endpoint
-      );
+    const errorResult = await messageErrorHandler.handleMessageError(
+      error as Error,
+      endpoint,
+      req.body.phoneNumber,
+      "critical"
+    );
 
     res.status(500).json({
       success: false,
       error: `${endpoint.toUpperCase().replace(/[^A-Z]/g, "_")}_ERROR: Internal server error`,
-      errorType,
-      details: errorDetails.troubleshooting,
+      errorType: "CRITICAL_ERROR",
+      details: errorResult.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
     });
@@ -135,11 +139,11 @@ export class MessageController {
     
     const { client, requestId } = clientValidation;
 
-    // Use RequestValidator - no duplicate validation
-    const validation = RequestValidator.validateMessageRequest(req, res, true);
+    // Use RequestValidationService - no duplicate validation
+    const validation = RequestValidationService.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    const recipientValidation = RequestValidationService.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
     const { message } = validation.body!;
     const file = validation.file;
@@ -164,12 +168,13 @@ export class MessageController {
       const results = await sendToPhones(client, phoneNumbers, message!, file);
 
       if (results.errors.length > 0) {
-        await MessageErrorHandler.sendErrorReport(
-          client,
-          req.body,
-          results.errors,
-          "/send-to-phone"
-        );
+        const errorObjects = results.errors.map(err => ({
+          error: new Error(err.error),
+          context: "/send-to-phone",
+          recipient: err.recipient
+        }));
+        
+        await messageErrorHandler.handleBatchErrors(errorObjects);
       }
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
@@ -194,10 +199,10 @@ export class MessageController {
     
     const { client, requestId } = clientValidation;
 
-    const validation = RequestValidator.validateMessageRequest(req, res, true);
+    const validation = RequestValidationService.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    const recipientValidation = RequestValidationService.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
     const { message } = validation.body!;
@@ -222,12 +227,13 @@ export class MessageController {
       const results = await sendToGroups(client, groups, message!, file);
 
       if (results.errors.length > 0) {
-        await MessageErrorHandler.sendErrorReport(
-          client,
-          req.body,
-          results.errors,
-          "/send-to-group"
-        );
+        const errorObjects = results.errors.map(err => ({
+          error: new Error(err.error),
+          context: "/send-to-group", 
+          recipient: err.recipient
+        }));
+        
+        await messageErrorHandler.handleBatchErrors(errorObjects);
       }
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
@@ -252,10 +258,10 @@ export class MessageController {
     
     const { client, requestId } = clientValidation;
 
-    const validation = RequestValidator.validateMessageRequest(req, res, true);
+    const validation = RequestValidationService.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
-    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    const recipientValidation = RequestValidationService.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
     const { message } = validation.body!;
@@ -278,12 +284,13 @@ export class MessageController {
       );
 
       if (results.errors.length > 0) {
-        await MessageErrorHandler.sendErrorReport(
-          client,
-          req.body,
-          results.errors,
-          "/send-broadcast"
-        );
+        const errorObjects = results.errors.map(err => ({
+          error: new Error(err.error),
+          context: "/send-broadcast",
+          recipient: err.recipient
+        }));
+        
+        await messageErrorHandler.handleBatchErrors(errorObjects);
       }
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
@@ -312,7 +319,7 @@ export class MessageController {
     
     const { client, requestId } = clientValidation;
 
-    const fileValidation = RequestValidator.validateFileUpload(
+    const fileValidation = RequestValidationService.validateFileUpload(
       req,
       res,
       mediaType,
@@ -320,7 +327,7 @@ export class MessageController {
     );
     if (!fileValidation.isValid) return;
 
-    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    const recipientValidation = RequestValidationService.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
     const file = fileValidation.file!;
@@ -348,12 +355,13 @@ export class MessageController {
       }
 
       if (results.errors.length > 0) {
-        await MessageErrorHandler.sendErrorReport(
-          client,
-          req.body,
-          results.errors,
-          `/send-${mediaType}`
-        );
+        const errorObjects = results.errors.map(err => ({
+          error: new Error(err.error),
+          context: `/send-${mediaType}`,
+          recipient: err.recipient
+        }));
+        
+        await messageErrorHandler.handleBatchErrors(errorObjects);
       }
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId, {
@@ -382,7 +390,7 @@ export class MessageController {
     
     const { client, requestId } = clientValidation;
 
-    const validation = RequestValidator.validateMessageRequest(req, res, true);
+    const validation = RequestValidationService.validateMessageRequest(req, res, true);
     if (!validation.isValid) return;
 
     const { message, phoneNumber, to } = validation.body!;

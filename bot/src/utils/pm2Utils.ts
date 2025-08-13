@@ -320,30 +320,6 @@ export function notifyPM2Shutdown(
 }
 
 /**
- * Update PM2 with startup progress
- */
-export function updateStartupProgress(
-  completedSteps: number,
-  totalSteps: number,
-  currentStepName: string,
-  status: 'success' | 'failure' | 'in_progress' = 'in_progress'
-): void {
-  const progress = Math.round((completedSteps / totalSteps) * 100);
-  
-  updatePM2Metrics(
-    currentStepName,
-    status,
-    `Step ${completedSteps}/${totalSteps}: ${currentStepName}`,
-    progress,
-    {
-      completed_steps: completedSteps,
-      total_steps: totalSteps,
-      startup_phase: true
-    }
-  );
-}
-
-/**
  * Mark startup as completed successfully
  */
 export function markStartupComplete(): void {
@@ -361,38 +337,10 @@ export function markStartupComplete(): void {
 }
 
 /**
- * Mark a specific step as successful
- */
-export function markStepSuccess(stepName: string, message?: string, details?: any): void {
-  updatePM2Metrics(stepName, 'success', message, undefined, details);
-}
-
-/**
- * Mark a specific step as failed
- */
-export function markStepFailure(stepName: string, error: Error, details?: any): void {
-  updatePM2Metrics(
-    stepName, 
-    'failure', 
-    `Failed: ${error.message}`, 
-    undefined, 
-    { ...details, error_stack: error.stack }
-  );
-}
-
-/**
- * Mark a specific step as in progress
- */
-export function markStepInProgress(stepName: string, message?: string, progress?: number): void {
-  updatePM2Metrics(stepName, 'in_progress', message, progress);
-}
-
-/**
  * Predefined startup steps for consistent tracking
  */
 export const STARTUP_STEPS = {
   VALIDATION: 'startup_validation',
-  LIFECYCLE_INIT: 'bot_lifecycle_initialization', 
   WHATSAPP_CLIENT: 'whatsapp_client_initialization',
   ERROR_CHECK: 'initialization_error_check',
   API_SETUP: 'express_api_setup',

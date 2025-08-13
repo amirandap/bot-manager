@@ -9,9 +9,10 @@ import {
 } from "../types/types";
 
 /**
- * Generic request validator for message endpoints
+ * Request validation service for message endpoints
+ * Handles all validation logic for incoming requests
  */
-export default class RequestValidator {
+export class RequestValidationService {
   /**
    * Validates basic message request with optional file
    */
@@ -22,8 +23,6 @@ export default class RequestValidator {
   ): ValidationResult {
     const body = req.body as BaseMessageRequestBody;
     const file = req.file as Express.Multer.File;
-
-    // Remove console.log for production - use proper logging instead
 
     if (requiresMessage && !body.message && !file) {
       res.status(400).json({
@@ -113,3 +112,6 @@ export default class RequestValidator {
     return 207; // Mixed results (multi-status)
   }
 }
+
+// Export default for backward compatibility
+export default RequestValidationService;

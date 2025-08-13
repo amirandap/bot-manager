@@ -1,34 +1,34 @@
 {
   "process_info": {
-    "pid": 17394,
-    "started_at": "2025-08-12T16:12:04.714Z",
+    "pid": 60499,
+    "started_at": "2025-08-13T14:39:44.430Z",
     "running_with_pm2": false,
     "node_version": "v22.11.0",
     "working_directory": "/Users/amiranda/Github/bot-manager-amp/bot"
   },
   "current_status": {
-    "overall_status": "running",
-    "current_step": "startup_complete",
-    "progress_percentage": 100,
-    "last_update": "2025-08-12T16:12:10.240Z",
-    "bot_ready": true,
-    "api_ready": true,
+    "overall_status": "starting",
+    "current_step": "whatsapp_client_initialization",
+    "progress_percentage": 17,
+    "last_update": "2025-08-13T14:39:44.433Z",
+    "bot_ready": false,
+    "api_ready": false,
     "whatsapp_connected": false
   },
   "metrics_history": [
     {
-      "timestamp": "2025-08-12T16:12:04.715Z",
+      "timestamp": "2025-08-13T14:39:44.431Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:04.714Z",
+          "timestamp": "2025-08-13T14:39:44.427Z",
           "message": "Validating environment and dependencies",
           "progress": 0,
           "details": {
             "step_number": 1,
-            "total_steps": 7,
+            "total_steps": 6,
             "startup_phase": true,
             "action": "progress"
           }
@@ -39,332 +39,47 @@
       }
     },
     {
-      "timestamp": "2025-08-12T16:12:04.716Z",
+      "timestamp": "2025-08-13T14:39:44.432Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-12T16:12:04.716Z",
+          "timestamp": "2025-08-13T14:39:44.432Z",
           "message": "Environment validation completed successfully",
-          "progress": 14,
+          "progress": 17,
           "details": {
             "step_number": 1,
-            "total_steps": 7,
+            "total_steps": 6,
             "startup_phase": true,
             "action": "complete"
           }
         },
         "current_step": "startup_validation",
         "overall_status": "success",
-        "progress_percentage": 14
+        "progress_percentage": 17
       }
     },
     {
-      "timestamp": "2025-08-12T16:12:04.716Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "bot_lifecycle_initialization",
-          "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:04.716Z",
-          "message": "Initializing QR code system",
-          "progress": 14,
-          "details": {
-            "step_number": 2,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "bot_lifecycle_initialization",
-        "overall_status": "in_progress",
-        "progress_percentage": 14
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:04.716Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "bot_lifecycle_initialization",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:04.716Z",
-          "message": "QR code system initialized successfully",
-          "progress": 29,
-          "details": {
-            "step_number": 2,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "complete"
-          }
-        },
-        "current_step": "bot_lifecycle_initialization",
-        "overall_status": "success",
-        "progress_percentage": 29
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:04.716Z",
+      "timestamp": "2025-08-13T14:39:44.433Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:04.716Z",
-          "message": "Initializing WhatsApp client",
-          "progress": 29,
+          "timestamp": "2025-08-13T14:39:44.433Z",
+          "message": "Initializing WhatsApp client and QR system",
+          "progress": 17,
           "details": {
-            "step_number": 3,
-            "total_steps": 7,
+            "step_number": 2,
+            "total_steps": 6,
             "startup_phase": true,
             "action": "progress"
           }
         },
         "current_step": "whatsapp_client_initialization",
         "overall_status": "in_progress",
-        "progress_percentage": 29
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.165Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.165Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.178Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.178Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.180Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "whatsapp_client_initialization",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.180Z",
-          "message": "WhatsApp client initialized successfully",
-          "progress": 43,
-          "details": {
-            "step_number": 3,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "complete"
-          }
-        },
-        "current_step": "whatsapp_client_initialization",
-        "overall_status": "success",
-        "progress_percentage": 43
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.180Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "initialization_error_check",
-          "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:10.180Z",
-          "message": "Validating WhatsApp initialization status",
-          "progress": 43,
-          "details": {
-            "step_number": 4,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "initialization_error_check",
-        "overall_status": "in_progress",
-        "progress_percentage": 43
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.181Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "initialization_error_check",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.181Z",
-          "message": "WhatsApp started with recoverable error: qr_ready",
-          "progress": 57,
-          "details": {
-            "step_number": 4,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "complete",
-            "lifecycle_state": "qr_ready",
-            "error_type": "recoverable",
-            "can_proceed": true
-          }
-        },
-        "current_step": "initialization_error_check",
-        "overall_status": "success",
-        "progress_percentage": 57
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.181Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "express_api_setup",
-          "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:10.181Z",
-          "message": "Setting up API server",
-          "progress": 57,
-          "details": {
-            "step_number": 5,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "express_api_setup",
-        "overall_status": "in_progress",
-        "progress_percentage": 57
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.239Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "express_api_setup",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.239Z",
-          "message": "API server running on port 7260",
-          "progress": 71,
-          "details": {
-            "step_number": 5,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "complete"
-          }
-        },
-        "current_step": "express_api_setup",
-        "overall_status": "success",
-        "progress_percentage": 71
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.239Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "graceful_shutdown_setup",
-          "status": "in_progress",
-          "timestamp": "2025-08-12T16:12:10.239Z",
-          "message": "Setting up shutdown handlers",
-          "progress": 71,
-          "details": {
-            "step_number": 6,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "progress"
-          }
-        },
-        "current_step": "graceful_shutdown_setup",
-        "overall_status": "in_progress",
-        "progress_percentage": 71
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.240Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "graceful_shutdown_setup",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.240Z",
-          "message": "Shutdown handlers configured",
-          "progress": 86,
-          "details": {
-            "step_number": 6,
-            "total_steps": 7,
-            "startup_phase": true,
-            "action": "complete"
-          }
-        },
-        "current_step": "graceful_shutdown_setup",
-        "overall_status": "success",
-        "progress_percentage": 86
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.240Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "startup_complete",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.240Z",
-          "message": "Bot startup completed successfully",
-          "progress": 100,
-          "details": {
-            "startup_phase": false,
-            "bot_ready": true,
-            "api_ready": true
-          }
-        },
-        "current_step": "startup_complete",
-        "overall_status": "success",
-        "progress_percentage": 100
-      }
-    },
-    {
-      "timestamp": "2025-08-12T16:12:10.240Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "startup_complete",
-          "status": "success",
-          "timestamp": "2025-08-12T16:12:10.240Z",
-          "message": "Bot startup completed successfully",
-          "progress": 100,
-          "details": {
-            "startup_phase": false,
-            "bot_ready": true,
-            "api_ready": true
-          }
-        },
-        "current_step": "startup_complete",
-        "overall_status": "success",
-        "progress_percentage": 100
+        "progress_percentage": 17
       }
     }
   ],

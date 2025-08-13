@@ -6,7 +6,7 @@ import { Request, Response, NextFunction } from "express";
 import * as express from "express";
 import { BOT_PORT } from "../config/EnvironmentManager";
 import { setupRoutes } from "../routes/unified/messageRoutes";
-import { sendQRCode, hasQRCode, getQRCode, getQRStatus } from "./qrUtils";
+import { sendQRCode, hasQRCode, getQRCode, getQRStatus } from "./whatsAppUtils";
 import { getWhatsAppStatus, isWhatsAppClientReady, getWhatsAppClient } from "./whatsAppUtils";
 import { getClient } from "../config/clientExporter";
 import { botLogger } from "./loggerWrapper";

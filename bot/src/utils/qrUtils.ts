@@ -8,7 +8,7 @@ import * as path from "path";
 import * as QRCode from "qrcode";
 import { botLogger } from "./loggerWrapper";
 import { QR_PATH } from "../config/EnvironmentManager";
-import { updatePM2Metrics, markStepFailure } from "./pm2Utils";
+import { updatePM2Metrics, handleStep } from "./pm2Utils";
 import { DirectoryManagerService } from "../services/DirectoryManagerService";
 
 // Global QR state
@@ -42,7 +42,7 @@ export async function handleQRGenerated(
   if (!qrCodePath) {
     const error = new Error("QR code system not initialized. Call initializeQRCode first.");
     botLogger.error(`QR handling failed: ${error.message}`);
-    markStepFailure('qr_code_generation', error);
+    // Note: This function is deprecated, QR handling is now in whatsAppUtils.ts
     throw error;
   }
 
@@ -65,13 +65,9 @@ export async function handleQRGenerated(
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    botLogger.error(`Error handling QR code: ${errorMessage}`);
+    botLogger.error(`QR code handling failed: ${errorMessage}`);
     
-    // Provide more context for debugging
-    botLogger.error(`QR code path: ${qrCodePath}`);
-    botLogger.error(`QR directory exists: ${fs.existsSync(path.dirname(qrCodePath!))}`);
-    
-    markStepFailure('qr_code_generation', error as Error);
+    // Note: This function is deprecated, QR handling is now in whatsAppUtils.ts
     throw new Error(`QR code handling failed: ${errorMessage}`);
   }
 }
