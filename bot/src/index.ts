@@ -118,8 +118,7 @@ async function startBot(): Promise<void> {
     
     // Log API endpoints
     botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
-    botLogger.info(`📱 QR Code: http://localhost:${config.BOT_PORT}/qr-code`, "🌐");
-    botLogger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
+    botLogger.info(` Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
     
     handleStep('API_SETUP', 'complete', { message: `API server running on port ${config.BOT_PORT}` });
 

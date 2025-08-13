@@ -2,13 +2,9 @@
  * API Server Utilities
  * Centralized functions for Express server management
  */
-import { Request, Response, NextFunction } from "express";
 import * as express from "express";
-import { BOT_PORT } from "../config/EnvironmentManager";
-import { setupRoutes } from "../routes/unified/messageRoutes";
-import { sendQRCode, hasQRCode, getQRCode, getQRStatus } from "./whatsAppUtils";
+import { getQRStatus } from "./whatsAppUtils";
 import { getWhatsAppStatus, isWhatsAppClientReady, getWhatsAppClient } from "./whatsAppUtils";
-import { getClient } from "../config/clientExporter";
 import { botLogger } from "./loggerWrapper";
 interface BotConfig {
   BOT_ID: string;
@@ -46,24 +42,6 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
   expressApp.use("/get-groups", getGroupsRouter);
 
   // Status endpoints
-  expressApp.get("/qr-code", (req, res) => {
-    const status = getBotStatus(config);
-    if (hasQRCode()) {
-      res.json({
-        success: true,
-        qrCode: getQRCode(),
-        message: "QR code ready for scanning",
-        ...status,
-      });
-    } else {
-      res.json({
-        success: false,
-        message: status.stateDescription,
-        ...status,
-      });
-    }
-  });
-
   expressApp.get("/status", (req, res) => {
     const status = getBotStatus(config);
     res.json(status);
@@ -105,8 +83,7 @@ export async function startAPIServer(
       httpServer = expressApp.listen(config.BOT_PORT, () => {
         botLogger.success(`✅ ${config.BOT_NAME} API server started successfully on port ${config.BOT_PORT}`);
         botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
-        botLogger.info(`📱 QR Code: http://localhost:${config.BOT_PORT}/qr-code`, "🌐");
-        botLogger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
+        botLogger.info(` Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
       });
 
       return httpServer;

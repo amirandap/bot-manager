@@ -10,8 +10,9 @@
  * - hasQRCode() 
  * - getQRCodePath()
  * - getQRStatus()
- * - sendQRCode()
  * - cleanupQRCodeAfterConnection()
+ * 
+ * Note: sendQRCode() API functionality removed - QR codes are now file-only
  */
 
 // Re-export from whatsAppUtils for backward compatibility
@@ -20,7 +21,6 @@ export {
   hasQRCode,
   getQRCodePath,
   getQRStatus,
-  sendQRCode,
   cleanupQRCodeAfterConnection as cleanupQRCode
 } from "./whatsAppUtils";
 
