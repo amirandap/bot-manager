@@ -1,10 +1,7 @@
 // Simplified WhatsApp Bot Starter - Refactored with Utility Functions
 import { 
   alertPM2Failure, 
-  notifyPM2Shutdown, 
   markStartupComplete,
-  STARTUP_STEPS,
-  getTotalStartupSteps,
   // Master step handler function
   handleStep
 } from "./utils/pm2Utils";
@@ -18,9 +15,7 @@ import {
 // Import other utility functions instead of service classes
 import {
   initializeWhatsAppClient,
-  shutdownWhatsAppClient,
   getWhatsAppStatus,
-  isWhatsAppClientReady,
   cleanupQRCodeAfterConnection
 } from "./utils/whatsAppUtils";
 
@@ -35,7 +30,6 @@ import {
 } from "./utils/shutdownUtils";
 
 import {
-  validateBrowserEnvironment,
   getSystemInfo,
   validateEnvironmentForBrowser
 } from "./utils/browserUtils";
@@ -43,27 +37,16 @@ import {
 // Import unified logger
 import { botLogger } from "./utils/loggerWrapper";
 
-// Global state flags
-let isShuttingDown = false;
-
 async function startBot(): Promise<void> {
   try {
-    // Step 1: Startup validation (Environment, Chrome, Directories)
+    // Step 1: Startup validation (Environment, Chrome, Directories) - CONSOLIDATED
     botLogger.startupHeader("🔍 STARTUP VALIDATION");
     handleStep('VALIDATION', 'progress', { message: "Validating environment and dependencies" });
     
-    // Validate using startup utilities instead of StartupManager
+    // Single comprehensive startup validation (includes Chrome, directories, env vars)
     const startupSuccess = await initializeStartup();
     if (!startupSuccess) {
       const error = new Error("Startup validation failed - check Chrome installation and environment variables");
-      handleStep('VALIDATION', 'fail', { error, shouldRestart: false });
-      throw error;
-    }
-
-    // Additional browser validation
-    const browserValid = await validateBrowserEnvironment();
-    if (!browserValid) {
-      const error = new Error("Browser environment validation failed");
       handleStep('VALIDATION', 'fail', { error, shouldRestart: false });
       throw error;
     }
@@ -78,7 +61,7 @@ async function startBot(): Promise<void> {
     // Show system information
     getSystemInfo();
     
-    // Validate environment for browser
+    // Environment validation for browser (non-Chrome specific checks)
     await validateEnvironmentForBrowser();
     
     // Initialize WhatsApp client with QR callback (QR is now handled internally)

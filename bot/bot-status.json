@@ -1,29 +1,29 @@
 {
   "process_info": {
-    "pid": 31803,
-    "started_at": "2025-08-13T16:50:23.341Z",
+    "pid": 48675,
+    "started_at": "2025-08-13T17:15:04.799Z",
     "running_with_pm2": false,
     "node_version": "v22.11.0",
     "working_directory": "/Users/amiranda/Github/bot-manager-amp/bot"
   },
   "current_status": {
-    "overall_status": "starting",
-    "current_step": "qr_code_ready",
-    "progress_percentage": 60,
-    "last_update": "2025-08-13T16:52:46.723Z",
+    "overall_status": "running",
+    "current_step": "startup_complete",
+    "progress_percentage": 100,
+    "last_update": "2025-08-13T17:15:08.570Z",
     "bot_ready": true,
     "api_ready": true,
     "whatsapp_connected": false
   },
   "metrics_history": [
     {
-      "timestamp": "2025-08-13T16:50:23.342Z",
+      "timestamp": "2025-08-13T17:15:04.800Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "in_progress",
-          "timestamp": "2025-08-13T16:50:23.340Z",
+          "timestamp": "2025-08-13T17:15:04.798Z",
           "message": "Validating environment and dependencies",
           "progress": 0,
           "details": {
@@ -39,13 +39,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:23.343Z",
+      "timestamp": "2025-08-13T17:15:04.801Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_validation",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:23.343Z",
+          "timestamp": "2025-08-13T17:15:04.801Z",
           "message": "Environment validation completed successfully",
           "progress": 17,
           "details": {
@@ -61,13 +61,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:23.343Z",
+      "timestamp": "2025-08-13T17:15:04.801Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "in_progress",
-          "timestamp": "2025-08-13T16:50:23.343Z",
+          "timestamp": "2025-08-13T17:15:04.801Z",
           "message": "Initializing WhatsApp client and QR system",
           "progress": 17,
           "details": {
@@ -83,13 +83,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.767Z",
+      "timestamp": "2025-08-13T17:15:08.483Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "qr_code_ready",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.767Z",
+          "timestamp": "2025-08-13T17:15:08.483Z",
           "message": "QR code generated and ready for scanning",
           "progress": 60,
           "details": {
@@ -104,13 +104,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.770Z",
+      "timestamp": "2025-08-13T17:15:08.486Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "whatsapp_client_initialization",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.770Z",
+          "timestamp": "2025-08-13T17:15:08.486Z",
           "message": "WhatsApp client initialized successfully",
           "progress": 33,
           "details": {
@@ -126,13 +126,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.770Z",
+      "timestamp": "2025-08-13T17:15:08.486Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "in_progress",
-          "timestamp": "2025-08-13T16:50:26.770Z",
+          "timestamp": "2025-08-13T17:15:08.486Z",
           "message": "Validating WhatsApp initialization status",
           "progress": 33,
           "details": {
@@ -148,13 +148,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.770Z",
+      "timestamp": "2025-08-13T17:15:08.486Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "initialization_error_check",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.770Z",
+          "timestamp": "2025-08-13T17:15:08.486Z",
           "message": "WhatsApp started with recoverable error: qr_ready",
           "progress": 50,
           "details": {
@@ -173,13 +173,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.770Z",
+      "timestamp": "2025-08-13T17:15:08.486Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-13T16:50:26.770Z",
+          "timestamp": "2025-08-13T17:15:08.486Z",
           "message": "Setting up API server",
           "progress": 50,
           "details": {
@@ -195,13 +195,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.856Z",
+      "timestamp": "2025-08-13T17:15:08.568Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "express_api_setup",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.856Z",
+          "timestamp": "2025-08-13T17:15:08.568Z",
           "message": "API server running on port 7260",
           "progress": 67,
           "details": {
@@ -217,13 +217,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.857Z",
+      "timestamp": "2025-08-13T17:15:08.569Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "in_progress",
-          "timestamp": "2025-08-13T16:50:26.856Z",
+          "timestamp": "2025-08-13T17:15:08.569Z",
           "message": "Setting up shutdown handlers",
           "progress": 67,
           "details": {
@@ -239,13 +239,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.857Z",
+      "timestamp": "2025-08-13T17:15:08.569Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "graceful_shutdown_setup",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.857Z",
+          "timestamp": "2025-08-13T17:15:08.569Z",
           "message": "Shutdown handlers configured",
           "progress": 83,
           "details": {
@@ -261,13 +261,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.858Z",
+      "timestamp": "2025-08-13T17:15:08.570Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_complete",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.858Z",
+          "timestamp": "2025-08-13T17:15:08.570Z",
           "message": "Bot startup completed successfully",
           "progress": 100,
           "details": {
@@ -282,13 +282,13 @@
       }
     },
     {
-      "timestamp": "2025-08-13T16:50:26.858Z",
+      "timestamp": "2025-08-13T17:15:08.570Z",
       "type": "metric",
       "data": {
         "startup_metrics": {
           "step": "startup_complete",
           "status": "success",
-          "timestamp": "2025-08-13T16:50:26.858Z",
+          "timestamp": "2025-08-13T17:15:08.570Z",
           "message": "Bot startup completed successfully",
           "progress": 100,
           "details": {
@@ -300,111 +300,6 @@
         "current_step": "startup_complete",
         "overall_status": "success",
         "progress_percentage": 100
-      }
-    },
-    {
-      "timestamp": "2025-08-13T16:51:26.716Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-13T16:51:26.716Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-13T16:51:46.719Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-13T16:51:46.718Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-13T16:52:06.722Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-13T16:52:06.721Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-13T16:52:26.723Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-13T16:52:26.722Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
-      }
-    },
-    {
-      "timestamp": "2025-08-13T16:52:46.723Z",
-      "type": "metric",
-      "data": {
-        "startup_metrics": {
-          "step": "qr_code_ready",
-          "status": "success",
-          "timestamp": "2025-08-13T16:52:46.722Z",
-          "message": "QR code generated and ready for scanning",
-          "progress": 60,
-          "details": {
-            "qr_available": true,
-            "qr_endpoint": "http://localhost:7260/qr-code",
-            "qr_file_path": "/Users/amiranda/Github/data/qr-codes/whatsapp-bot-1.png"
-          }
-        },
-        "current_step": "qr_code_ready",
-        "overall_status": "success",
-        "progress_percentage": 60
       }
     }
   ],
