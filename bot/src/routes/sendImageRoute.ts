@@ -4,8 +4,8 @@ import multer from "multer";
 import { getClient } from "../config/clientExporter";
 import { sendImageMessage } from "../services/MediaMessagingService";
 import { MessageErrorHandler, botLogger } from "../utils";
-import RequestValidator from "../utils/requestValidator";
-import { RecipientProcessor } from "../utils/recipientFormatting";
+import { RequestValidationService } from "../services/RequestValidationService";
+import { RecipientProcessorService } from "../services/RecipientProcessorService";
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -60,7 +60,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     botLogger.info(`🖼️ [BOT] Image message request ${requestId} received`);
 
     // Validate file upload
-    const fileValidation = RequestValidator.validateFileUpload(
+    const fileValidation = RequestValidationService.validateFileUpload(
       req,
       res,
       "Image",
@@ -69,7 +69,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     if (!fileValidation.isValid) return;
 
     // Validate recipients
-    const recipientValidation = RequestValidator.validateRecipients(req, res);
+    const recipientValidation = RequestValidationService.validateRecipients(req, res);
     if (!recipientValidation.isValid) return;
 
     const { to, message } = req.body;
@@ -77,7 +77,7 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     // Process recipients
     const { groups, phoneNumbers } =
-      RecipientProcessor.processSimpleRecipients(to);
+      RecipientProcessorService.processSimpleRecipients(to);
     const recipients = [...groups, ...phoneNumbers];
     const caption = message || "";
 
@@ -103,11 +103,11 @@ router.post("/", upload.single("file"), async (req, res) => {
       );
     }
 
-    const statusCode = RequestValidator.getResponseStatus(
+    const statusCode = RequestValidationService.getResponseStatus(
       results.errors,
       results.messagesSent
     );
-    const response = RequestValidator.buildResponse(
+    const response = RequestValidationService.buildResponse(
       results.messagesSent,
       results.errors
     );

@@ -1,5 +1,8 @@
 
-import { botLogger, sendErrorMessage, shouldSendFallback, MessageErrorHandler, validateWhatsAppError, sendTextMessage } from "../utils";
+import { botLogger } from "../utils";
+import { MessageErrorHandlerService } from "../services";
+import { validateErrorSeverity, isPostSendErrorType } from "../utils/errorHandlerUtils";
+import { sendTextMessage } from "../utils/textMessaging";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */

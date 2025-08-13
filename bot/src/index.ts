@@ -20,20 +20,19 @@ import {
   initializeWhatsAppClient,
   shutdownWhatsAppClient,
   getWhatsAppStatus,
-  isWhatsAppClientReady
+  isWhatsAppClientReady,
+  cleanupQRCodeAfterConnection
 } from "./utils/whatsAppUtils";
 
 import {
-  initializeQRCode,
-  handleQRGenerated,
-  cleanupQRCode
-} from "./utils/qrUtils";
+  setupExpressAPI,
+  startAPIServer
+} from "./utils/apiUtils";
 
 import {
-  setupExpressAPI,
-  startAPIServer,
-  shutdownAPIServer
-} from "./utils/apiUtils";
+  gracefulShutdown as performGracefulShutdown,
+  setupShutdownHandlers
+} from "./utils/shutdownUtils";
 
 import {
   validateBrowserEnvironment,
@@ -46,39 +45,6 @@ import { botLogger } from "./utils/loggerWrapper";
 
 // Global state flags
 let isShuttingDown = false;
-
-/**
- * Graceful shutdown with PM2 notification
- */
-async function gracefulShutdown(signal?: string, error?: Error): Promise<void> {
-  if (isShuttingDown) {
-    botLogger.warn("Shutdown already in progress");
-    return;
-  }
-
-  isShuttingDown = true;
-
-  try {
-    botLogger.info(`🛑 Initiating graceful shutdown${signal ? ` (${signal})` : ''}...`);
-    
-    // Shutdown API server
-    await shutdownAPIServer();
-    
-    // Shutdown WhatsApp client
-    await shutdownWhatsAppClient();
-    
-    // Clean up QR code
-    cleanupQRCode();
-    
-    // Notify PM2 about shutdown
-    notifyPM2Shutdown(signal, error, error ? 'error_triggered' : 'manual');
-    
-    botLogger.success("✅ Graceful shutdown completed");
-  } catch (shutdownError) {
-    botLogger.error(`❌ Error during shutdown: ${shutdownError}`);
-    alertPM2Failure(shutdownError as Error, 'shutdown');
-  }
-}
 
 async function startBot(): Promise<void> {
   try {
@@ -106,15 +72,8 @@ async function startBot(): Promise<void> {
 
     const config = getStartupConfig();
     
-    // Step 2: Initialize QR code system
-    handleStep('LIFECYCLE_INIT', 'progress', { message: "Initializing QR code system" });
-    
-    initializeQRCode(config.BOT_ID, config.BOT_PORT);
-    
-    handleStep('LIFECYCLE_INIT', 'complete', { message: "QR code system initialized successfully" });
-
-    // Step 3: Initialize WhatsApp client
-    handleStep('WHATSAPP_CLIENT', 'progress', { message: "Initializing WhatsApp client" });
+    // Step 2: Initialize WhatsApp client (includes QR code management)
+    handleStep('WHATSAPP_CLIENT', 'progress', { message: "Initializing WhatsApp client and QR system" });
     
     // Show system information
     getSystemInfo();
@@ -122,14 +81,12 @@ async function startBot(): Promise<void> {
     // Validate environment for browser
     await validateEnvironmentForBrowser();
     
-    // Initialize WhatsApp client with QR callback
-    await initializeWhatsAppClient(config, async (qr: string) => {
-      await handleQRGenerated(qr, config.BOT_PORT);
-    });
+    // Initialize WhatsApp client with QR callback (QR is now handled internally)
+    await initializeWhatsAppClient(config);
     
     handleStep('WHATSAPP_CLIENT', 'complete', { message: "WhatsApp client initialized successfully" });
     
-    // Step 4: Check for critical initialization errors
+    // Step 3: Check for critical initialization errors
     handleStep('ERROR_CHECK', 'progress', { message: "Validating WhatsApp initialization status" });
     
     const whatsappStatus = getWhatsAppStatus();
@@ -167,7 +124,7 @@ async function startBot(): Promise<void> {
       handleStep('ERROR_CHECK', 'complete', { message: "WhatsApp initialization in progress, no critical errors detected" });
     }
 
-    // Step 5: Setup and start API server
+    // Step 4: Setup and start API server
     handleStep('API_SETUP', 'progress', { message: "Setting up API server" });
     
     // Setup Express API
@@ -183,17 +140,13 @@ async function startBot(): Promise<void> {
     
     handleStep('API_SETUP', 'complete', { message: `API server running on port ${config.BOT_PORT}` });
 
-    // Step 6: Setup shutdown handlers
+    // Step 5: Setup shutdown handlers
     handleStep('SHUTDOWN_HANDLERS', 'progress', { message: "Setting up shutdown handlers" });
     
-    // Setup shutdown handlers
-    const handleShutdown = async (signal: string) => {
-      await gracefulShutdown(signal);
-      throw new Error(`Graceful shutdown completed via ${signal}`);
-    };
-
-    process.on("SIGINT", () => handleShutdown("SIGINT"));
-    process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+    // Setup shutdown handlers using utility function
+    setupShutdownHandlers(async (signal: string) => {
+      await performGracefulShutdown(signal);
+    });
     
     handleStep('SHUTDOWN_HANDLERS', 'complete', { message: "Shutdown handlers configured" });
     markStartupComplete();
@@ -203,7 +156,7 @@ async function startBot(): Promise<void> {
     
     if (finalWhatsAppStatus.isReady) {
       botLogger.success("🎉 Bot startup completed successfully! All systems operational.");
-      cleanupQRCode(); // Clean QR code after successful connection
+      cleanupQRCodeAfterConnection(); // Clean QR code after successful connection
       markStartupComplete();
     } else {
       botLogger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
@@ -215,7 +168,7 @@ async function startBot(): Promise<void> {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
     botLogger.error(`❌ Critical startup failure: ${error}`);
     
-    await gracefulShutdown(undefined, error as Error);
+    await performGracefulShutdown(undefined, error as Error);
     
     // Alert PM2 about the critical startup failure
     alertPM2Failure(error as Error, 'critical_startup', false, 'startup_failure');
@@ -225,8 +178,7 @@ async function startBot(): Promise<void> {
 
 // Start the bot
 startBot().catch((error) => {
-  // eslint-disable-next-line no-console
-  console.error("❌ Critical startup failure:", error);
+  botLogger.error("❌ Critical startup failure:", error);
   // eslint-disable-next-line no-process-exit
   process.exit(1);
 });

@@ -12,28 +12,46 @@ export { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 export * from "./textMessaging";
 
 // Recipient processing
-export * from "./recipientFormatting";
+export * from "./recipientFormattingUtils";
 
 // Error handling
-export { 
-  WhatsAppErrorHandler, 
-  MessageErrorHandler, 
-  sendErrorMessage, 
-  shouldSendFallback, 
-  validateWhatsAppError 
+// Error handling utilities (pure functions)
+export {
+  validateErrorSeverity,
+  isPostSendErrorType,
+  categorizeErrorMessage,
+  generateErrorDescription,
+  getErrorSeverity,
+  isRecoverableError,
+  extractTroubleshootingInfo,
+  calculateRetryDelay,
+  formatErrorForLogging,
+  createErrorSummary,
+} from "./errorHandlerUtils";
+
+// Backward compatibility exports (deprecated)
+export {
+  validateWhatsAppError,
+  shouldSendFallback,
+  logWhatsAppError,
+  categorizeError,
+  sendErrorMessage,
+  WhatsAppErrorClassifier,
+  WhatsAppErrorHandler,
+  MessageErrorHandler,
 } from "./errorHandler";
 
 // Validation utilities
-export { default as RequestValidator } from "./requestValidator";
+// Note: RequestValidator moved to services/RequestValidationService
 
 // Media utilities
 export * from "./mediaUtils";
 
 // Bot lifecycle utilities
 export * from "./whatsAppUtils";
-export * from "./qrUtils";
 export * from "./apiUtils";
 export * from "./browserUtils";
+export * from "./shutdownUtils";
 
 // Other utilities
 export * from "./pm2Utils";

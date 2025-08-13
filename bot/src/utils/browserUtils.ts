@@ -10,9 +10,8 @@ import { execSync } from "child_process";
 import { botLogger } from "./loggerWrapper";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
 import { 
-  markStepSuccess, 
-  markStepFailure, 
-  STARTUP_STEPS 
+  STARTUP_STEPS,
+  handleStep
 } from "./pm2Utils";
 
 /**
@@ -37,9 +36,12 @@ export async function validateBrowserEnvironment(): Promise<boolean> {
       });
 
       const error = new Error("Chrome executable validation failed");
-      markStepFailure(STARTUP_STEPS.VALIDATION, error, { 
-        chrome_validation: false,
-        chrome_issues: result.logs.filter(log => log.includes("❌"))
+      handleStep('VALIDATION', 'fail', {
+        error,
+        details: { 
+          chrome_validation: false,
+          chrome_issues: result.logs.filter(log => log.includes("❌"))
+        }
       });
       
       return false;
@@ -59,8 +61,11 @@ export async function validateBrowserEnvironment(): Promise<boolean> {
 
   } catch (error) {
     botLogger.error(`Chrome validation error: ${error}`);
-    markStepFailure(STARTUP_STEPS.VALIDATION, error as Error, { 
-      chrome_validation_error: true 
+    handleStep('VALIDATION', 'fail', {
+      error: error as Error,
+      details: { 
+        chrome_validation_error: true 
+      }
     });
     return false;
   }

@@ -13,3 +13,15 @@ export { DirectoryManagerService } from "./DirectoryManagerService";
 export * from "./UserDataService";
 export * from "./MediaMessagingService";
 export * from "./SMTPService";
+
+// Request validation service
+export { RequestValidationService } from "./RequestValidationService";
+
+// Recipient processing service  
+export { RecipientProcessorService } from "./RecipientProcessorService";
+
+// Error handling services
+export { 
+  WhatsAppErrorHandlerService, 
+  MessageErrorHandlerService 
+} from "./WhatsAppErrorHandlerService";

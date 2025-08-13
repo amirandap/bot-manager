@@ -5,7 +5,7 @@
 
 import { User } from "../types/types";
 import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
-import { getDisplayName, extractFirstName } from "../services/UserDataService";
+import { getDisplayName, extractFirstName } from "../utils/userDataUtils";
 
 /**
  * Format message with user data

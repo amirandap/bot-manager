@@ -1,18 +1,28 @@
 /**
  * WhatsApp Client Management Utilities
  * CENTRALIZED - Unified utility functions for WhatsApp client lifecycle
+ * Now includes internal QR code management
  */
 
 import { Client, LocalAuth } from "whatsapp-web.js";
-import { handleQRGenerated, cleanupQRCode } from "./qrUtils";
+import * as QRCode from "qrcode";
+import * as fs from "fs";
+import * as path from "path";
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 import { botLogger } from "./loggerWrapper";
+import { updatePM2Metrics } from "./pm2Utils";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
+import { QR_PATH } from "../config/EnvironmentManager";
+import { DirectoryManagerService } from "../services/DirectoryManagerService";
 import { BotLifecycleState } from "../types/types";
 
 // State management
 let whatsappClient: Client | null = null;
 let currentState: BotLifecycleState = BotLifecycleState.INITIALIZING;
+
+// QR Code state (moved from qrUtils)
+let currentQRCode: string | null = null;
+let qrCodePath: string | null = null;
 
 /**
  * Update WhatsApp state with proper logging
@@ -35,7 +45,120 @@ export function updateWhatsAppState(
 }
 
 /**
+ * Initialize QR code system (internal function)
+ */
+function initializeQRCodePath(botId: string): void {
+  try {
+    // Use DirectoryManagerService to ensure QR directory exists
+    const directoryManager = new DirectoryManagerService();
+    directoryManager.createDirectoryIfNotExists(QR_PATH);
+    
+    qrCodePath = path.join(QR_PATH, `${botId}.png`);
+    botLogger.info(`QR code path initialized: ${qrCodePath}`, "📱");
+  } catch (error) {
+    botLogger.error(`Failed to initialize QR code path: ${error}`);
+    throw new Error(`QR code path initialization failed: ${error}`);
+  }
+}
+
+/**
+ * Handle QR code generation (internal function)
+ */
+async function handleQRGenerated(qr: string, botPort: number): Promise<void> {
+  if (!qrCodePath) {
+    throw new Error("QR code path not initialized");
+  }
+
+  try {
+    botLogger.info("Processing QR code generation...", "⏳");
+    currentQRCode = qr;
+    
+    await saveQRCode(qr);
+    
+    // Update PM2 with QR code ready status
+    updatePM2Metrics('qr_code_ready', 'success', 'QR code generated and ready for scanning', 60, {
+      qr_available: true,
+      qr_endpoint: `http://localhost:${botPort}/qr-code`,
+      qr_file_path: qrCodePath
+    });
+
+    botLogger.info(`QR Code saved to: ${qrCodePath}`, "💾");
+    botLogger.info(`QR available at: http://localhost:${botPort}/qr-code`, "🌐");
+    botLogger.success("QR code generation completed successfully", "✅");
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    botLogger.error(`Error handling QR code: ${errorMessage}`);
+    throw new Error(`QR code handling failed: ${errorMessage}`);
+  }
+}
+
+/**
+ * Save QR code to file (internal function)
+ */
+async function saveQRCode(qr: string): Promise<void> {
+  if (!qrCodePath) {
+    throw new Error("QR code path not initialized");
+  }
+
+  try {
+    // Ensure directory exists before saving
+    const directoryManager = new DirectoryManagerService();
+    const qrDir = path.dirname(qrCodePath);
+    directoryManager.createDirectoryIfNotExists(qrDir);
+
+    // Generate QR code file
+    return new Promise((resolve, reject) => {
+      QRCode.toFile(
+        qrCodePath!,
+        qr,
+        {
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+          width: 512,
+        },
+        (error) => {
+          if (error) {
+            botLogger.error(`QR code file generation failed: ${error}`);
+            reject(new Error(`Failed to save QR code: ${error.message}`));
+          } else {
+            botLogger.success(`QR code saved successfully: ${qrCodePath}`);
+            resolve();
+          }
+        }
+      );
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    botLogger.error(`QR code save operation failed: ${errorMessage}`);
+    throw new Error(`QR code save failed: ${errorMessage}`);
+  }
+}
+
+/**
+ * Clean up QR code file (internal function)
+ */
+function cleanupQRCode(): void {
+  try {
+    if (qrCodePath) {
+      const directoryManager = new DirectoryManagerService();
+      const wasDeleted = directoryManager.cleanupFile(qrCodePath);
+      
+      if (wasDeleted) {
+        botLogger.info("QR code file cleaned up after successful connection", "🧹");
+      }
+    }
+    currentQRCode = null;
+  } catch (error) {
+    botLogger.warn(`Could not clean up QR code file: ${error}`);
+  }
+}
+
+/**
  * Initialize WhatsApp client with proper configuration
+ * Now handles QR code management internally
  */
 export async function initializeWhatsAppClient(
   config: any,
@@ -49,6 +172,9 @@ export async function initializeWhatsAppClient(
   try {
     botLogger.info("🤖 WHATSAPP CLIENT INITIALIZATION");
     updateWhatsAppState(BotLifecycleState.BROWSER_LAUNCHING, "Starting WhatsApp Web browser");
+
+    // Initialize QR code path internally
+    initializeQRCodePath(config.BOT_ID);
 
     const puppeteerOptions = puppeteerConfig.getConfiguration();
     
@@ -182,4 +308,45 @@ export function getWhatsAppStatus(): {
     isReady: isWhatsAppClientReady(),
     hasClient: whatsappClient !== null,
   };
+}
+
+/**
+ * QR Code API exports for compatibility
+ */
+export function getQRCode(): string | null {
+  return currentQRCode;
+}
+
+export function hasQRCode(): boolean {
+  return currentQRCode !== null;
+}
+
+export function getQRCodePath(): string | null {
+  return qrCodePath;
+}
+
+export function getQRStatus() {
+  return {
+    hasCode: currentQRCode !== null,
+    path: qrCodePath,
+    code: currentQRCode
+  };
+}
+
+export function sendQRCode(res: any): void {
+  const directoryManager = new DirectoryManagerService();
+  
+  if (!hasQRCode() || !qrCodePath || !directoryManager.fileExists(qrCodePath)) {
+    res.status(404).json({ error: "QR Code not available" });
+    return;
+  }
+
+  res.sendFile(qrCodePath);
+}
+
+/**
+ * Clean up QR code (public export for shutdown procedures)
+ */
+export function cleanupQRCodeAfterConnection(): void {
+  cleanupQRCode();
 }
