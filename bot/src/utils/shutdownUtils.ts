@@ -9,7 +9,7 @@ import {
   cleanupQRCodeAfterConnection
 } from "./whatsAppUtils";
 import { shutdownAPIServer } from "./apiUtils";
-import { notifyPM2Shutdown, alertPM2Failure, logPM2Event, setShutdownContext } from "./pm2Utils_unified";
+import { logger } from '../services/LoggerService';
 
 // Global state flag - ideally this should be managed by a ShutdownService
 let isShuttingDown = false;
@@ -38,17 +38,17 @@ export async function gracefulShutdown(
   error?: Error
 ): Promise<void> {
   if (isShuttingDown) {
-    logPM2Event('shutdown', 'info', 'Shutdown ya en progreso', { signal });
+    logger.log('info', 'Shutdown ya en progreso', { component: 'shutdown', signal });
     return;
   }
 
   setShutdownStatus(true);
   
   // Set shutdown context in PM2 for intelligent logging
-  setShutdownContext(true);
+  logger.setShutdownContext(true);
 
   try {
-    logPM2Event('shutdown', 'info', `Iniciando shutdown graceful${signal ? ` (${signal})` : ''}...`, { signal });
+    logger.log('info', `Iniciando shutdown graceful${signal ? ` (${signal})` : ''}...`, { component: 'shutdown', signal });
     
     // Shutdown API server (silent)
     await shutdownAPIServer();
@@ -63,15 +63,15 @@ export async function gracefulShutdown(
     }
     
     // Notify PM2 about shutdown
-    notifyPM2Shutdown(signal, error, error ? 'error_triggered' : 'manual');
+    logger.notifyShutdown(signal, error, error ? 'error_triggered' : 'manual');
     
-    logPM2Event('shutdown', 'success', 'Shutdown graceful completado', { signal });
+    logger.log('info', '✅ Shutdown graceful completado', { component: 'shutdown', signal });
   } catch (shutdownError) {
-    logPM2Event('shutdown', 'error', `Error durante shutdown: ${shutdownError}`, { signal, shutdownError });
-    alertPM2Failure(shutdownError as Error, 'shutdown');
+    logger.log('error', `Error durante shutdown: ${shutdownError}`, { component: 'shutdown', signal, shutdownError });
+    logger.error(shutdownError as Error, { component: 'shutdown', critical: true });
   } finally {
     // Reset shutdown context
-    setShutdownContext(false);
+    logger.setShutdownContext(false);
   }
 }
 
@@ -89,5 +89,5 @@ export function setupShutdownHandlers(
   process.on("SIGINT", () => handleShutdown("SIGINT"));
   process.on("SIGTERM", () => handleShutdown("SIGTERM"));
   
-  logPM2Event('shutdown', 'info', 'Handlers de shutdown configurados para SIGINT y SIGTERM');
+  logger.log('info', 'Handlers de shutdown configurados para SIGINT y SIGTERM', { component: 'shutdown' });
 }

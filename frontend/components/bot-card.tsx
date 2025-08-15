@@ -42,8 +42,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const fetchBotStatus = useCallback(async () => {
     setLoading(true);
     try {
-      // Use GET endpoint with bot ID in URL
-      const response = await fetch(api.proxy.getBotStatus(bot.id), {
+      // 🚀 PRIMARY: Use PM2 metrics-based status (recommended)
+      const response = await fetch(api.getBotStatusMetrics(bot.id), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -51,7 +51,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
       });
 
       if (response.ok) {
-        const statusData: BotStatus = await response.json();
+        const result = await response.json();
+        const statusData: BotStatus = result.status || result;
 
         // If we have lifecycle data in the response, use it for status
         // This prioritizes the bot's own lifecycle state over PM2 status
@@ -62,13 +63,60 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
         }
 
         setStatus(statusData);
+      } else {
+        // PM2 metrics failed, fallback to proxy (legacy API)
+        console.warn("PM2 metrics failed, falling back to proxy API");
+        throw new Error("PM2 metrics not available");
       }
     } catch (error) {
-      console.error("Failed to fetch bot status:", error);
+      console.error("PM2 metrics failed, trying proxy fallback:", error);
+      
+      // 📦 FALLBACK: Use legacy proxy API if PM2 metrics fail
+      try {
+        const fallbackResponse = await fetch(api.proxy.getBotStatus(bot.id), {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (fallbackResponse.ok) {
+          const statusData: BotStatus = await fallbackResponse.json();
+
+          // If we have lifecycle data in the response, use it for status
+          if (statusData.lifecycle && statusData.lifecycle.currentState) {
+            statusData.status = statusData.lifecycle
+              .currentState as BotStatus["status"];
+          }
+
+          setStatus(statusData);
+          console.log("✅ Proxy fallback successful");
+        } else {
+          console.error("Both PM2 and proxy APIs failed");
+          // Set a default offline status based on bot config
+          setStatus({
+            id: bot.id,
+            name: bot.name,
+            type: bot.type,
+            status: "offline",
+            apiResponsive: false,
+          });
+        }
+      } catch (fallbackError) {
+        console.error("Proxy fallback also failed:", fallbackError);
+        // Set a default offline status based on bot config
+        setStatus({
+          id: bot.id,
+          name: bot.name,
+          type: bot.type,
+          status: "offline",
+          apiResponsive: false,
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [bot.id]);
+  }, [bot.id, bot.name, bot.type]);
 
   const handleViewQR = async () => {
     const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";

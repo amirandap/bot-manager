@@ -30,7 +30,13 @@ export const api = {
   deployHistory: (limit?: number) =>
     `${API_BASE_URL}/api/deploy/history${limit ? `?limit=${limit}` : ""}`,
 
-  // Status endpoints
+  // 🚀 NEW: PM2 Metrics-based status endpoints (recommended - primary source)
+  getBotStatusMetrics: (id: string) => `${API_BASE_URL}/api/bots/${id}/status/metrics`,
+  getBotMetrics: (id: string) => `${API_BASE_URL}/api/bots/${id}/metrics`,
+  getBotHealth: (id: string) => `${API_BASE_URL}/api/bots/${id}/health`,
+  getAllBotsMetrics: () => `${API_BASE_URL}/api/bots/metrics/all`,
+
+  // Legacy status endpoints (DEPRECATED - use PM2 metrics instead)
   getBotStatus: (id: string) => `${API_BASE_URL}/api/status/${id}`,
   getDiscordStatus: () => `${API_BASE_URL}/api/status/discord`,
   getWhatsAppStatus: () => `${API_BASE_URL}/api/status/whatsapp`,

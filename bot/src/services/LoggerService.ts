@@ -34,6 +34,7 @@ export class LoggerService {
   private metrics: Map<string, any>;
   private ready: boolean = false;
   private config: LoggerConfig;
+  private isShutdownContext: boolean = false;
 
   private constructor(config?: LoggerConfig) {
     // Default config for simple usage
@@ -240,10 +241,19 @@ export class LoggerService {
     message: string,
     context?: Record<string, unknown>
   ): void {
+    // Durante shutdown, solo permitir errores
+    if (this.isShutdownContext && level !== 'error') {
+      return;
+    }
+
     this.logger[level]({ 
       context,
       timestamp: new Date().toISOString()
     }, message);
+  }
+
+  public setShutdownContext(inShutdown: boolean): void {
+    this.isShutdownContext = inShutdown;
   }
 
   public error(error: Error, context?: Record<string, unknown>): void;
@@ -313,6 +323,22 @@ export class LoggerService {
       case 'READY':
         this.updateMetric('MESSAGES');
         break;
+    }
+  }
+
+  public notifyShutdown(signal?: string, error?: Error, reason?: string): void {
+    const shutdownData = {
+      graceful_shutdown: true,
+      signal: signal || 'manual',
+      error: error?.message,
+      timestamp: new Date().toISOString(),
+      reason
+    };
+    
+    this.log('info', `🛑 SHUTDOWN: ${reason || 'Manual'} (Signal: ${signal || 'manual'})`, shutdownData);
+    
+    if (error) {
+      this.error(error, { component: 'shutdown', signal, reason });
     }
   }
 }
