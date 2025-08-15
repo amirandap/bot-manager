@@ -20,6 +20,7 @@
  */
 
 import { botLogger } from "./loggerWrapper";
+import { logger } from '../services/LoggingService';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN SIMPLIFICADA
@@ -121,26 +122,26 @@ export function logPM2Event(
     if (config.isShutdownContext && status !== 'error') {
       return;
     }
-    
-    const eventData: PM2Event = {
-      context,
-      status,
-      message,
-      timestamp: new Date().toISOString(),
-      details
-    };
 
+    // Map status to pino level
+    const level = status === 'error' ? 'error' :
+                 status === 'warning' ? 'warn' :
+                 'info';
+
+    logger.log(level, message, { context, details });
+    
     // Enviar a PM2 si está disponible
     if (isPM2Available()) {
-      sendToPM2(eventData);
+      sendToPM2({
+        context,
+        status,
+        message,
+        timestamp: new Date().toISOString(),
+        details
+      });
     }
-    
-    // Logging a consola
-    logToConsole(context, status, message);
-    
   } catch (error) {
-    console.error(`🚨 logPM2Event falló:`, error);
-    console.log(`📊 Intentaba: ${context}.${status} - ${message}`);
+    logger.error(error instanceof Error ? error : new Error(String(error)));
   }
 }
 
