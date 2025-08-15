@@ -33,9 +33,17 @@ export class LoggerService {
   private logger: pino.Logger;
   private metrics: Map<string, any>;
   private ready: boolean = false;
+  private config: LoggerConfig;
 
   private constructor(config?: LoggerConfig) {
     // Default config for simple usage
+    this.config = config || {
+      logLevel: LogLevel.INFO,
+      logToFile: false,
+      logToConsole: true,
+      logDirectory: "./logs"
+    };
+    
     this.logger = pino({
       level: process.env.LOG_LEVEL || 'info',
       transport: {
@@ -67,10 +75,11 @@ export class LoggerService {
           }));
           break;
         case 'histogram':
-          this.metrics.set(key, io.histogram({
+          // Usar como metric simple ya que @pm2/io histogram requiere measurement específico
+          this.metrics.set(key, io.metric({
             name: metric.name,
             id: metric.id,
-            measurement: 'median'
+            unit: metric.unit || 'ms'
           }));
           break;
         case 'metric':
@@ -118,19 +127,6 @@ export class LoggerService {
     if (this.config.logToConsole) {
       // eslint-disable-next-line no-console
       console.log(consoleMessage);
-    }
-
-    if (filename) {
-      this.writeToFile(filename, message);
-    }
-  }
-
-  public error(message: string, filename?: string): void {
-    const consoleMessage = `❌ ${message}`;
-
-    if (this.config.logToConsole) {
-      // eslint-disable-next-line no-console
-      console.error(consoleMessage);
     }
 
     if (filename) {
@@ -250,15 +246,27 @@ export class LoggerService {
     }, message);
   }
 
-  public error(error: Error, context?: Record<string, unknown>): void {
-    this.logger.error({ 
-      error,
-      context,
-      timestamp: new Date().toISOString(),
-      stack: error.stack
-    }, error.message);
+  public error(error: Error, context?: Record<string, unknown>): void;
+  public error(message: string, context?: Record<string, unknown>): void;
+  public error(errorOrMessage: Error | string, context?: Record<string, unknown>): void {
+    if (errorOrMessage instanceof Error) {
+      this.logger.error({ 
+        error: errorOrMessage,
+        context,
+        timestamp: new Date().toISOString(),
+        stack: errorOrMessage.stack
+      }, errorOrMessage.message);
+      
+      io.notifyError(errorOrMessage);
+    } else {
+      this.logger.error({ 
+        context,
+        timestamp: new Date().toISOString()
+      }, errorOrMessage);
+      
+      io.notifyError(new Error(errorOrMessage));
+    }
 
-    io.notifyError(error);
     this.updateMetric('ERRORS');
   }
 
@@ -302,7 +310,7 @@ export class LoggerService {
       case 'QR_READY':
         this.updateMetric('QR_CODES');
         break;
-      case 'MESSAGE_RECEIVED':
+      case 'READY':
         this.updateMetric('MESSAGES');
         break;
     }

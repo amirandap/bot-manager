@@ -20,7 +20,7 @@
  */
 
 import { botLogger } from "./loggerWrapper";
-import { logger } from '../services/LoggingService';
+import { logger } from '../services/LoggerService';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN SIMPLIFICADA
