@@ -1,16 +1,6 @@
 // Simplified WhatsApp Bot Starter - Refactored with unified logging system
-import { 
-  alertPM2Failure,
-  logPM2Event
-} from "./utils/pm2Utils_unified";
-
-// Nuevo sistema unificado de logging y métricas
-import {
-  logEvent,
-  reportFailure,
-  markComponentReady,
-  getAllComponentsStatus
-} from "./utils/unifiedLogger";
+import { logger } from './services/LoggerService';
+import { ENV_CONFIG as config } from "./config/EnvironmentManager";
 
 // Import startup utilities instead of StartupManager service
 import {
@@ -39,30 +29,25 @@ import {
   getSystemInfo
 } from "./utils/browserUtils";
 
-// Import unified logger
-import { botLogger } from "./utils/loggerWrapper";
-
 async function startBot(): Promise<void> {
   try {
     // Step 1: Startup validation (Environment, Chrome, Directories) - CONSOLIDATED
-    botLogger.startupHeader("🔍 STARTUP VALIDATION");
-    logEvent('startup', 'info', "Iniciando validación de entorno y dependencias");
+    logger.startupHeader("🔍 STARTUP VALIDATION");
     
     // Single comprehensive startup validation (includes Chrome, directories, env vars)
     const startupSuccess = await initializeStartup();
     if (!startupSuccess) {
       const error = new Error("Startup validation failed - check Chrome installation and environment variables");
-      logEvent('startup', 'error', "Falló la validación de startup - verificar instalación de Chrome y variables de entorno");
-      reportFailure(error, 'startup', true);
+      logger.error(error, { component: 'startup', critical: true });
       throw error;
     }
 
-    markComponentReady('startup', "Validación de entorno completada exitosamente");
+    logger.log('info', "✅ Validación de entorno completada exitosamente", { component: 'startup' });
 
     const config = getStartupConfig();
     
     // Step 2: Initialize WhatsApp client (includes QR code management)
-    logPM2Event('whatsapp', 'info', "Inicializando cliente WhatsApp y sistema QR");
+    logger.log('info', "Inicializando cliente WhatsApp y sistema QR", { component: 'whatsapp' });
     
     // Show system information
     getSystemInfo();
@@ -70,10 +55,10 @@ async function startBot(): Promise<void> {
     // Initialize WhatsApp client with QR callback (QR is now handled internally)
     await initializeWhatsAppClient(config);
     
-    logPM2Event('whatsapp', 'success', "Cliente WhatsApp inicializado exitosamente");
+    logger.log('info', "✅ Cliente WhatsApp inicializado exitosamente", { component: 'whatsapp' });
     
     // Step 3: Check for critical initialization errors
-    logPM2Event('validation', 'info', "Validando estado de inicialización de WhatsApp");
+    logger.log('info', "Validando estado de inicialización de WhatsApp", { component: 'validation' });
     
     const whatsappStatus = getWhatsAppStatus();
     
@@ -81,31 +66,31 @@ async function startBot(): Promise<void> {
     if (!whatsappStatus.isReady && !whatsappStatus.hasClient) {
       // Critical errors prevent successful startup
       const error = new Error(`Critical WhatsApp initialization failed: State ${whatsappStatus.state}`);
-      logPM2Event('whatsapp', 'error', `Falló inicialización crítica de WhatsApp: Estado ${whatsappStatus.state}`, {
-        lifecycle_state: whatsappStatus.state,
-        error_type: 'critical',
-        can_proceed: false 
+      logger.error(error, { 
+        component: 'whatsapp', 
+        context: 'initialization',
+        state: whatsappStatus.state,
+        critical: true 
       });
-      alertPM2Failure(error, 'whatsapp_critical', false);
       throw error;
     } else if (whatsappStatus.hasClient && !whatsappStatus.isReady) {
       // Recoverable errors - log warning but allow startup to continue
-      botLogger.warn(`⚠️ WhatsApp started with recoverable error: State ${whatsappStatus.state}`);
-      logPM2Event('whatsapp', 'warning', `WhatsApp iniciado con error recuperable: ${whatsappStatus.state}`, {
+      logger.log('warn', `WhatsApp iniciado con error recuperable: ${whatsappStatus.state}`, {
+        component: 'whatsapp',
         lifecycle_state: whatsappStatus.state,
         error_type: 'recoverable',
         can_proceed: true 
       });
     } else if (whatsappStatus.isReady) {
       // Fully operational
-      logPM2Event('whatsapp', 'success', "Inicialización de WhatsApp completada exitosamente");
+      logger.log('info', "✅ Inicialización de WhatsApp completada exitosamente", { component: 'whatsapp' });
     } else {
       // WhatsApp is in progress, not yet ready
-      logPM2Event('whatsapp', 'info', "Inicialización de WhatsApp en progreso, sin errores críticos detectados");
+      logger.log('info', "Inicialización de WhatsApp en progreso, sin errores críticos detectados", { component: 'whatsapp' });
     }
 
     // Step 4: Setup and start API server
-    logPM2Event('api', 'info', "Configurando servidor API");
+    logger.log('info', "Configurando servidor API", { component: 'api' });
     
     // Setup Express API
     await setupExpressAPI(config);
@@ -113,52 +98,47 @@ async function startBot(): Promise<void> {
     // Start API server with retry logic
     await startAPIServer(config);
     
-    // Log API endpoints
-    botLogger.info(`📊 Status: http://localhost:${config.BOT_PORT}/status`, "🌐");
-    botLogger.info(`💚 Health: http://localhost:${config.BOT_PORT}/health`, "🌐");
-    
-    logPM2Event('api', 'success', `Servidor API ejecutándose en puerto ${config.BOT_PORT}`);
+    logger.log('info', `✅ Servidor API ejecutándose en puerto ${config.BOT_PORT}`, { 
+      component: 'api', 
+      port: config.BOT_PORT,
+      endpoints: {
+        status: `http://localhost:${config.BOT_PORT}/status`,
+        health: `http://localhost:${config.BOT_PORT}/health`
+      }
+    });
 
     // Step 5: Setup shutdown handlers
-    logPM2Event('system', 'info', "Configurando manejadores de shutdown");
+    logger.log('info', "Configurando manejadores de shutdown", { component: 'system' });
     
     // Setup shutdown handlers using utility function
     setupShutdownHandlers(async (signal: string) => {
       await performGracefulShutdown(signal);
     });
     
-    logPM2Event('system', 'success', "Manejadores de shutdown configurados");
-    logPM2Event('startup', 'success', "Startup del bot completado exitosamente");
+    logger.log('info', "✅ Manejadores de shutdown configurados", { component: 'system' });
     
     // Final startup validation and status reporting
     const finalWhatsAppStatus = getWhatsAppStatus();
     
     if (finalWhatsAppStatus.isReady) {
-      botLogger.success("🎉 Bot startup completed successfully! All systems operational.");
+      logger.success("🎉 Bot startup completed successfully! All systems operational.");
       cleanupQRCodeAfterConnection(); // Clean QR code after successful connection
-      logPM2Event('system', 'success', "Todos los sistemas operacionales - Bot listo");
     } else {
-      botLogger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
-      botLogger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
-      logPM2Event('system', 'warning', `Bot completado pero WhatsApp no listo. Estado: ${finalWhatsAppStatus.state}`);
+      logger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
+      logger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
     }
     
   } catch (error) {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
-    botLogger.error(`Critical startup failure: ${error}`);
-    logPM2Event('startup', 'error', `Fallo crítico en startup: ${(error as Error).message}`);
+    logger.error(error as Error, { component: 'startup', context: 'critical_startup', critical: true });
     
     await performGracefulShutdown(undefined, error as Error);
-    
-    // Alert PM2 about the critical startup failure
-    alertPM2Failure(error as Error, 'critical_startup', false);
     throw error;
   }
 }
 
 // Start the bot
 startBot().catch(() => {
-  // eslint-disable-next-line no-process-exit
   process.exit(1);
 });
 

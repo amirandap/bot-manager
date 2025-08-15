@@ -3,18 +3,22 @@ import { BotCommunicationService } from "../../services/botProxy/BotCommunicatio
 import { ErrorHandlingService } from "../../services/botProxy/ErrorHandlingService";
 import { QRCodeService } from "../../services/QRCodeService";
 import { ConfigService } from "../../services/configService";
+import { BotService } from "../../services/botService";
+import { pm2MetricsService } from "../../services/PM2MetricsService";
 
 export class BotStatusController {
   private botCommunicationService: BotCommunicationService;
   private errorHandlingService: ErrorHandlingService;
   private qrCodeService: QRCodeService;
   private configService: ConfigService;
+  private botService: BotService;
 
   constructor() {
     this.botCommunicationService = new BotCommunicationService();
     this.errorHandlingService = new ErrorHandlingService();
     this.qrCodeService = new QRCodeService();
     this.configService = ConfigService.getInstance();
+    this.botService = new BotService();
   }
 
   // GET/POST /api/bots/qr-code - Get QR code (returns HTML)
@@ -272,5 +276,239 @@ export class BotStatusController {
         res
       );
     }
+  }
+
+  // 🚀 NEW ENDPOINTS: PM2 Metrics-based status (replaces deprecated API calls)
+  
+  /**
+   * GET /api/bots/:botId/status/metrics - Get bot status via PM2 metrics
+   */
+  public async getBotStatusViaMetrics(req: Request, res: Response): Promise<void> {
+    try {
+      const { botId } = req.params;
+      
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required" });
+        return;
+      }
+
+      console.log(`📊 Getting PM2-based status for bot: ${botId}`);
+      
+      const status = await this.botService.getBotStatusViaMetrics(botId);
+      
+      if (!status) {
+        res.status(404).json({ error: "Bot not found" });
+        return;
+      }
+
+      res.json({
+        success: true,
+        botId,
+        status,
+        source: "pm2-metrics",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Error getting bot status via metrics:", error);
+      this.errorHandlingService.handleControllerError(
+        "get bot status via metrics",
+        error,
+        res
+      );
+    }
+  }
+
+  /**
+   * GET /api/bots/:botId/metrics - Get raw PM2 metrics for a bot
+   */
+  public async getBotPM2Metrics(req: Request, res: Response): Promise<void> {
+    try {
+      const { botId } = req.params;
+      
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required" });
+        return;
+      }
+
+      const bot = this.configService.getBotById(botId);
+      if (!bot) {
+        res.status(404).json({ error: "Bot not found" });
+        return;
+      }
+
+      if (bot.isExternal) {
+        res.status(400).json({ 
+          error: "PM2 metrics not available for external bots",
+          botId,
+          isExternal: true 
+        });
+        return;
+      }
+
+      const pm2ProcessId = bot.pm2ServiceId || bot.id;
+      console.log(`📊 Getting raw PM2 metrics for process: ${pm2ProcessId}`);
+      
+      const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
+      
+      if (!metrics) {
+        res.status(404).json({ 
+          error: "PM2 process not found",
+          pm2ProcessId 
+        });
+        return;
+      }
+
+      const health = pm2MetricsService.evaluateProcessHealth(metrics);
+
+      res.json({
+        success: true,
+        botId,
+        pm2ProcessId,
+        metrics,
+        health,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Error getting PM2 metrics:", error);
+      this.errorHandlingService.handleControllerError(
+        "get PM2 metrics",
+        error,
+        res
+      );
+    }
+  }
+
+  /**
+   * GET /api/bots/metrics/all - Get PM2 metrics for all managed processes
+   */
+  public async getAllPM2Metrics(req: Request, res: Response): Promise<void> {
+    try {
+      console.log("📊 Getting PM2 metrics for all processes");
+      
+      const allMetrics = await pm2MetricsService.getAllProcessesMetrics();
+      
+      const results = allMetrics.map(metrics => ({
+        processName: metrics.name,
+        metrics,
+        health: pm2MetricsService.evaluateProcessHealth(metrics)
+      }));
+
+      res.json({
+        success: true,
+        processCount: results.length,
+        processes: results,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Error getting all PM2 metrics:", error);
+      this.errorHandlingService.handleControllerError(
+        "get all PM2 metrics",
+        error,
+        res
+      );
+    }
+  }
+
+  /**
+   * GET /api/bots/:botId/health - Get bot health evaluation
+   */
+  public async getBotHealth(req: Request, res: Response): Promise<void> {
+    try {
+      const { botId } = req.params;
+      
+      if (!botId) {
+        res.status(400).json({ error: "Bot ID is required" });
+        return;
+      }
+
+      const bot = this.configService.getBotById(botId);
+      if (!bot) {
+        res.status(404).json({ error: "Bot not found" });
+        return;
+      }
+
+      if (bot.isExternal) {
+        res.status(400).json({ 
+          error: "Health metrics not available for external bots",
+          botId,
+          isExternal: true,
+          suggestion: "Use /api/bots/:botId/status for external bots"
+        });
+        return;
+      }
+
+      const pm2ProcessId = bot.pm2ServiceId || bot.id;
+      const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
+      
+      if (!metrics) {
+        res.status(404).json({ 
+          error: "PM2 process not found",
+          pm2ProcessId 
+        });
+        return;
+      }
+
+      const health = pm2MetricsService.evaluateProcessHealth(metrics);
+
+      res.json({
+        success: true,
+        botId,
+        pm2ProcessId,
+        health: {
+          ...health,
+          processStatus: metrics.status,
+          uptime: metrics.uptime,
+          memoryUsage: metrics.memory,
+          cpuUsage: metrics.cpu,
+          restartCount: metrics.restarts
+        },
+        recommendations: this.generateHealthRecommendations(health, metrics),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("❌ Error getting bot health:", error);
+      this.errorHandlingService.handleControllerError(
+        "get bot health",
+        error,
+        res
+      );
+    }
+  }
+
+  /**
+   * Helper method to generate health recommendations
+   */
+  private generateHealthRecommendations(health: any, metrics: any): string[] {
+    const recommendations: string[] = [];
+
+    if (health.score < 70) {
+      recommendations.push("Consider restarting the bot process");
+    }
+
+    if (metrics.memory && metrics.memory > 512) {
+      recommendations.push("Monitor memory usage - consider increasing available memory");
+    }
+
+    if (metrics.restarts && metrics.restarts > 5) {
+      recommendations.push("Investigate cause of frequent restarts");
+    }
+
+    if (metrics.errorCount && metrics.errorCount > 0) {
+      recommendations.push("Check logs for error details");
+    }
+
+    if (metrics.heapUsage && metrics.heapUsage > 85) {
+      recommendations.push("High heap usage detected - possible memory leak");
+    }
+
+    if (health.status === "critical") {
+      recommendations.push("Immediate attention required - bot may be non-functional");
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push("Bot is running optimally");
+    }
+
+    return recommendations;
   }
 }

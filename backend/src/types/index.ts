@@ -40,10 +40,24 @@ export interface BotStatus {
     restarts?: number;
     uptime?: number; // in milliseconds
     lastRestart?: string;
+    // Advanced PM2 metrics
+    status?: "online" | "stopped" | "errored" | "launching" | "unknown";
+    activeHandles?: number;
+    activeRequests?: number;
+    eventLoopLatency?: number;
+    heapUsage?: number;
+    errorCount?: number;
+    httpRequests?: number;
   };
   // API connectivity
   apiResponsive?: boolean;
   apiResponseTime?: number; // in milliseconds
+  // Health evaluation
+  health?: {
+    status: "healthy" | "warning" | "critical" | "unknown";
+    score: number; // 0-100
+    issues: string[];
+  };
 }
 
 // Legacy interface for backward compatibility
