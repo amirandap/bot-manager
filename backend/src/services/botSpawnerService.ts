@@ -315,189 +315,104 @@ export class BotSpawnerService {
     // Step 1: Kill any process using the target port
     await this.killProcessOnPort(botConfig.apiPort);
 
-    // Load bot environment defaults from bot folder .env
+    const pm2ServiceId = `wabot-${botConfig.apiPort}`;
+    
+    // Load bot environment defaults
     const botEnvDefaults = this.loadBotEnvironmentDefaults();
 
-    // Determine the correct Chrome executable path with proper precedence:
-    // 1. Use CHROME_PATH from bot/.env if it exists
-    // 2. Use system CHROME_PATH environment variable if set
-    // 3. Use platform-specific defaults as fallback
-    let chromeExecutablePath;
-
-    if (botEnvDefaults.CHROME_PATH) {
-      // Priority 1: Use Chrome path from bot/.env configuration
-      chromeExecutablePath = botEnvDefaults.CHROME_PATH;
-      console.log(`🎯 Using Chrome path from bot/.env: ${chromeExecutablePath}`);
-    } else if (process.env.CHROME_PATH) {
-      // Priority 2: Use system environment variable
-      chromeExecutablePath = process.env.CHROME_PATH;
-      console.log(`🎯 Using Chrome path from system env: ${chromeExecutablePath}`);
-    } else if (process.platform === "darwin") {
-      // Priority 3: Platform-specific defaults
-      chromeExecutablePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-      console.log(`🎯 Using macOS default Chrome path: ${chromeExecutablePath}`);
-    } else if (process.platform === "linux") {
-      chromeExecutablePath = "/usr/bin/google-chrome-stable";
-      console.log(`🎯 Using Linux default Chrome path: ${chromeExecutablePath}`);
-    } else if (process.platform === "win32") {
-      chromeExecutablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-      console.log(`🎯 Using Windows default Chrome path: ${chromeExecutablePath}`);
-    } else {
-      chromeExecutablePath = "/usr/bin/google-chrome-stable";
-      console.log(`🎯 Using fallback Chrome path: ${chromeExecutablePath}`);
-    }
-
-    // Create isolated environment for bot (no system env pollution)
-    const botEnv = {
-      // Essential system variables only (with fallbacks)
-      HOME: process.env.HOME || "/tmp",
-      USER: process.env.USER || "botuser",
-      PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
-      
-      // Bot environment defaults (from bot/.env) - Load FIRST so they can be overridden
-      ...Object.fromEntries(
-        Object.entries(botEnvDefaults).map(([key, value]) => [key, String(value)])
-      ),
-      
-      // Bot-specific configuration (hardcoded, no system env conflicts) - These override defaults
+    // Ensure required environment variables are set with proper type handling
+    const botEnv: Record<string, string> = {
+      ...botEnvDefaults,
       BOT_ID: botId,
-      BOT_NAME: botConfig.name,
-      BOT_PORT: botConfig.apiPort.toString(),
-      PORT: botConfig.apiPort.toString(),
-      BOT_TYPE: botConfig.type || "whatsapp",
+      BOT_NAME: String(botConfig.name),
+      BOT_PORT: String(botConfig.apiPort),
+      PORT: String(botConfig.apiPort),
+      BOT_TYPE: String(botConfig.type || "whatsapp"),
       BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
-      NODE_ENV: "production",
-      // Note: CHROME_PATH is now preserved from botEnvDefaults and not overridden
-    };        console.log(`📦 PM2 Configuration:`);
-        console.log(`   - Script: ${path.join(this.botDirectory, "src/index.ts")}`);
-        console.log(`   - Interpreter: ${path.join(this.botDirectory, "node_modules/.bin/ts-node")}`);
-        console.log(`   - Working Directory: ${this.botDirectory}`);
-        console.log(`   - Process Name: wabot-${botConfig.apiPort}`);
-        console.log(`📋 Environment Variables:`);
-        console.log(`   - BOT_ID: ${botEnv.BOT_ID}`);
-        console.log(`   - BOT_NAME: ${botEnv.BOT_NAME}`);
-        console.log(`   - BOT_PORT: ${botEnv.BOT_PORT}`);
-        console.log(`   - PORT: ${botEnv.PORT} (for bot compatibility)`);
-        console.log(`   - BOT_TYPE: ${botEnv.BOT_TYPE}`);
-        console.log(`   - BASE_URL: ${botEnv.BASE_URL}`);
-        console.log(`   - NODE_ENV: ${botEnv.NODE_ENV}`);
-        console.log(`   - CHROME_PATH: ${botEnvDefaults.CHROME_PATH || chromeExecutablePath}`);
-        console.log(`   - Total env variables: ${Object.keys(botEnv).length}`);
+      NODE_ENV: "development",
+      PM2_HOME: path.join(this.dataDirectory, "pm2"),
+      DEBUG: "*",
+      TS_NODE_PROJECT: path.join(this.botDirectory, "tsconfig.json"),
+      // Only include PATH if it exists
+      ...(process.env.PATH ? { PATH: process.env.PATH } : {})
+    };
 
-        // Check if ts-node exists
-        const tsNodePath = path.join(this.botDirectory, "node_modules/.bin/ts-node");
-        if (!fs.existsSync(tsNodePath)) {
-          console.error(`❌ ts-node not found at: ${tsNodePath}`);
-          console.log(`💡 Trying to install ts-node in bot directory...`);
-          // You might want to run npm install here
-        } else {
-          console.log(`✅ ts-node found at: ${tsNodePath}`);
-        }
+    const pm2Config = {
+      name: pm2ServiceId,
+      script: path.join(this.botDirectory, "src/index.ts"),
+      interpreter: "ts-node",
+      interpreter_args: "--files --transpile-only",
+      cwd: this.botDirectory,
+      env: botEnv, // Now properly typed
+      error_file: path.join(this.dataDirectory, "logs", botId, "error.log"),
+      out_file: path.join(this.dataDirectory, "logs", botId, "out.log"),
+      log_file: path.join(this.dataDirectory, "logs", botId, "combined.log"),
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: 10000,
+      watch: false,
+      instances: 1,
+      exec_mode: "fork",
+      wait_ready: true,
+      listen_timeout: 10000,
+      kill_timeout: 5000
+    };
 
     return new Promise((resolve, reject) => {
-      console.log(`🔌 Connecting to PM2...`);
-      pm2.connect((err) => {
+      pm2.connect(async (err) => {
         if (err) {
-          console.error("❌ Failed to connect to PM2:", err);
-          reject(new Error(`PM2 connection failed: ${err.message}`));
+          console.error("Failed to connect to PM2:", err);
+          reject(err);
           return;
         }
-        console.log(`✅ Connected to PM2 successfully`);
 
-        const pm2ServiceId = `wabot-${botConfig.apiPort}`;
-        const pm2Config = {
-          name: pm2ServiceId,
-          script: path.join(this.botDirectory, "src/index.ts"),
-          interpreter: path.join(this.botDirectory, "node_modules/.bin/ts-node"),
-          interpreter_args: "--files -r tsconfig-paths/register",
-          cwd: this.botDirectory,
-          env: botEnv,
-          // Use fixed log paths instead of environment variables
-          error_file: path.join("/home/linuxuser/bot-manager/logs", `${pm2ServiceId}-error.log`),
-          out_file: path.join("/home/linuxuser/bot-manager/logs", `${pm2ServiceId}-out.log`),
-          log_file: path.join("/home/linuxuser/bot-manager/logs", `${pm2ServiceId}.log`),
-          autorestart: true,
-          max_restarts: 10,
-          min_uptime: 10000, // 10 seconds in milliseconds
-        };
+        try {
+          // First, ensure any existing process is removed
+          await new Promise((resolve, reject) => {
+            pm2.delete(pm2ServiceId, (err) => {
+              if (err && !err.message.includes('unknown process')) {
+                console.warn(`Warning cleaning up old process: ${err.message}`);
+              }
+              resolve(true);
+            });
+          });
 
-        console.log(`📄 Starting PM2 process with name: ${pm2ServiceId}...`);
-        console.log(`📋 PM2 Configuration Details:`);
-        console.log(`   - Process Name: ${pm2ServiceId}`);
-        console.log(`   - Script Path: ${pm2Config.script}`);
-        console.log(`   - Interpreter: ${pm2Config.interpreter}`);
-        console.log(`   - Working Directory: ${pm2Config.cwd}`);
-        console.log(`   - Error Log: ${pm2Config.error_file}`);
-        console.log(`   - Output Log: ${pm2Config.out_file}`);
-        console.log(`   - Combined Log: ${pm2Config.log_file}`);
-        
-        pm2.start(pm2Config, async (err, proc) => {
-          if (err) {
-            console.log(`🔌 Disconnecting from PM2 due to error...`);
-            pm2.disconnect();
-            
-            console.error(`❌ PM2 start failed for ${botId}:`);
-            console.error(`   Error: ${err.message}`);
-            console.error(`   Full error object:`, err);
-            if (err.message.includes("already exists")) {
-              console.error(
-                `   💡 Suggestion: Process name conflict. Try stopping the existing process first.`
-              );
-            } else if (err.message.includes("ENOENT")) {
-              console.error(
-                `   💡 Suggestion: Check if the script file exists and ts-node is installed.`
-              );
-              console.error(`   Script path: ${path.join(this.botDirectory, "src/index.ts")}`);
-              console.error(`   ts-node path: ${path.join(this.botDirectory, "node_modules/.bin/ts-node")}`);
-            } else if (err.message.includes("port")) {
-              console.error(
-                `   💡 Suggestion: Port ${botConfig.apiPort} might be in use.`
-              );
+          // Start the new process
+          pm2.start(pm2Config, async (startErr) => {
+            if (startErr) {
+              console.error(`Failed to start PM2 process:`, startErr);
+              pm2.disconnect();
+              reject(startErr);
+              return;
             }
-            reject(new Error(`PM2 start failed: ${err.message}`));
-            return;
-          }
 
-          // Step 2: Verify the PM2 process was created successfully
-          console.log(`🔍 Verifying PM2 process creation...`);
-          try {
-            const verificationResult = await this.verifyPM2ProcessCreation(pm2ServiceId, botConfig.apiPort);
-            
-            console.log(`� Disconnecting from PM2...`);
-            pm2.disconnect();
-            
-            if (verificationResult.success) {
-              console.log(`✅ Bot ${botId} started with PM2 successfully`);
-              console.log(`📄 PM2 process verification completed`);
-              console.log(`📊 Process details:`);
-              console.log(`   - PM2 Service ID: ${pm2ServiceId}`);
-              console.log(`   - PID: ${verificationResult.pid}`);
-              console.log(`   - Status: ${verificationResult.status}`);
-              console.log(`   - Port: ${botConfig.apiPort}`);
-              console.log(`   - CPU: ${verificationResult.cpu}%`);
-              console.log(`   - Memory: ${verificationResult.memory}MB`);
-              console.log(`   - Restarts: ${verificationResult.restarts}`);
-              resolve();
-            } else {
-              throw new Error(`PM2 process verification failed: ${verificationResult.error}`);
+            // Verify the process started correctly
+            try {
+              const status = await this.verifyPM2ProcessCreation(pm2ServiceId, botConfig.apiPort);
+              if (status.success) {
+                console.log(`✅ PM2 process ${pm2ServiceId} started successfully`);
+                pm2.disconnect();
+                resolve();
+              } else {
+                throw new Error(`Process verification failed: ${status.error}`);
+              }
+            } catch (verifyError) {
+              pm2.disconnect();
+              reject(verifyError);
             }
-          } catch (verificationError) {
-            console.log(`🔌 Disconnecting from PM2 due to verification error...`);
-            pm2.disconnect();
-            
-            console.error(`❌ PM2 process verification failed for ${botId}:`);
-            console.error(`   Error: ${verificationError instanceof Error ? verificationError.message : 'Unknown verification error'}`);
-            reject(new Error(`PM2 process verification failed: ${verificationError instanceof Error ? verificationError.message : 'Unknown verification error'}`));
-          }
-        });
+          });
+        } catch (error) {
+          pm2.disconnect();
+          reject(error);
+        }
       });
     });
   }
 
   private async verifyPM2ProcessCreation(
-    pm2ServiceId: string, 
-    expectedPort: number, 
-    maxRetries: number = 10, 
+    pm2ServiceId: string,
+    expectedPort: number,
+    maxRetries: number = 10,
     delayMs: number = 2000
   ): Promise<{
     success: boolean;
@@ -508,63 +423,56 @@ export class BotSpawnerService {
     restarts?: number;
     error?: string;
   }> {
-    console.log(`🔍 Verifying PM2 process ${pm2ServiceId} creation (max ${maxRetries} attempts)...`);
-    
+    console.log(`🔍 Verifying PM2 process ${pm2ServiceId} (max ${maxRetries} attempts)...`);
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      console.log(`   Attempt ${attempt}/${maxRetries}: Checking PM2 process status...`);
-      
       try {
-        // Check if PM2 process exists and is running
-        const pm2Status = await this.getPM2ServiceStatus(pm2ServiceId);
+        await new Promise<void>((resolve, reject) => {
+          pm2.connect((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        const list = await new Promise<any[]>((resolve, reject) => {
+          pm2.list((err, processList) => {
+            if (err) reject(err);
+            else resolve(processList);
+          });
+        });
+
+        const process = list.find(p => p.name === pm2ServiceId);
         
-        if (pm2Status.status === "online") {
-          console.log(`   ✅ PM2 process is online (PID: ${pm2Status.pid})`);
+        if (process) {
+          const status = process.pm2_env?.status || 'unknown';
+          console.log(`📊 Process status: ${status}`);
           
-          // Additional verification: check if the port is actually being used by our process
-          try {
-            const { stdout } = await execAsync(`lsof -ti:${expectedPort}`);
-            const pids = stdout.trim().split('\n').filter(pid => pid);
+          if (status === 'online') {
+            const result = {
+              success: true,
+              pid: process.pid,
+              status: status,
+              cpu: process.monit?.cpu,
+              memory: process.monit?.memory,
+              restarts: process.pm2_env?.restart_time || 0
+            };
             
-            if (pids.includes(pm2Status.pid?.toString() || '')) {
-              console.log(`   ✅ Process is correctly listening on port ${expectedPort}`);
-              return {
-                success: true,
-                pid: pm2Status.pid,
-                status: pm2Status.status,
-                cpu: pm2Status.cpu,
-                memory: pm2Status.memory,
-                restarts: pm2Status.restarts
-              };
-            } else {
-              console.log(`   ⚠️  Process exists but not listening on expected port ${expectedPort}`);
-              console.log(`   🔍 Processes on port ${expectedPort}: ${pids.join(', ')}`);
-            }
-          } catch (portError) {
-            console.log(`   ⚠️  Could not verify port usage: ${portError instanceof Error ? portError.message : 'Unknown error'}`);
+            pm2.disconnect();
+            return result;
           }
-        } else {
-          console.log(`   ⚠️  PM2 process status: ${pm2Status.status}`);
         }
-        
-        if (attempt < maxRetries) {
-          console.log(`   ⏳ Waiting ${delayMs}ms before next attempt...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+
+        console.log(`⏳ Attempt ${attempt}: Process not ready, waiting ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
         
       } catch (error) {
-        console.log(`   ❌ Error during verification attempt ${attempt}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        
-        if (attempt < maxRetries) {
-          console.log(`   ⏳ Waiting ${delayMs}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+        console.error(`❌ Attempt ${attempt} failed:`, error);
+      } finally {
+        pm2.disconnect();
       }
     }
-    
-    return {
-      success: false,
-      error: `Failed to verify PM2 process creation after ${maxRetries} attempts`
-    };
+
+    throw new Error(`Failed to verify PM2 process creation after ${maxRetries} attempts`);
   }
 
   private async addBotToConfig(botConfig: any, botId: string): Promise<Bot> {
