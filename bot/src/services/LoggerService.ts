@@ -5,6 +5,10 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import pino from 'pino';
+import io from '@pm2/io';
+import { METRICS, MetricDefinition } from '../types/metrics';
+import { WHATSAPP_LIFECYCLE_STEPS } from '../utils/pm2Utils_unified';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -26,20 +30,59 @@ export interface LoggerConfig {
  */
 export class LoggerService {
   private static instance: LoggerService;
-  private config: LoggerConfig;
+  private logger: pino.Logger;
+  private metrics: Map<string, any>;
+  private ready: boolean = false;
 
   private constructor(config?: LoggerConfig) {
     // Default config for simple usage
-    this.config = config || {
-      logLevel: LogLevel.INFO,
-      logToFile: false,
-      logToConsole: true,
-      logDirectory: "./logs"
-    };
-    
-    if (this.config.logToFile) {
-      this.ensureLogDirectory();
-    }
+    this.logger = pino({
+      level: process.env.LOG_LEVEL || 'info',
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:standard'
+        }
+      }
+    });
+
+    this.metrics = new Map();
+    this.initializeMetrics();
+  }
+
+  private initializeMetrics(): void {
+    Object.entries(METRICS).forEach(([key, metric]) => {
+      switch (metric.type) {
+        case 'meter':
+          this.metrics.set(key, io.meter({
+            name: metric.name,
+            id: metric.id
+          }));
+          break;
+        case 'counter':
+          this.metrics.set(key, io.counter({
+            name: metric.name,
+            id: metric.id
+          }));
+          break;
+        case 'histogram':
+          this.metrics.set(key, io.histogram({
+            name: metric.name,
+            id: metric.id,
+            measurement: 'median'
+          }));
+          break;
+        case 'metric':
+          this.metrics.set(key, io.metric({
+            name: metric.name,
+            id: metric.id,
+            unit: metric.unit
+          }));
+          break;
+      }
+    });
+    this.ready = true;
   }
 
   public static getInstance(config?: LoggerConfig): LoggerService {
@@ -195,8 +238,80 @@ export class LoggerService {
     const emoji = action === 'created' ? "📁" : "✅";
     this.info(`${messages[action]}: ${pathValue}`, emoji);
   }
+
+  public log(
+    level: 'debug' | 'info' | 'warn' | 'error' | 'fatal',
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    this.logger[level]({ 
+      context,
+      timestamp: new Date().toISOString()
+    }, message);
+  }
+
+  public error(error: Error, context?: Record<string, unknown>): void {
+    this.logger.error({ 
+      error,
+      context,
+      timestamp: new Date().toISOString(),
+      stack: error.stack
+    }, error.message);
+
+    io.notifyError(error);
+    this.updateMetric('ERRORS');
+  }
+
+  public updateMetric(
+    metricKey: keyof typeof METRICS,
+    value?: number
+  ): void {
+    if (!this.ready) return;
+
+    const metric = this.metrics.get(metricKey);
+    if (!metric) {
+      this.log('warn', `Metric ${metricKey} not found`);
+      return;
+    }
+
+    const metricDef = METRICS[metricKey];
+    switch (metricDef.type) {
+      case 'meter':
+        metric.mark();
+        break;
+      case 'counter':
+        metric.inc(value || 1);
+        break;
+      case 'histogram':
+      case 'metric':
+        if (value !== undefined) {
+          metric.set(value);
+        }
+        break;
+    }
+  }
+
+  public logLifecycleStep(step: keyof typeof WHATSAPP_LIFECYCLE_STEPS): void {
+    const timestamp = new Date().toISOString();
+    this.log('info', `Lifecycle Step: ${step}`, { step, timestamp });
+    
+    switch (step) {
+      case 'CONNECTED':
+        this.updateMetric('WHATSAPP_CONNECTIONS');
+        break;
+      case 'QR_READY':
+        this.updateMetric('QR_CODES');
+        break;
+      case 'MESSAGE_RECEIVED':
+        this.updateMetric('MESSAGES');
+        break;
+    }
+  }
 }
 
 // Export for backward compatibility
 export const UnifiedLogger = LoggerService;
 export const Logger = LoggerService;
+
+// Export singleton instance
+export const logger = LoggerService.getInstance();
