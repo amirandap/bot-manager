@@ -36,6 +36,23 @@ This is a WhatsApp/Discord bot manager built with TypeScript, featuring:
 - Use direct npm/pm2/git commands instead of shell scripts
 - Prefer built-in VS Code terminal over custom automation scripts
 
+## Terminal Management
+
+**IMPORTANT: Always use two separate terminals:**
+
+1. **Development Terminal** (Terminal 1): For running the development servers
+
+   - Use for: `npm run dev`, `pm2 start`, `pm2 restart`, long-running processes
+   - Keep this terminal dedicated to running services
+   - Don't interrupt this terminal for other commands
+
+2. **Testing Terminal** (Terminal 2): For running tests, API calls, and debugging
+   - Use for: `curl`, `jq`, `pm2 status`, `pm2 logs`, file operations
+   - Use for all testing and debugging commands
+   - This terminal should be free to run quick commands
+
+**Never run testing commands in the same terminal that's running development servers**
+
 ## API Structure
 
 - All backend routes follow REST conventions
@@ -58,6 +75,7 @@ This is a WhatsApp/Discord bot manager built with TypeScript, featuring:
 Instead of using helper scripts, prefer using these direct commands:
 
 ### Building components
+
 ```bash
 # Build the bot component
 cd bot && npm run build
@@ -70,6 +88,7 @@ cd backend && npm run build
 ```
 
 ### Restarting services
+
 ```bash
 # Restart a specific bot instance
 pm2 reload wabot-[port]
@@ -85,18 +104,21 @@ pm2 reload all
 ```
 
 ### Development workflow
-```bash
-# Start development servers
-cd frontend && npm run dev
-cd backend && npm run dev
-cd bot && npm run dev
 
-# Check logs
+```bash
+# Start development servers (Terminal 1)
+npm run dev
+
+# Check logs (Terminal 2)
 pm2 logs bot-manager-backend
 pm2 logs wabot-[port]
 
-# Monitor services
+# Monitor services (Terminal 2)
 pm2 monit
+
+# Test API endpoints (Terminal 2)
+curl -s "http://localhost:3001/api/bots" | jq
+curl -s "http://localhost:3001/api/status/bot-id" | jq
 ```
 
 When suggesting code changes, ensure they:
@@ -108,3 +130,4 @@ When suggesting code changes, ensure they:
 5. Handle errors gracefully
 6. **NEVER use custom .sh scripts - always prefer direct terminal commands**
 7. Use npm/pm2/git commands directly instead of wrapper scripts
+8. **Always use separate terminals for development servers vs testing commands**

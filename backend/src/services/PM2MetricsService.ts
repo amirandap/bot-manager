@@ -1,6 +1,7 @@
 import pm2 from "pm2";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { PM2MetricsClient } from "./PM2MetricsClient";
 
 const execAsync = promisify(exec);
 
@@ -91,17 +92,9 @@ export class PM2MetricsService {
     processName: string
   ): Promise<PM2ProcessMetrics | null> {
     try {
-      const basicMetrics = await this.getBasicProcessMetrics(processName);
-      if (!basicMetrics) {
-        return null;
-      }
-
-      const codeMetrics = await this.getCodeMetrics(processName);
-
-      return {
-        ...basicMetrics,
-        ...codeMetrics,
-      };
+      // Use PM2MetricsClient for all metrics - no more text parsing!
+      const metrics = await this.getBasicProcessMetrics(processName);
+      return metrics;
     } catch (error) {
       console.error(`❌ Failed to get PM2 metrics for ${processName}:`, error);
       return null;
@@ -109,221 +102,77 @@ export class PM2MetricsService {
   }
 
   /**
-   * Get basic process metrics using pm2.describe()
+   * Get basic process metrics using PM2MetricsClient
    */
   private async getBasicProcessMetrics(
     processName: string
   ): Promise<PM2ProcessMetrics | null> {
-    return new Promise((resolve) => {
-      pm2.connect((err) => {
-        if (err) {
-          console.error(`❌ Failed to connect to PM2:`, err);
-          resolve(null);
-          return;
-        }
+    try {
+      const client = new PM2MetricsClient();
+      const metrics = await client.getProcessMetrics(processName);
+      client.disconnect();
 
-        pm2.describe(processName, (describeErr, processDescription) => {
-          pm2.disconnect();
+      if (!metrics) {
+        console.log(`ℹ️ PM2 process ${processName} not found`);
+        return null;
+      }
 
-          if (
-            describeErr ||
-            !processDescription ||
-            processDescription.length === 0
-          ) {
-            console.log(`ℹ️ PM2 process ${processName} not found`);
-            resolve(null);
-            return;
-          }
+      // Map from client format to our interface
+      const processMetrics: PM2ProcessMetrics = {
+        name: metrics.name,
+        status: this.mapPM2Status(metrics.status || "unknown"),
+        pid: metrics.pid,
+        uptime: metrics.uptime ? Date.now() - metrics.uptime : undefined,
+        restarts: metrics.restarts || 0,
+        cpu: metrics.cpu || 0,
+        memory: metrics.memory || 0,
 
-          const proc = processDescription[0] as any;
-          const pm2Env = proc?.pm2_env;
-          const monit = proc?.monit;
+        // System metrics
+        activeHandles: metrics.active_handles,
+        activeRequests: metrics.active_requests,
+        eventLoopLatency: metrics.event_loop_latency,
+        heapUsage: metrics.heap_usage,
+        heapSize: metrics.heap_size,
+        usedHeapSize: metrics.used_heap_size,
 
-          const metrics: PM2ProcessMetrics = {
-            name: pm2Env?.name || processName,
-            status: this.mapPM2Status(pm2Env?.status || "unknown"),
-            pid: proc?.pid,
-            uptime: pm2Env?.pm_uptime
-              ? Date.now() - pm2Env.pm_uptime
-              : undefined,
-            restarts: pm2Env?.restart_time || 0,
-            cpu: monit?.cpu,
-            memory: monit?.memory
-              ? Math.round(monit.memory / 1024 / 1024)
-              : undefined,
-            pm2Id: pm2Env?.pm_id,
-            createdAt: pm2Env?.created_at
-              ? new Date(pm2Env.created_at).toISOString()
-              : undefined,
-            nodeVersion: pm2Env?.node_version,
-            execPath: pm2Env?.pm_exec_path,
-            logPath: pm2Env?.pm_out_log_path,
-            errorLogPath: pm2Env?.pm_err_log_path,
-            outLogPath: pm2Env?.pm_out_log_path,
-          };
+        // Custom bot metrics - these come directly from PM2's axm_monitor
+        botStatus: metrics.botStatus,
+        browserCpuUsage: metrics.browserCpuUsage,
+        browserMemoryUsage: metrics.browserMemoryUsage,
+        messageProcessingTime: metrics.messageProcessingTime,
+        errorCount: metrics.errorCount,
+        httpRequests: metrics.httpRequests,
+        httpLatencyMean: metrics.httpLatencyMean,
+        httpLatencyP95: metrics.httpLatencyP95,
+        qrCodeStatus: metrics.qrCodeStatus,
+        qrCodesGenerated: metrics.qrCodesGenerated,
+        apiServerStatus: metrics.apiServerStatus,
+        whatsappStatus: metrics.whatsappStatus,
 
-          resolve(metrics);
-        });
+        // PM2 specific fields
+        pm2Id: undefined,
+        createdAt: undefined,
+        nodeVersion: metrics.node_version,
+        execPath: undefined,
+        logPath: metrics.log_path,
+        errorLogPath: metrics.error_log_path,
+        outLogPath: metrics.log_path,
+      };
+
+      console.log(`📊 PM2 Metrics extracted via API for ${processName}:`, {
+        status: processMetrics.status,
+        whatsappStatus: processMetrics.whatsappStatus,
+        qrCodeStatus: processMetrics.qrCodeStatus,
+        botStatus: processMetrics.botStatus,
+        cpu: processMetrics.cpu,
+        memory: processMetrics.memory,
       });
-    });
-  }
 
-  /**
-   * Get code metrics (heap, event loop, etc.) using pm2 describe for better metric access
-   */
-  private async getCodeMetrics(
-    processName: string
-  ): Promise<Partial<PM2ProcessMetrics>> {
-    try {
-      // First try the original method (pm2 jlist)
-      const { stdout: jlistOutput } = await execAsync("pm2 jlist");
-      const processes = JSON.parse(jlistOutput);
-
-      const process = processes.find((p: any) => p.name === processName);
-      if (!process) {
-        return {};
-      }
-
-      const axm = process.axm_monitor || {};
-
-      // If axm_monitor has data, use it
-      if (Object.keys(axm).length > 0) {
-        return {
-          activeHandles: this.parseMetricValue(axm["Active handles"]),
-          activeRequests: this.parseMetricValue(axm["Active requests"]),
-          eventLoopLatency: this.parseMetricValue(axm["Event Loop Latency"]),
-          heapUsage: this.parseMetricValue(axm["Heap Usage"], true), // percentage
-          heapSize: this.parseMetricValue(axm["Heap Size"]),
-          usedHeapSize: this.parseMetricValue(axm["Used Heap Size"]),
-          errorCount: this.parseMetricValue(axm["Error Count"]),
-          httpRequests: this.parseMetricValue(axm["HTTP"]),
-          httpLatencyMean: this.parseMetricValue(axm["HTTP Mean Latency"]),
-          httpLatencyP95: this.parseMetricValue(axm["HTTP P95 Latency"]),
-        };
-      }
-
-      // If axm_monitor is empty, try pm2 describe for custom metrics
-      try {
-        const { stdout: describeOutput } = await execAsync(
-          `pm2 describe ${processName}`
-        );
-
-        // Parse the describe output to extract metrics
-        const metrics = this.parseDescribeOutput(describeOutput);
-
-        console.log(`📊 Extracted custom metrics for ${processName}:`, metrics);
-
-        return metrics;
-      } catch (describeError) {
-        console.warn(
-          `⚠️ Failed to get describe metrics for ${processName}:`,
-          describeError
-        );
-        return {};
-      }
+      return processMetrics;
     } catch (error) {
-      console.warn(`⚠️ Failed to get code metrics for ${processName}:`, error);
-      return {};
+      console.error(`❌ Failed to get PM2 metrics for ${processName}:`, error);
+      return null;
     }
-  }
-
-  /**
-   * Parse PM2 describe output to extract custom bot metrics
-   */
-  private parseDescribeOutput(
-    describeOutput: string
-  ): Partial<PM2ProcessMetrics> {
-    const metrics: Partial<PM2ProcessMetrics> = {};
-
-    try {
-      // Look for the "Code metrics value" section
-      const lines = describeOutput.split("\n");
-      let inMetricsSection = false;
-
-      for (const line of lines) {
-        if (line.includes("Code metrics value")) {
-          inMetricsSection = true;
-          continue;
-        }
-
-        if (inMetricsSection && line.includes("│")) {
-          // Parse metric lines like "│ Bot Status              │ Launching Chrome status │"
-          const match = line.match(/│\s*([^│]+?)\s*│\s*([^│]+?)\s*│/);
-          if (match) {
-            const metricName = match[1].trim();
-            const metricValue = match[2].trim();
-
-            // Map the specific bot metrics we're interested in
-            switch (metricName) {
-              case "Bot Status":
-                // Store as string for bot status
-                (metrics as any).botStatus = metricValue;
-                break;
-              case "Browser CPU Usage":
-                (metrics as any).browserCpuUsage =
-                  this.parseMetricValue(metricValue);
-                break;
-              case "Browser Memory Usage":
-                (metrics as any).browserMemoryUsage =
-                  this.parseMetricValue(metricValue);
-                break;
-              case "Message Processing Time":
-                (metrics as any).messageProcessingTime =
-                  this.parseMetricValue(metricValue);
-                break;
-              case "Error Count":
-                metrics.errorCount = this.parseMetricValue(metricValue);
-                break;
-              case "Messages Processed":
-                metrics.httpRequests = this.parseMetricValue(metricValue);
-                break;
-              case "QR Code Status":
-                (metrics as any).qrCodeStatus = metricValue;
-                break;
-              case "QR Codes Generated":
-                (metrics as any).qrCodesGenerated =
-                  this.parseMetricValue(metricValue);
-                break;
-              case "API Server Status":
-                (metrics as any).apiServerStatus =
-                  this.parseMetricValue(metricValue);
-                break;
-              case "WhatsApp Status":
-                (metrics as any).whatsappStatus = metricValue;
-                break;
-              // Keep the original system metrics too
-              case "Active handles":
-                metrics.activeHandles = this.parseMetricValue(metricValue);
-                break;
-              case "Active requests":
-                metrics.activeRequests = this.parseMetricValue(metricValue);
-                break;
-              case "Event Loop Latency":
-                metrics.eventLoopLatency = this.parseMetricValue(metricValue);
-                break;
-              case "Heap Usage":
-                metrics.heapUsage = this.parseMetricValue(metricValue, true);
-                break;
-              case "Heap Size":
-                metrics.heapSize = this.parseMetricValue(metricValue);
-                break;
-              case "Used Heap Size":
-                metrics.usedHeapSize = this.parseMetricValue(metricValue);
-                break;
-            }
-          }
-        }
-
-        // Stop parsing when we reach another section
-        if (inMetricsSection && line.includes("Divergent env variables")) {
-          break;
-        }
-      }
-    } catch (error) {
-      console.warn("⚠️ Failed to parse describe output:", error);
-    }
-
-    return metrics;
   }
 
   /**

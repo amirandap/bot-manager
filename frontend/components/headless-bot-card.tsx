@@ -4,23 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  RefreshCw,
-  Trash2,
-  QrCode,
-  PlayCircle,
   RotateCcw,
   Settings,
-  MessageSquare,
-  Camera,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Activity,
+  Trash2,
+  RefreshCw,
   Cpu,
-  MemoryStick,
+  Monitor,
+  Activity,
+  MessageSquare,
+  PlayCircle,
+  Camera,
+  Clock,
+  AlertTriangle,
+  QrCode,
   Zap,
-  Users,
-  MessageCircle,
 } from "lucide-react";
 import type { Bot, BotStatus } from "@/lib/types";
 import { useState, useEffect, useCallback } from "react";
@@ -293,75 +290,6 @@ export default function HeadlessBotCard({
     }
   };
 
-  // Helper functions for metric styling
-  const getMetricBadgeVariant = (
-    metricType: string,
-    value: number | string | undefined
-  ): "default" | "destructive" | "secondary" | "outline" => {
-    if (value === undefined || value === null) return "outline";
-
-    switch (metricType) {
-      case "errorCount":
-        return typeof value === "number" && value > 0
-          ? "destructive"
-          : "default";
-      case "browserCpuUsage":
-        if (typeof value === "number") {
-          if (value >= 95) return "destructive";
-          if (value >= 80) return "secondary";
-        }
-        return "default";
-      case "browserMemoryUsage":
-        if (typeof value === "number") {
-          if (value >= 2048) return "destructive";
-          if (value >= 1024) return "secondary";
-        }
-        return "default";
-      case "messageProcessingTime":
-        if (typeof value === "number") {
-          if (value > 1000) return "destructive";
-          if (value > 500) return "secondary";
-        }
-        return "default";
-      case "apiServerStatus":
-        return typeof value === "number" && value === 0
-          ? "destructive"
-          : "default";
-      case "eventLoopLatency":
-        if (typeof value === "number") {
-          if (value > 40) return "destructive";
-          if (value > 10) return "secondary";
-        }
-        return "default";
-      case "activeRequests":
-        return typeof value === "number" && value > 0 ? "secondary" : "default";
-      default:
-        return "outline";
-    }
-  };
-
-  const formatMetricValue = (
-    metricType: string,
-    value: number | string | undefined
-  ): string => {
-    if (value === undefined || value === null) return "N/A";
-
-    switch (metricType) {
-      case "browserCpuUsage":
-        return `${value}%`;
-      case "browserMemoryUsage":
-        return `${value}MB`;
-      case "messageProcessingTime":
-        return `${value}ms`;
-      case "eventLoopLatency":
-        return `${typeof value === "number" ? Math.round(value) : value}ms`;
-      case "apiServerStatus":
-        return typeof value === "number" && value === 0 ? "Down" : "Up";
-      default:
-        return String(value);
-    }
-  };
-
   useEffect(() => {
     fetchBotStatus();
     // Poll for status updates every 30 seconds
@@ -381,31 +309,29 @@ export default function HeadlessBotCard({
           </div>
           <div className="flex items-center gap-2">
             <Badge
-              variant={processState === "running" ? "default" : "outline"}
+              variant={whatsappStatus === "QR_READY" ? "default" : "outline"}
               className={
-                processState === "running"
+                whatsappStatus === "QR_READY"
+                  ? "bg-blue-100 text-blue-800"
+                  : whatsappStatus === "AUTHENTICATED"
                   ? "bg-green-100 text-green-800"
-                  : processState === "offline"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
+                  : whatsappStatus === "DISCONNECTED"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
               }
             >
-              {processState === "running"
-                ? "Running"
-                : processState === "offline"
-                ? "Offline"
-                : "Not Found"}
+              {whatsappStatus || "Unknown"}
             </Badge>
-            {whatsappStatus && (
+            {processState !== "running" && (
               <Badge
-                variant={whatsappStatus === "QR_READY" ? "default" : "outline"}
+                variant="outline"
                 className={
-                  whatsappStatus === "QR_READY"
-                    ? "bg-blue-100 text-blue-800"
-                    : ""
+                  processState === "offline"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-red-100 text-red-800"
                 }
               >
-                {whatsappStatus}
+                {processState === "offline" ? "PM2 Offline" : "PM2 Not Found"}
               </Badge>
             )}
           </div>
@@ -512,119 +438,156 @@ export default function HeadlessBotCard({
           </div>
         </div>
 
-        {/* Metrics Section */}
+        {/* Metrics Section - 3x3 Grid */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-gray-700">Metrics</h4>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Bot-specific metrics */}
-            {metrics?.botStatus && (
+          <div className="grid grid-cols-3 gap-3">
+            {/* Row 1: CPU */}
+            <div className="flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-gray-500" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500 font-medium">CPU</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">System CPU</div>
+                <div className="text-sm font-medium">
+                  {metrics?.cpu !== undefined ? `${metrics.cpu}%` : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">Memory</div>
+                <div className="text-sm font-medium">
+                  {metrics?.memory !== undefined
+                    ? `${metrics.memory}MB`
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Browser */}
+            <div className="flex items-center gap-2">
+              <Monitor className="h-4 w-4 text-gray-500" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500 font-medium">Browser</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">CPU Usage</div>
+                <div className="text-sm font-medium">
+                  {metrics?.browserCpuUsage !== undefined
+                    ? `${metrics.browserCpuUsage}%`
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">Memory Usage</div>
+                <div className="text-sm font-medium">
+                  {metrics?.browserMemoryUsage !== undefined
+                    ? `${metrics.browserMemoryUsage}MB`
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Metrics */}
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-gray-500" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500 font-medium">Metrics</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">Event Loop</div>
+                <div className="text-sm font-medium">
+                  {metrics?.eventLoopLatency !== undefined
+                    ? `${Math.round(metrics.eventLoopLatency)}ms`
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">Active Req</div>
+                <div className="text-sm font-medium">
+                  {metrics?.activeRequests !== undefined
+                    ? `${metrics.activeRequests}`
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Metrics - Individual rows */}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            {/* Restarts */}
+            {metrics?.restarts !== undefined && (
               <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-gray-500" />
+                <RotateCcw className="h-4 w-4 text-gray-500" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Bot Status</div>
-                  <div className="text-sm font-medium truncate">
-                    {metrics.botStatus}
+                  <div className="text-xs text-gray-500">Restarts</div>
+                  <div className="text-sm font-medium">{metrics.restarts}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Uptime */}
+            {metrics?.uptime !== undefined && (
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-500">Uptime</div>
+                  <div className="text-sm font-medium">
+                    {typeof metrics.uptime === "number"
+                      ? `${Math.floor(metrics.uptime / 3600)}h ${Math.floor(
+                          (metrics.uptime % 3600) / 60
+                        )}m`
+                      : metrics.uptime}
                   </div>
                 </div>
               </div>
             )}
 
-            {metrics?.browserCpuUsage !== undefined && (
-              <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Browser CPU</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "browserCpuUsage",
-                      metrics.browserCpuUsage
-                    )}
-                    className="text-xs"
-                  >
-                    {formatMetricValue(
-                      "browserCpuUsage",
-                      metrics.browserCpuUsage
-                    )}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {metrics?.browserMemoryUsage !== undefined && (
-              <div className="flex items-center gap-2">
-                <MemoryStick className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Browser Memory</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "browserMemoryUsage",
-                      metrics.browserMemoryUsage
-                    )}
-                    className="text-xs"
-                  >
-                    {formatMetricValue(
-                      "browserMemoryUsage",
-                      metrics.browserMemoryUsage
-                    )}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
+            {/* Message Processing Time (Latency) */}
             {metrics?.messageProcessingTime !== undefined && (
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-500" />
+                <Zap className="h-4 w-4 text-gray-500" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Msg Process Time</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "messageProcessingTime",
-                      metrics.messageProcessingTime
-                    )}
-                    className="text-xs"
-                  >
-                    {formatMetricValue(
-                      "messageProcessingTime",
-                      metrics.messageProcessingTime
-                    )}
-                  </Badge>
+                  <div className="text-xs text-gray-500">Latency</div>
+                  <div className="text-sm font-medium">
+                    {metrics.messageProcessingTime}ms
+                  </div>
                 </div>
               </div>
             )}
 
+            {/* Error Count */}
             {metrics?.errorCount !== undefined && (
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-gray-500" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500">Error Count</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "errorCount",
-                      metrics.errorCount
-                    )}
-                    className="text-xs"
-                  >
+                  <div className="text-sm font-medium text-red-600">
                     {metrics.errorCount}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {/* Messages Processed - renamed from httpRequests */}
-            {metrics?.httpRequests !== undefined && (
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">
-                    Messages Processed
-                  </div>
-                  <div className="text-sm font-medium">
-                    {metrics.httpRequests}
                   </div>
                 </div>
               </div>
             )}
 
+            {/* QR Code Status */}
             {metrics?.qrCodeStatus && (
               <div className="flex items-center gap-2">
                 <QrCode className="h-4 w-4 text-gray-500" />
@@ -637,6 +600,7 @@ export default function HeadlessBotCard({
               </div>
             )}
 
+            {/* QR Codes Generated */}
             {metrics?.qrCodesGenerated !== undefined && (
               <div className="flex items-center gap-2">
                 <QrCode className="h-4 w-4 text-gray-500" />
@@ -645,99 +609,6 @@ export default function HeadlessBotCard({
                   <div className="text-sm font-medium">
                     {metrics.qrCodesGenerated}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {metrics?.apiServerStatus !== undefined && (
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">API Server</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "apiServerStatus",
-                      metrics.apiServerStatus
-                    )}
-                    className="text-xs"
-                  >
-                    {formatMetricValue(
-                      "apiServerStatus",
-                      metrics.apiServerStatus
-                    )}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {metrics?.eventLoopLatency !== undefined && (
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Event Loop</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "eventLoopLatency",
-                      metrics.eventLoopLatency
-                    )}
-                    className="text-xs"
-                  >
-                    {formatMetricValue(
-                      "eventLoopLatency",
-                      metrics.eventLoopLatency
-                    )}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {metrics?.activeHandles !== undefined && (
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Active Handles</div>
-                  <div className="text-sm font-medium">
-                    {metrics.activeHandles}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {metrics?.activeRequests !== undefined && (
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">Active Requests</div>
-                  <Badge
-                    variant={getMetricBadgeVariant(
-                      "activeRequests",
-                      metrics.activeRequests
-                    )}
-                    className="text-xs"
-                  >
-                    {metrics.activeRequests}
-                  </Badge>
-                </div>
-              </div>
-            )}
-
-            {/* Basic system metrics */}
-            {metrics?.cpu !== undefined && (
-              <div className="flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">System CPU</div>
-                  <div className="text-sm font-medium">{metrics.cpu}%</div>
-                </div>
-              </div>
-            )}
-
-            {metrics?.memory !== undefined && (
-              <div className="flex items-center gap-2">
-                <MemoryStick className="h-4 w-4 text-gray-500" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500">System Memory</div>
-                  <div className="text-sm font-medium">{metrics.memory}MB</div>
                 </div>
               </div>
             )}

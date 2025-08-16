@@ -22,19 +22,26 @@ export class BotSpawnerService {
 
   private async killProcessOnPort(port: number): Promise<void> {
     console.log(`🔍 Checking for processes on port ${port}...`);
-    
+
     try {
       // First, try to find processes using the port
       const { stdout } = await execAsync(`lsof -ti:${port}`);
-      const pids = stdout.trim().split('\n').filter(pid => pid);
-      
+      const pids = stdout
+        .trim()
+        .split("\n")
+        .filter((pid) => pid);
+
       if (pids.length === 0) {
         console.log(`✅ Port ${port} is free`);
         return;
       }
 
-      console.log(`🎯 Found ${pids.length} process(es) using port ${port}: ${pids.join(', ')}`);
-      
+      console.log(
+        `🎯 Found ${pids.length} process(es) using port ${port}: ${pids.join(
+          ", "
+        )}`
+      );
+
       // Kill each process
       for (const pid of pids) {
         try {
@@ -42,20 +49,31 @@ export class BotSpawnerService {
           await execAsync(`kill -9 ${pid}`);
           console.log(`✅ Process ${pid} killed successfully`);
         } catch (error) {
-          console.log(`⚠️  Could not kill process ${pid}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.log(
+            `⚠️  Could not kill process ${pid}: ${
+              error instanceof Error ? error.message : "Unknown error"
+            }`
+          );
         }
       }
-      
+
       // Wait a moment for processes to fully terminate
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
       // Verify port is now free
       try {
         const { stdout: checkStdout } = await execAsync(`lsof -ti:${port}`);
-        const remainingPids = checkStdout.trim().split('\n').filter(pid => pid);
-        
+        const remainingPids = checkStdout
+          .trim()
+          .split("\n")
+          .filter((pid) => pid);
+
         if (remainingPids.length > 0) {
-          console.log(`⚠️  Warning: ${remainingPids.length} process(es) still using port ${port}: ${remainingPids.join(', ')}`);
+          console.log(
+            `⚠️  Warning: ${
+              remainingPids.length
+            } process(es) still using port ${port}: ${remainingPids.join(", ")}`
+          );
         } else {
           console.log(`✅ Port ${port} is now free`);
         }
@@ -63,13 +81,18 @@ export class BotSpawnerService {
         // If lsof fails, it means no processes are using the port
         console.log(`✅ Port ${port} confirmed free`);
       }
-      
     } catch (error) {
       // If lsof command fails, it typically means no processes are using the port
-      if (error instanceof Error && error.message.includes('lsof')) {
-        console.log(`✅ No processes found on port ${port} (lsof returned empty)`);
+      if (error instanceof Error && error.message.includes("lsof")) {
+        console.log(
+          `✅ No processes found on port ${port} (lsof returned empty)`
+        );
       } else {
-        console.log(`⚠️  Error checking port ${port}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.log(
+          `⚠️  Error checking port ${port}: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
     }
   }
@@ -191,19 +214,25 @@ export class BotSpawnerService {
         // First try to stop and delete PM2 service
         const pm2ServiceId = `wabot-${botConfig.apiPort}`;
         console.log(`🛑 Cleaning up PM2 service: ${pm2ServiceId}`);
-        await this.stopPM2Service(pm2ServiceId).catch(err => {
-          console.log(`⚠️  Could not stop PM2 service during cleanup: ${err.message}`);
+        await this.stopPM2Service(pm2ServiceId).catch((err) => {
+          console.log(
+            `⚠️  Could not stop PM2 service during cleanup: ${err.message}`
+          );
         });
-        await this.deletePM2Service(pm2ServiceId).catch(err => {
-          console.log(`⚠️  Could not delete PM2 service during cleanup: ${err.message}`);
+        await this.deletePM2Service(pm2ServiceId).catch((err) => {
+          console.log(
+            `⚠️  Could not delete PM2 service during cleanup: ${err.message}`
+          );
         });
 
         // Then kill any processes on the port
         await this.killProcessOnPort(botConfig.apiPort);
-        
+
         // Finally, remove bot from config and delete data
         await this.deleteBot(botId);
-        console.log(`✅ Cleanup completed in ${Date.now() - cleanupStart}ms for ${botId}`);
+        console.log(
+          `✅ Cleanup completed in ${Date.now() - cleanupStart}ms for ${botId}`
+        );
       } catch (cleanupError) {
         console.log(
           `⚠️  Cleanup failed in ${Date.now() - cleanupStart}ms: ${
@@ -316,7 +345,7 @@ export class BotSpawnerService {
     await this.killProcessOnPort(botConfig.apiPort);
 
     const pm2ServiceId = `wabot-${botConfig.apiPort}`;
-    
+
     // Load bot environment defaults
     const botEnvDefaults = this.loadBotEnvironmentDefaults();
 
@@ -333,8 +362,11 @@ export class BotSpawnerService {
       PM2_HOME: path.join(this.dataDirectory, "pm2"),
       DEBUG: "*",
       TS_NODE_PROJECT: path.join(this.botDirectory, "tsconfig.json"),
+      // Metrics configuration - disable metrics logging for cleaner output
+      SILENT_METRICS: "true",
+      LOG_LEVEL: "info",
       // Only include PATH if it exists
-      ...(process.env.PATH ? { PATH: process.env.PATH } : {})
+      ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
     };
 
     const pm2Config = {
@@ -355,7 +387,7 @@ export class BotSpawnerService {
       exec_mode: "fork",
       wait_ready: true,
       listen_timeout: 10000,
-      kill_timeout: 5000
+      kill_timeout: 5000,
     };
 
     return new Promise((resolve, reject) => {
@@ -370,7 +402,7 @@ export class BotSpawnerService {
           // First, ensure any existing process is removed
           await new Promise((resolve, reject) => {
             pm2.delete(pm2ServiceId, (err) => {
-              if (err && !err.message.includes('unknown process')) {
+              if (err && !err.message.includes("unknown process")) {
                 console.warn(`Warning cleaning up old process: ${err.message}`);
               }
               resolve(true);
@@ -388,9 +420,14 @@ export class BotSpawnerService {
 
             // Verify the process started correctly
             try {
-              const status = await this.verifyPM2ProcessCreation(pm2ServiceId, botConfig.apiPort);
+              const status = await this.verifyPM2ProcessCreation(
+                pm2ServiceId,
+                botConfig.apiPort
+              );
               if (status.success) {
-                console.log(`✅ PM2 process ${pm2ServiceId} started successfully`);
+                console.log(
+                  `✅ PM2 process ${pm2ServiceId} started successfully`
+                );
                 pm2.disconnect();
                 resolve();
               } else {
@@ -423,7 +460,9 @@ export class BotSpawnerService {
     restarts?: number;
     error?: string;
   }> {
-    console.log(`🔍 Verifying PM2 process ${pm2ServiceId} (max ${maxRetries} attempts)...`);
+    console.log(
+      `🔍 Verifying PM2 process ${pm2ServiceId} (max ${maxRetries} attempts)...`
+    );
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -441,30 +480,31 @@ export class BotSpawnerService {
           });
         });
 
-        const process = list.find(p => p.name === pm2ServiceId);
-        
+        const process = list.find((p) => p.name === pm2ServiceId);
+
         if (process) {
-          const status = process.pm2_env?.status || 'unknown';
+          const status = process.pm2_env?.status || "unknown";
           console.log(`📊 Process status: ${status}`);
-          
-          if (status === 'online') {
+
+          if (status === "online") {
             const result = {
               success: true,
               pid: process.pid,
               status: status,
               cpu: process.monit?.cpu,
               memory: process.monit?.memory,
-              restarts: process.pm2_env?.restart_time || 0
+              restarts: process.pm2_env?.restart_time || 0,
             };
-            
+
             pm2.disconnect();
             return result;
           }
         }
 
-        console.log(`⏳ Attempt ${attempt}: Process not ready, waiting ${delayMs}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        
+        console.log(
+          `⏳ Attempt ${attempt}: Process not ready, waiting ${delayMs}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       } catch (error) {
         console.error(`❌ Attempt ${attempt} failed:`, error);
       } finally {
@@ -472,7 +512,9 @@ export class BotSpawnerService {
       }
     }
 
-    throw new Error(`Failed to verify PM2 process creation after ${maxRetries} attempts`);
+    throw new Error(
+      `Failed to verify PM2 process creation after ${maxRetries} attempts`
+    );
   }
 
   private async addBotToConfig(botConfig: any, botId: string): Promise<Bot> {
@@ -586,18 +628,31 @@ export class BotSpawnerService {
 
         // First, check if the process exists
         pm2.describe(pm2ServiceId, (describeErr, processDescription) => {
-          if (describeErr || !processDescription || processDescription.length === 0) {
-            console.log(`⚠️  Process ${pm2ServiceId} not found in PM2. Auto-creating...`);
+          if (
+            describeErr ||
+            !processDescription ||
+            processDescription.length === 0
+          ) {
+            console.log(
+              `⚠️  Process ${pm2ServiceId} not found in PM2. Auto-creating...`
+            );
             pm2.disconnect();
-            
+
             // Process doesn't exist, create it automatically
-            this.startBotWithPM2(botId, bot).then(() => {
-              console.log(`✅ Bot ${botId} (PM2: ${pm2ServiceId}) created and started successfully`);
-              resolve(true);
-            }).catch((createError) => {
-              console.error(`❌ Failed to auto-create bot ${botId}:`, createError);
-              resolve(false);
-            });
+            this.startBotWithPM2(botId, bot)
+              .then(() => {
+                console.log(
+                  `✅ Bot ${botId} (PM2: ${pm2ServiceId}) created and started successfully`
+                );
+                resolve(true);
+              })
+              .catch((createError) => {
+                console.error(
+                  `❌ Failed to auto-create bot ${botId}:`,
+                  createError
+                );
+                resolve(false);
+              });
           } else {
             // Process exists, restart it
             pm2.restart(pm2ServiceId, (restartErr) => {
