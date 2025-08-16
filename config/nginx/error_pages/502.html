@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporary Service Interruption - Bot Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fc;
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+        .error-box {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e1e4e8;
+        }
+        .status-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: #0066cc;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 102, 204, 0.1);
+        }
+        .error-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        .error-message {
+            font-size: 18px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .actions {
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 102, 204, 0.2);
+        }
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid #0066cc;
+            color: #0066cc;
+        }
+        .btn-outline:hover {
+            background-color: #f0f7ff;
+            color: #0056b3;
+        }
+        .status-info {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e4e8;
+            font-size: 14px;
+            color: #718096;
+        }
+        .error-icon {
+            font-size: 80px;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        .timer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #718096;
+        }
+        .dots {
+            display: inline-block;
+            width: 70px;
+        }
+        .dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+        .tech-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f1f5f9;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #64748b;
+            text-align: left;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .status-code {
+                font-size: 60px;
+            }
+            .error-title {
+                font-size: 24px;
+            }
+            .error-message {
+                font-size: 16px;
+            }
+            .actions {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+            .btn {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-box">
+            <div class="error-icon">
+                ⚠️
+            </div>
+            <div class="status-code">502</div>
+            <h1 class="error-title">Temporary Service Interruption</h1>
+            <div class="error-message">
+                <p>Our bot management system is currently unavailable. The team has been automatically notified and is working to restore service.</p>
+            </div>
+            <div class="timer">
+                Attempting to reconnect automatically <span class="dots"></span>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="window.location.reload()">Retry Now</button>
+                <a href="/" class="btn btn-outline">Go to Homepage</a>
+            </div>
+            <div class="status-info">
+                <p>Server Status: <strong>Bot Manager</strong> • Error Code: <strong>502 Bad Gateway</strong></p>
+            </div>
+            <div class="tech-info">
+                <p>Time: <span id="current-time"></span></p>
+                <p>Server: nginx/1.18.0 (Ubuntu)</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Display current time
+        function updateTime() {
+            const timeElement = document.getElementById('current-time');
+            timeElement.textContent = new Date().toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Auto reload after some time
+        let reloadCounter = 30;
+        const timer = setInterval(() => {
+            reloadCounter -= 1;
+            if (reloadCounter <= 0) {
+                clearInterval(timer);
+                window.location.reload();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

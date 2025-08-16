@@ -3,6 +3,10 @@
 // This allows nginx to proxy the requests to the backend
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+// When using relative URLs with Nginx, don't add a duplicate '/api' prefix
+// The URL paths already include '/api' in their definitions below
+// This allows proper proxying through Nginx config: location /api/ -> backend
+
 // API helpers
 export const api = {
   // Base URL for manual construction
