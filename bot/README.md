@@ -2,7 +2,36 @@
 
 ## 📋 Información del Proyecto
 
-Este repositorio contiene un **WhatsApp Bot completamente funcional** con arquitectura modular y sistema de error handling robusto.
+Este repositorio contiene un **WhatsApp Bot completamente funcional** con arquitectura modular, sistema de error handling robusto y **endpoint unificado** para mensajería multimedia.
+
+## 🌟 NUEVO: Endpoint Unificado `/send-message`
+
+**El bot ahora incluye un endpoint completamente unificado que maneja automáticamente:**
+
+- ✅ **Texto**: Mensajes simples y a múltiples destinatarios
+- ✅ **Imágenes**: JPG, PNG, GIF, WEBP con caption opcional  
+- ✅ **Videos**: MP4, AVI, MOV con caption opcional
+- ✅ **Audio**: MP3, WAV, OGG con mensaje opcional
+- ✅ **Documentos**: PDF, DOC, XLS con mensaje opcional
+- ✅ **Destinatarios Mixtos**: Números y grupos en la misma solicitud
+- ✅ **Detección Automática**: Identifica el tipo de contenido automáticamente
+
+📖 **Ver documentación completa**: [`documentation/UNIFIED_SEND_MESSAGE_ENDPOINT.md`](./documentation/UNIFIED_SEND_MESSAGE_ENDPOINT.md)
+
+### Ejemplo de Uso Rápido
+
+```bash
+# Mensaje de texto
+curl -X POST http://localhost:7201/send-message \
+  -H "Content-Type: application/json" \
+  -d '{"to": ["1234567890"], "message": "Hola!"}'
+
+# Imagen con caption (detección automática)
+curl -X POST http://localhost:7201/send-message \
+  -F "to=[\"1234567890\"]" \
+  -F "caption=¡Mira esto!" \
+  -F "file=@imagen.jpg"
+```
 
 ## 🚨 IMPORTANTE - LEE ANTES DE CONTRIBUIR
 

@@ -2,4 +2,8 @@
 2. Implementar counters de mensajes enviados/mensajes fallados
 3. Implementar metrica para Push Name y Phone Number
 4. Agregar en front view listado de grupos con su ID
-5. Eliminar la metrica de qr generated
+5. Eliminar la metrica counter de qr generated
+6. Unificar los dos label de status en el front
+
+
+Frontend, scan qr code en vez de ventana sea un modal

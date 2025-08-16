@@ -198,17 +198,26 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
    * /send-message:
    *   post:
    *     tags: [Mensajes]
-   *     summary: Enviar mensaje a múltiples destinatarios
+   *     summary: Enviar mensaje unificado (texto, imágenes, archivos)
    *     description: |
-   *       Endpoint principal para envío de mensajes de texto a números individuales, múltiples números,
-   *       grupos, o una combinación mixta de ambos. Maneja automáticamente la validación y formateo
-   *       de diferentes tipos de destinatarios.
+   *       **Endpoint principal y unificado** para envío de mensajes de texto, imágenes, videos, 
+   *       audio y documentos a números individuales, múltiples números, grupos, o combinaciones mixtas.
+   *       
+   *       **Detección automática de tipo:**
+   *       - Sin archivo: mensaje de texto
+   *       - Con archivo: detecta automáticamente imagen/video/audio/documento
    *       
    *       **Tipos de destinatarios soportados:**
-   *       - Números de teléfono individuales: "1234567890"
+   *       - Números individuales: "1234567890"
    *       - Múltiples números: ["1234567890", "0987654321"]
    *       - IDs de grupos: "123456789-987654321@g.us"
    *       - Combinación mixta: ["1234567890", "123456789-987654321@g.us"]
+   *       
+   *       **Tipos de archivo soportados:**
+   *       - Imágenes: JPG, PNG, GIF, WEBP (máx. 16MB)
+   *       - Videos: MP4, AVI, MOV, 3GP (máx. 64MB)
+   *       - Audio: MP3, WAV, OGG, AMR (máx. 16MB)
+   *       - Documentos: PDF, DOC, XLS, etc. (máx. 100MB)
    *     requestBody:
    *       required: true
    *       content:
@@ -216,25 +225,20 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
    *           schema:
    *             $ref: '#/components/schemas/MainMessageRequest'
    *           examples:
-   *             single_phone:
-   *               summary: Número individual
+   *             text_single:
+   *               summary: Texto a número individual
    *               value:
    *                 to: "1234567890"
-   *                 message: "Hola, mensaje a un número"
-   *             multiple_phones:
-   *               summary: Múltiples números
+   *                 message: "Hola, mensaje de texto simple"
+   *             text_multiple:
+   *               summary: Texto a múltiples destinatarios
    *               value:
    *                 to: ["1234567890", "0987654321"]
    *                 message: "Mensaje a múltiples números"
-   *             single_group:
-   *               summary: Grupo individual
+   *             text_mixed:
+   *               summary: Texto a números y grupos
    *               value:
-   *                 to: "123456789-987654321@g.us"
-   *                 message: "Mensaje a un grupo"
-   *             mixed_recipients:
-   *               summary: Números y grupos mezclados
-   *               value:
-   *                 to: ["1234567890", "123456789-987654321@g.us", "0987654321"]
+   *                 to: ["1234567890", "123456789-987654321@g.us"]
    *                 message: "Mensaje para destinatarios mixtos"
    *         multipart/form-data:
    *           schema:
@@ -250,15 +254,47 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
    *                     description: Lista de destinatarios (números y grupos)
    *               message:
    *                 type: string
-   *                 description: Mensaje de texto
+   *                 description: Mensaje de texto (requerido si no hay archivo, opcional con archivo)
+   *               caption:
+   *                 type: string
+   *                 description: Caption para imágenes y videos (opcional)
    *               file:
    *                 type: string
    *                 format: binary
-   *                 description: Archivo opcional a adjuntar
-   *             required: [to, message]
+   *                 description: |
+   *                   Archivo multimedia opcional. Tipo detectado automáticamente:
+   *                   - Imágenes: JPG, PNG, GIF, WEBP
+   *                   - Videos: MP4, AVI, MOV, 3GP
+   *                   - Audio: MP3, WAV, OGG, AMR
+   *                   - Documentos: PDF, DOC, XLS, etc.
+   *             required: [to]
+   *           examples:
+   *             image_with_caption:
+   *               summary: Imagen con caption
+   *               value:
+   *                 to: ["1234567890", "123456789-987654321@g.us"]
+   *                 caption: "¡Mira esta imagen!"
+   *                 file: "[imagen.jpg]"
+   *             document_with_message:
+   *               summary: Documento con mensaje
+   *               value:
+   *                 to: "1234567890"
+   *                 message: "Te envío el documento solicitado"
+   *                 file: "[documento.pdf]"
+   *             video_only:
+   *               summary: Video sin texto
+   *               value:
+   *                 to: ["1234567890", "0987654321"]
+   *                 file: "[video.mp4]"
    *     responses:
    *       200:
-   *         $ref: '#/components/responses/Success'
+   *         description: Mensaje enviado exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               oneOf:
+   *                 - $ref: '#/components/schemas/StandardResponse'
+   *                 - $ref: '#/components/schemas/MediaResponse'
    *       207:
    *         $ref: '#/components/responses/PartialSuccess'
    *       400:

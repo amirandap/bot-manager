@@ -293,9 +293,33 @@ export default function HeadlessBotCard({
     <Card className="rounded-2xl shadow-md">
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <MessageSquare className="h-6 w-6 text-green-600" />
-            <CardTitle className="text-lg">{bot.name}</CardTitle>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-6 w-6 text-green-600" />
+              <CardTitle className="text-lg">{bot.name}</CardTitle>
+            </div>
+            
+            {/* Client Information - Dynamic from PM2 metrics */}
+            {(metrics?.clientPhoneNumber || metrics?.clientPushName) && (
+              <div className="flex flex-wrap gap-2 ml-9">
+                {metrics.clientPhoneNumber && metrics.clientPhoneNumber !== '0' && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-md">
+                    <span className="text-xs font-medium text-green-700">📱</span>
+                    <span className="text-xs font-mono text-green-800">
+                      {metrics.clientPhoneNumber}
+                    </span>
+                  </div>
+                )}
+                {metrics.clientPushName && metrics.clientPushName !== '0' && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-md">
+                    <span className="text-xs font-medium text-blue-700">👤</span>
+                    <span className="text-xs font-medium text-blue-800">
+                      {metrics.clientPushName}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge
@@ -614,10 +638,34 @@ export default function HeadlessBotCard({
               <span className="text-gray-600">Port:</span>
               <span>{bot.apiPort}</span>
             </div>
-            {bot.phoneNumber && (
+            
+            {/* Dynamic client info from PM2 metrics */}
+            {metrics?.clientPhoneNumber && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Phone:</span>
-                <span>{bot.phoneNumber}</span>
+                <span className="text-gray-600">Client Phone:</span>
+                <span className="font-mono text-xs">{metrics.clientPhoneNumber}</span>
+              </div>
+            )}
+            
+            {metrics?.clientPushName && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Client Name:</span>
+                <span>{metrics.clientPushName}</span>
+              </div>
+            )}
+            
+            {/* Fallback to bot config if dynamic metrics not available */}
+            {!metrics?.clientPhoneNumber && bot.phoneNumber && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Phone (Config):</span>
+                <span className="font-mono text-xs">{bot.phoneNumber}</span>
+              </div>
+            )}
+            
+            {!metrics?.clientPushName && bot.pushName && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Name (Config):</span>
+                <span>{bot.pushName}</span>
               </div>
             )}
           </div>

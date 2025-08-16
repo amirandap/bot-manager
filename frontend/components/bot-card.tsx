@@ -238,7 +238,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
                 {status.pm2.activeHandles &&
                   `, AH: ${status.pm2.activeHandles}`}
                 {status.pm2.eventLoopLatency &&
-                  `, EL: ${Math.round(status.pm2.eventLoopLatency)}ms`}
+                  `, EL: ${typeof status.pm2.eventLoopLatency === 'number' 
+                    ? Math.round(status.pm2.eventLoopLatency)
+                    : status.pm2.eventLoopLatency}ms`}
                 {status.pm2.errorCount && `, ERR: ${status.pm2.errorCount}`})
               </span>
             )}
@@ -255,14 +257,30 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
           {/* WhatsApp specific info */}
           {bot.type === "whatsapp" && (
             <>
-              {bot.phoneNumber && (
+              {/* Dynamic client info from PM2 metrics (priority) */}
+              {status?.pm2?.clientPhoneNumber && status.pm2.clientPhoneNumber !== '0' && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Phone:</span>
+                  <span className="text-gray-600">📱 Cliente:</span>
+                  <span className="font-mono text-sm">{status.pm2.clientPhoneNumber}</span>
+                </div>
+              )}
+              
+              {status?.pm2?.clientPushName && status.pm2.clientPushName !== '0' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">👤 Nombre:</span>
+                  <span className="font-medium">{status.pm2.clientPushName}</span>
+                </div>
+              )}
+
+              {/* Fallback to static config if dynamic not available */}
+              {!status?.pm2?.clientPhoneNumber && bot.phoneNumber && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Phone (Config):</span>
                   <span>{bot.phoneNumber}</span>
                 </div>
               )}
 
-              {status?.status === "online" && status?.pushName && (
+              {!status?.pm2?.clientPushName && status?.status === "online" && status?.pushName && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">WhatsApp Name:</span>
                   <span>{status.pushName}</span>
@@ -309,14 +327,18 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
                   )}
                   {status.pm2.eventLoopLatency && (
                     <div>
-                      Event Loop: {Math.round(status.pm2.eventLoopLatency)}ms
+                      Event Loop: {typeof status.pm2.eventLoopLatency === 'number' 
+                        ? Math.round(status.pm2.eventLoopLatency)
+                        : status.pm2.eventLoopLatency}ms
                     </div>
                   )}
                   {status.pm2.httpRequests && (
                     <div>HTTP Requests: {status.pm2.httpRequests}</div>
                   )}
                   {status.pm2.heapUsage && (
-                    <div>Heap: {Math.round(status.pm2.heapUsage.percent)}%</div>
+                    <div>Heap: {typeof status.pm2.heapUsage === 'number' 
+                      ? Math.round(status.pm2.heapUsage)
+                      : 'N/A'}%</div>
                   )}
                   {status.pm2.errorCount !== undefined && (
                     <div>Errors: {status.pm2.errorCount}</div>
