@@ -62,5 +62,17 @@ export const METRICS: Record<string, MetricDefinition> = {
     type: 'metric',
     id: 'browser/cpu',
     unit: '%'
+  },
+  CLIENT_PUSHNAME: {
+    name: 'Client Push Name',
+    type: 'metric',
+    id: 'whatsapp/client-pushname',
+    unit: 'string'
+  },
+  CLIENT_PHONE: {
+    name: 'Client Phone Number',
+    type: 'metric',
+    id: 'whatsapp/client-phone',
+    unit: 'string'
   }
 };

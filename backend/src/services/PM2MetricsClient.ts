@@ -77,19 +77,8 @@ export class PM2MetricsClient {
           active_handles: env.axm_monitor?.["Active handles"]?.value || 0,
           active_requests: env.axm_monitor?.["Active requests"]?.value || 0,
 
-          // Métricas customizadas del bot
-          botStatus: env.axm_monitor?.["Bot Status"]?.value,
-          browserCpuUsage: env.axm_monitor?.["Browser CPU Usage"]?.value || 0,
-          browserMemoryUsage:
-            env.axm_monitor?.["Browser Memory Usage"]?.value || 0,
-          messageProcessingTime:
-            env.axm_monitor?.["Message Processing Time"]?.value || 0,
-          errorCount: env.axm_monitor?.["Error Count"]?.value || 0,
-          httpRequests: env.axm_monitor?.["Messages Processed"]?.value || 0,
-          qrCodeStatus: env.axm_monitor?.["QR Code Status"]?.value,
-          qrCodesGenerated: env.axm_monitor?.["QR Codes Generated"]?.value || 0,
-          apiServerStatus: env.axm_monitor?.["API Server Status"]?.value || 0,
-          whatsappStatus: env.axm_monitor?.["WhatsApp Status"]?.value,
+          // Métricas customizadas del bot - dinámicamente extraídas
+          customMetrics: this.extractCustomMetrics(env.axm_monitor),
 
           // Logs
           log_path: env.pm_out_log_path,
@@ -199,5 +188,46 @@ export class PM2MetricsClient {
         resolve(allMetrics);
       });
     });
+  }
+
+  /**
+   * Extrae métricas customizadas dinámicamente de axm_monitor
+   */
+  private extractCustomMetrics(axmMonitor: any): Record<string, any> {
+    if (!axmMonitor) {
+      return {};
+    }
+
+    const customMetrics: Record<string, any> = {};
+    
+    // Convertir nombres de métricas a camelCase y extraer valores
+    Object.keys(axmMonitor).forEach(metricName => {
+      const metric = axmMonitor[metricName];
+      const value = metric?.value;
+      
+      if (value !== undefined) {
+        // Convertir nombre de métrica a camelCase
+        const camelCaseName = this.convertToCamelCase(metricName);
+        customMetrics[camelCaseName] = value;
+      }
+    });
+
+    return customMetrics;
+  }
+
+  /**
+   * Convierte nombre de métrica a camelCase
+   */
+  private convertToCamelCase(name: string): string {
+    return name
+      .replace(/[^a-zA-Z0-9\s]/g, '') // Remover caracteres especiales
+      .split(/\s+/) // Dividir por espacios
+      .map((word, index) => {
+        if (index === 0) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join('');
   }
 }

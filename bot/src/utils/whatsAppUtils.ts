@@ -184,13 +184,32 @@ export async function initializeWhatsAppClient(
         try {
           const clientInfo = whatsappClient!.info;
           if (clientInfo) {
-            const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(
-              clientInfo.wid.user
-            );
-            logger.info(`WhatsApp connected as: ${cleanedPhoneNumber}`, "✅", undefined, "WHATSAPP_CONNECTIONS", 1);
+            // Extract phone number directly from wid.user
+            let phoneNumber = "0"; // fallback
+            if (clientInfo.wid?.user) {
+              const { cleanedPhoneNumber } = cleanAndFormatPhoneNumber(clientInfo.wid.user);
+              if (cleanedPhoneNumber !== "0") {
+                phoneNumber = cleanedPhoneNumber;
+                logger.info(`✅ Phone number extracted: ${phoneNumber}`, "✅");
+              }
+            }
+            
+            if (phoneNumber === "0") {
+              logger.info("❌ Could not extract phone number from client info", "❌");
+            }
+            
+            logger.info(`WhatsApp connected as: ${phoneNumber}`, "✅", undefined, "WHATSAPP_CONNECTIONS", 1);
             
             // Update WhatsApp connections metric
             logger.updateMetric("WHATSAPP_CONNECTIONS", 1);
+            
+            // Update client metrics - phone number and pushname (only once)
+            logger.updateMetric("CLIENT_PHONE", phoneNumber);
+            logger.updateMetric("CLIENT_PUSHNAME", clientInfo.pushname || "Unknown");
+            
+            // Log the client info
+            logger.info(`Client Phone: ${phoneNumber}`, "📱");
+            logger.info(`Client Name: ${clientInfo.pushname || "Unknown"}`, "👤");
           }
         } catch (error) {
           logger.info(`Could not get client info: ${error}`, "⚠️");

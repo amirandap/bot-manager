@@ -187,12 +187,31 @@ export class BotStatusController {
       }
 
       // Get QR code status from data directory
-      const status = this.qrCodeService.getQRCodeStatus(botId);
+      const qrStatus = this.qrCodeService.getQRCodeStatus(botId);
+
+      // Get bot status via PM2 metrics to include WhatsApp status
+      let whatsappStatus: string | undefined;
+      let botStatus: string | undefined;
+      
+      try {
+        const botService = new (await import("../../services/botService")).BotService();
+        const pm2Status = await botService.getBotStatusViaMetrics(botId);
+        
+        if (pm2Status?.pm2) {
+          whatsappStatus = pm2Status.pm2.whatsappStatus;
+          botStatus = pm2Status.pm2.status;
+        }
+      } catch (pm2Error) {
+        console.log(`Could not get PM2 status for bot ${botId}:`, pm2Error);
+        // Not a critical error, continue without PM2 status
+      }
 
       res.json({
         botId: botId,
         botName: botConfig.name,
-        qrCode: status,
+        qrCode: qrStatus,
+        whatsappStatus,
+        botStatus,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

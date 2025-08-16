@@ -10,17 +10,18 @@ module.exports = {
         NODE_ENV: "development",
         BOT_PORT: "7997",
         BOT_ID: "whatsapp-bot-1",
-        CHROME_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        
+        CHROME_PATH:
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+
         // Disable PM2 metrics logging to reduce log noise
         PM2_ADVANCED_METRICS: "false",
         PM2_DISABLE_LOGGING: "false",
         SILENT_METRICS: "true",
         LOG_LEVEL: "info",
-        
+
         // Disable internal PM2 debug logs
         DEBUG: "",
-        PM2_SILENT: "false"
+        PM2_SILENT: "false",
       },
       cwd: "/Users/amiranda/Github/bot-manager-amp/bot",
       error_file: "/Users/amiranda/.pm2/logs/wabot-7997-error.log",
