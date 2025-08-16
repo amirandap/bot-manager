@@ -30,19 +30,9 @@ interface HeadlessBotCardProps {
   onRefresh?: () => void;
 }
 
-// Extended interface for bot metrics from PM2
+// Extended interface for bot metrics from PM2 - now dynamic
 interface BotMetrics extends BotStatus {
-  pm2?: BotStatus["pm2"] & {
-    // Bot-specific custom metrics
-    botStatus?: string;
-    browserCpuUsage?: number;
-    browserMemoryUsage?: number;
-    messageProcessingTime?: number;
-    qrCodeStatus?: string;
-    qrCodesGenerated?: number;
-    apiServerStatus?: number;
-    whatsappStatus?: string;
-  };
+  pm2?: BotStatus["pm2"]; // Use the updated dynamic PM2 interface
 }
 
 type ProcessState = "offline" | "not_found" | "running";
@@ -513,7 +503,9 @@ export default function HeadlessBotCard({
                 <div className="text-xs text-gray-500">Event Loop</div>
                 <div className="text-sm font-medium">
                   {metrics?.eventLoopLatency !== undefined
-                    ? `${Math.round(metrics.eventLoopLatency)}ms`
+                    ? typeof metrics.eventLoopLatency === 'number' 
+                      ? `${Math.round(metrics.eventLoopLatency)}ms`
+                      : `${metrics.eventLoopLatency}ms`
                     : "N/A"}
                 </div>
               </div>

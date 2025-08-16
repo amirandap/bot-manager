@@ -112,34 +112,26 @@ export class BotService {
           computedStatus = "unknown";
       }
 
+      // Extract client info from custom metrics if available
+      let clientPhone = bot.phoneNumber;
+      let clientPushName = bot.pushName;
+      
+      if (metrics.customMetrics) {
+        // Try to get dynamic phone and pushname from metrics
+        clientPhone = metrics.customMetrics.clientPhone || bot.phoneNumber;
+        clientPushName = metrics.customMetrics.clientPushname || bot.pushName;
+      }
+
       // Build comprehensive status object using only PM2 data
       botStatus = {
         ...botStatus,
         status: computedStatus,
         lastSeen: new Date().toISOString(),
+        phoneNumber: clientPhone,
+        pushName: clientPushName,
+        // Pass all PM2 metrics dynamically - let frontend decide what to use
         pm2: {
-          pid: metrics.pid,
-          cpu: metrics.cpu,
-          memory: metrics.memory,
-          restarts: metrics.restarts,
-          uptime: metrics.uptime,
-          status: metrics.status,
-          // Advanced metrics
-          activeHandles: metrics.activeHandles,
-          activeRequests: metrics.activeRequests,
-          eventLoopLatency: metrics.eventLoopLatency,
-          heapUsage: metrics.heapUsage,
-          errorCount: metrics.errorCount,
-          httpRequests: metrics.httpRequests,
-          // Bot-specific custom metrics
-          botStatus: (metrics as any).botStatus,
-          browserCpuUsage: (metrics as any).browserCpuUsage,
-          browserMemoryUsage: (metrics as any).browserMemoryUsage,
-          messageProcessingTime: (metrics as any).messageProcessingTime,
-          qrCodeStatus: (metrics as any).qrCodeStatus,
-          qrCodesGenerated: (metrics as any).qrCodesGenerated,
-          apiServerStatus: (metrics as any).apiServerStatus,
-          whatsappStatus: (metrics as any).whatsappStatus,
+          ...metrics, // All metrics from PM2 including custom ones
         },
         health: {
           status: healthEvaluation.status,

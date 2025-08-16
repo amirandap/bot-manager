@@ -49,25 +49,51 @@ export interface BotStatus {
   lastSeen?: string;
   phoneNumber?: string | null;
   pushName?: string | null;
-  // PM2 process information
+  // PM2 process information - now dynamic to support all metrics
   pm2?: {
+    // Core PM2 metrics
+    name?: string;
+    status?: string;
     pid?: number;
     cpu?: number;
     memory?: number; // in MB
     restarts?: number;
-    uptime?: number; // in milliseconds
+    uptime?: number; // in seconds
     lastRestart?: string;
-    // Custom PM2 metrics from advanced monitoring
+    
+    // Advanced PM2 metrics
     activeHandles?: number;
     activeRequests?: number;
-    eventLoopLatency?: number; // in milliseconds
-    heapUsage?: {
-      used: number;
-      total: number;
-      percent: number;
-    };
+    eventLoopLatency?: string | number; // in milliseconds
+    heapUsage?: number; // percentage
+    heapSize?: string;
+    usedHeapSize?: string;
     errorCount?: number;
     httpRequests?: number;
+    
+    // Bot-specific custom metrics (dynamic from PM2 axm_monitor)
+    botStatus?: string;
+    clientPhoneNumber?: string;
+    clientPushName?: string;
+    browserCpuUsage?: number;
+    browserMemoryUsage?: number;
+    messageProcessingTime?: number;
+    qrCodeStatus?: string;
+    qrCodesGenerated?: number;
+    apiServerStatus?: string | number;
+    whatsappStatus?: string;
+    whatsappConnections?: number;
+    messagesProcessed?: number;
+    eventLoopLatencyP95?: string;
+    httpP95Latency?: number;
+    httpMeanLatency?: number;
+    nodeVersion?: string;
+    logPath?: string;
+    errorLogPath?: string;
+    outLogPath?: string;
+    
+    // Allow any additional dynamic metrics
+    [key: string]: string | number | boolean | undefined;
   };
   // API connectivity
   apiResponsive?: boolean;

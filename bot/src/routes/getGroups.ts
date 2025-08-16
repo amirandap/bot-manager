@@ -7,6 +7,47 @@ import { getGroupDetails } from "../utils";
 import { logger } from "../services/LoggerService";
 const router = express.Router();
 
+/**
+ * @swagger
+ * /get-groups:
+ *   get:
+ *     tags: [Grupos]
+ *     summary: Obtener lista de grupos de WhatsApp
+ *     description: |
+ *       Devuelve todos los grupos de WhatsApp donde el bot es miembro.
+ *       Incluye información detallada de cada grupo como ID, nombre, 
+ *       número de participantes y si el bot es administrador.
+ *     responses:
+ *       200:
+ *         description: Lista de grupos obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GroupsResponse'
+ *             examples:
+ *               groups_list:
+ *                 summary: Ejemplo de lista de grupos
+ *                 value:
+ *                   success: true
+ *                   groups:
+ *                     - id: "123456789-987654321@g.us"
+ *                       name: "Grupo de Trabajo"
+ *                       description: "Coordinación de proyectos"
+ *                       participants: 15
+ *                       isGroupAdmin: true
+ *                       createdAt: "2023-01-15T10:30:00.000Z"
+ *                     - id: "111222333-444555666@g.us"
+ *                       name: "Chat Familiar"
+ *                       participants: 8
+ *                       isGroupAdmin: false
+ *                       createdAt: "2022-12-01T08:00:00.000Z"
+ *                   totalGroups: 2
+ *                   timestamp: "2024-01-15T16:45:00.000Z"
+ *       503:
+ *         $ref: '#/components/responses/ServiceUnavailable'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.get("/", async (req, res) => {
   try {
     logger.info("GET /get-groups: Request received");
