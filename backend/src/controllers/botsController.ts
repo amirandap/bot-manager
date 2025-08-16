@@ -228,32 +228,6 @@ export class BotsController {
     }
   }
 
-  public async terminateBot(req: Request, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const success = await this.botSpawnerService.deleteBot(id);
-
-      if (success) {
-        res.json({
-          success: true,
-          message: "Bot terminated and removed successfully",
-          botId: id,
-        });
-      } else {
-        res.status(500).json({
-          error: "Failed to terminate bot",
-          botId: id,
-        });
-      }
-    } catch (error) {
-      console.error("Error terminating bot:", error);
-      res.status(500).json({
-        error: "Failed to terminate bot",
-        details: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
   public async restartBot(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;

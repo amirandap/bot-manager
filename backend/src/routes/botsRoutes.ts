@@ -110,12 +110,6 @@ export function setBotsRoutes(app: Router) {
     botsController.spawnWhatsAppBot.bind(botsController)
   );
 
-  // Terminate bot completely (stops PM2 + removes config + deletes data)
-  app.delete(
-    "/api/bots/:id/terminate",
-    botsController.terminateBot.bind(botsController)
-  );
-
   // Start existing bot (PM2 start)
   app.post("/api/bots/:id/start", botsController.spawnBot.bind(botsController));
 
