@@ -361,58 +361,6 @@ export class MessageController {
       await MessageController.handleError(error, req, res, `/send-${mediaType}`, requestId);
     }
   }
-
-  /**
-   * Simple message endpoint for testing
-   */
-  public static async sendSimpleMessage(req: Request, res: Response): Promise<void> {
-    // Unified client validation
-    const clientValidation = MessageController.validateClientAndReturn(res);
-    if (!clientValidation) return;
-    
-    const { client, requestId } = clientValidation;
-
-    const validation = RequestValidationService.validateMessageRequest(req, res, true);
-    if (!validation.isValid) return;
-
-    const { message, phoneNumber, to } = validation.body!;
-    
-    let recipients: string[] = [];
-    if (phoneNumber) {
-      recipients = Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
-    } else if (to) {
-      recipients = Array.isArray(to) ? to : [to];
-    } else {
-      res.status(400).json({
-        success: false,
-        error: "VALIDATION_ERROR: phoneNumber or to is required",
-        requestId,
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    try {
-      logger.info(`📱 [BOT] Request ${requestId}: Simple message to ${recipients.length} recipient(s)`, '💬');
-
-      const results = await sendMessageWithErrorHandling(
-        client,
-        recipients,
-        "TEXT",
-        { text: message! }
-      );
-
-      const { statusCode, response } = MessageController.formatResponse(results, requestId);
-
-      logger.info(
-        `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
-      );
-
-      res.status(statusCode).json(response);
-    } catch (error) {
-      await MessageController.handleError(error, req, res, "/send-simple-message", requestId);
-    }
-  }
 }
 
 // Export both named and default exports for compatibility

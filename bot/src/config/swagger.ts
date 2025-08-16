@@ -351,6 +351,35 @@ const options: swaggerJsdoc.Options = {
             }
           ]
         },
+        MainMessageRequest: {
+          allOf: [
+            {
+              $ref: '#/components/schemas/MessageRequest'
+            },
+            {
+              type: 'object',
+              properties: {
+                to: {
+                  oneOf: [
+                    {
+                      type: 'string',
+                      description: 'Destinatario individual (número o grupo)'
+                    },
+                    {
+                      type: 'array',
+                      items: {
+                        type: 'string'
+                      },
+                      description: 'Lista de destinatarios (números y grupos)'
+                    }
+                  ],
+                  example: ['1234567890', '123456789-987654321@g.us', '0987654321']
+                }
+              },
+              required: ['to']
+            }
+          ]
+        },
         BroadcastRequest: {
           allOf: [
             {

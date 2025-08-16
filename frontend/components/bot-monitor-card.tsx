@@ -14,6 +14,8 @@ import {
   Smartphone,
 } from "lucide-react";
 
+import type { BotStatus } from "@/lib/types";
+
 /**
  * BotMonitorCard — Minimal, dense, and information-rich monitor card for WhatsApp bots.
  *
@@ -25,27 +27,15 @@ import {
  * - Progressive disclosure: details live in a slim bottom row.
  */
 
-export type BotMetrics = {
-  pid: number;
-  cpu: number; // %
-  memory: number; // MB
-  restarts: number;
-  uptime: number; // seconds
-  status: string; // process status
-  activeHandles: number;
-  activeRequests: number;
-  eventLoopLatency: string; // ms (string from source)
-  heapUsage: number; // %
-  errorCount: number;
-  httpRequests: number;
-  botStatus: string; // textual state
-  browserCpuUsage: number; // %
-  browserMemoryUsage: number; // MB
-  messageProcessingTime: number; // ms
-  qrCodeStatus: string; // e.g. SCANME
-  qrCodesGenerated: number;
-  apiServerStatus: number; // 0/1
-  whatsappStatus: string; // e.g. QR_READY
+// Type alias for cleaner code - now uses dynamic PM2 metrics
+export type BotMetrics = BotStatus["pm2"] & {
+  // Legacy fallbacks for backward compatibility
+  pid?: number;
+  cpu?: number;
+  memory?: number;
+  restarts?: number;
+  uptime?: number;
+  status?: string;
 };
 
 const fmt = {
@@ -169,8 +159,8 @@ export default function BotMonitorCard({
   metrics: BotMetrics;
 }) {
   const online =
-    /online|ready|connected/i.test(metrics.status) ||
-    metrics.apiServerStatus === 1;
+    /online|ready|connected/i.test(metrics.status || '') ||
+    (typeof metrics.apiServerStatus === 'number' ? metrics.apiServerStatus === 1 : false);
   const hasErrors = (metrics.errorCount ?? 0) > 0;
   const statusTone = hasErrors
     ? "destructive"
@@ -193,9 +183,14 @@ export default function BotMonitorCard({
   const heap = Math.max(0, Math.min(100, metrics.heapUsage ?? 0));
   const browserCpu = Math.max(0, Math.min(100, metrics.browserCpuUsage ?? 0));
   const browserMem = metrics.browserMemoryUsage ?? 0;
+  const uptime = metrics.uptime ?? 0;
+  const restarts = metrics.restarts ?? 0;
+  const errorCount = metrics.errorCount ?? 0;
+  const httpRequests = metrics.httpRequests ?? 0;
+  const pid = metrics.pid ?? 0;
 
   const qrNeeded = /scan|qr_ready/i.test(
-    `${metrics.qrCodeStatus} ${metrics.whatsappStatus}`
+    `${metrics.qrCodeStatus || ''} ${metrics.whatsappStatus || ''}`
   );
 
   return (
@@ -242,14 +237,14 @@ export default function BotMonitorCard({
             <Metric
               icon={Timer}
               label="uptime"
-              value={fmt.time(metrics.uptime)}
+              value={fmt.time(uptime)}
             />
             <Metric
               icon={RefreshCcw}
               label="restarts"
-              value={metrics.restarts}
-              warn={metrics.restarts > 0 && metrics.restarts < 5}
-              bad={metrics.restarts >= 5}
+              value={restarts}
+              warn={restarts > 0 && restarts < 5}
+              bad={restarts >= 5}
             />
           </div>
         </div>
@@ -262,23 +257,23 @@ export default function BotMonitorCard({
           <div className="flex items-center gap-1.5">
             <Activity className="size-3.5 opacity-70" />
             <Pill
-              tone={hasErrors ? "bad" : metrics.errorCount ? "warn" : "default"}
+              tone={hasErrors ? "bad" : errorCount ? "warn" : "default"}
             >
-              {metrics.errorCount} errs
+              {errorCount} errs
             </Pill>
           </div>
 
           <div className="flex items-center gap-1.5">
             <Network className="size-3.5 opacity-70" />
             <span className="text-[11px] text-muted-foreground">
-              req {metrics.httpRequests}
+              req {httpRequests}
             </span>
           </div>
 
           <div className="flex items-center justify-end gap-1.5">
             <Server className="size-3.5 opacity-70" />
             <span className="text-[11px] text-muted-foreground">
-              pid {metrics.pid}
+              pid {pid}
             </span>
           </div>
         </div>
