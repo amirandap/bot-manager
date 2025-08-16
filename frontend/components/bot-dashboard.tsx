@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BotCard from "./bot-card";
+import HeadlessBotCard from "./headless-bot-card";
 import { BotSpawner } from "./bot-spawner";
 import { DeploymentManager } from "./deployment-manager";
-import BotEditModal from "./bot-edit-modal";
 import ApiDocsPage from "../app/api-docs/page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -30,7 +29,6 @@ export default function BotDashboard() {
   const [activeTab, setActiveTab] = useState<
     "bots" | "deployments" | "api-docs"
   >("bots");
-  const [editingBot, setEditingBot] = useState<Bot | null>(null);
 
   const fetchBots = async () => {
     try {
@@ -64,10 +62,6 @@ export default function BotDashboard() {
     return () => clearInterval(intervalId);
   }, []);
 
-  const handleUpdateBot = (bot: Bot) => {
-    setEditingBot(bot);
-  };
-
   const handleDeleteBot = async (botId: string) => {
     try {
       setError(null);
@@ -96,19 +90,6 @@ export default function BotDashboard() {
     setBots((prev) => [...prev, newBot]);
     setShowSpawner(false);
     fetchBots(); // Refresh to get latest status
-  };
-
-  const handleBotUpdated = (updatedBot: Bot) => {
-    // Update the bot in the list
-    setBots((prev) =>
-      prev.map((bot) => (bot.id === updatedBot.id ? updatedBot : bot))
-    );
-    setEditingBot(null);
-    fetchBots(); // Refresh to get latest status
-  };
-
-  const handleCloseEditModal = () => {
-    setEditingBot(null);
   };
 
   return (
@@ -229,11 +210,11 @@ export default function BotDashboard() {
 
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {bots.map((bot) => (
-                  <BotCard
+                  <HeadlessBotCard
                     key={bot.id}
                     bot={bot}
-                    onUpdate={handleUpdateBot}
                     onDelete={handleDeleteBot}
+                    onRefresh={fetchBots}
                   />
                 ))}
 
@@ -270,14 +251,6 @@ export default function BotDashboard() {
           )}
         </>
       )}
-
-      {/* Bot Edit Modal */}
-      <BotEditModal
-        bot={editingBot}
-        isOpen={editingBot !== null}
-        onClose={handleCloseEditModal}
-        onBotUpdated={handleBotUpdated}
-      />
     </div>
   );
 }
