@@ -197,19 +197,28 @@ export class BotsController {
         return;
       }
 
-      const newBot = await this.botSpawnerService.createNewWhatsAppBot(
-        botConfig
-      );
+      // Step 1: Create bot record in JSON immediately
+      const newBot = await this.botSpawnerService.createBotRecord(botConfig);
 
+      // Step 2: Send immediate response to frontend
       res.status(201).json({
         success: true,
         bot: newBot,
-        message: "WhatsApp bot created and started successfully",
+        message: "Bot record created successfully. Spawning process initiated.",
+        status: "spawning"
       });
+
+      // Step 3: Start spawning process asynchronously (don't wait for it)
+      this.botSpawnerService.spawnBotProcess(newBot.id).catch((error: any) => {
+        console.error(`Error spawning bot ${newBot.id}:`, error);
+        // Update bot status to error in background
+        this.botSpawnerService.updateBotStatus(newBot.id, "error", error.message);
+      });
+
     } catch (error) {
-      console.error("Error spawning WhatsApp bot:", error);
+      console.error("Error creating WhatsApp bot record:", error);
       res.status(500).json({
-        error: "Failed to spawn WhatsApp bot",
+        error: "Failed to create WhatsApp bot",
         details: error instanceof Error ? error.message : "Unknown error",
       });
     }
