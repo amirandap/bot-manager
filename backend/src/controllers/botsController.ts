@@ -82,15 +82,19 @@ export class BotsController {
   public async deleteBot(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const deleted = this.configService.deleteBot(id);
+      
+      // Use the comprehensive delete function from botSpawnerService
+      // which handles PM2 deletion, data cleanup, and config removal
+      const deleted = await this.botSpawnerService.deleteBot(id);
 
       if (!deleted) {
-        res.status(404).json({ error: "Bot not found" });
+        res.status(404).json({ error: "Bot not found or failed to delete" });
         return;
       }
 
       res.status(204).send();
     } catch (error) {
+      console.error(`❌ Error in deleteBot controller:`, error);
       res.status(500).json({ error: "Failed to delete bot" });
     }
   }
