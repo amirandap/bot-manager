@@ -298,21 +298,26 @@ export default function HeadlessBotCard({
               <MessageSquare className="h-6 w-6 text-green-600" />
               <CardTitle className="text-lg">{bot.name}</CardTitle>
             </div>
-            
+
             {/* Client Information - Dynamic from PM2 metrics */}
             {(metrics?.clientPhoneNumber || metrics?.clientPushName) && (
               <div className="flex flex-wrap gap-2 ml-9">
-                {metrics.clientPhoneNumber && metrics.clientPhoneNumber !== '0' && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-md">
-                    <span className="text-xs font-medium text-green-700">📱</span>
-                    <span className="text-xs font-mono text-green-800">
-                      {metrics.clientPhoneNumber}
-                    </span>
-                  </div>
-                )}
-                {metrics.clientPushName && metrics.clientPushName !== '0' && (
+                {metrics.clientPhoneNumber &&
+                  metrics.clientPhoneNumber !== "0" && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-md">
+                      <span className="text-xs font-medium text-green-700">
+                        📱
+                      </span>
+                      <span className="text-xs font-mono text-green-800">
+                        {metrics.clientPhoneNumber}
+                      </span>
+                    </div>
+                  )}
+                {metrics.clientPushName && metrics.clientPushName !== "0" && (
                   <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-md">
-                    <span className="text-xs font-medium text-blue-700">👤</span>
+                    <span className="text-xs font-medium text-blue-700">
+                      👤
+                    </span>
                     <span className="text-xs font-medium text-blue-800">
                       {metrics.clientPushName}
                     </span>
@@ -527,7 +532,7 @@ export default function HeadlessBotCard({
                 <div className="text-xs text-gray-500">Event Loop</div>
                 <div className="text-sm font-medium">
                   {metrics?.eventLoopLatency !== undefined
-                    ? typeof metrics.eventLoopLatency === 'number' 
+                    ? typeof metrics.eventLoopLatency === "number"
                       ? `${Math.round(metrics.eventLoopLatency)}ms`
                       : `${metrics.eventLoopLatency}ms`
                     : "N/A"}
@@ -638,22 +643,24 @@ export default function HeadlessBotCard({
               <span className="text-gray-600">Port:</span>
               <span>{bot.apiPort}</span>
             </div>
-            
+
             {/* Dynamic client info from PM2 metrics */}
             {metrics?.clientPhoneNumber && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Client Phone:</span>
-                <span className="font-mono text-xs">{metrics.clientPhoneNumber}</span>
+                <span className="font-mono text-xs">
+                  {metrics.clientPhoneNumber}
+                </span>
               </div>
             )}
-            
+
             {metrics?.clientPushName && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Client Name:</span>
                 <span>{metrics.clientPushName}</span>
               </div>
             )}
-            
+
             {/* Fallback to bot config if dynamic metrics not available */}
             {!metrics?.clientPhoneNumber && bot.phoneNumber && (
               <div className="flex justify-between">
@@ -661,7 +668,7 @@ export default function HeadlessBotCard({
                 <span className="font-mono text-xs">{bot.phoneNumber}</span>
               </div>
             )}
-            
+
             {!metrics?.clientPushName && bot.pushName && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Name (Config):</span>

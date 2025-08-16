@@ -104,7 +104,10 @@ export default function QRCodeDisplay({
     // Check if authenticated first
     if (isAuthenticated) {
       return (
-        <Badge variant="default" className="flex items-center gap-1 bg-green-100 text-green-800">
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 bg-green-100 text-green-800"
+        >
           <CheckCircle className="h-3 w-3" />
           Authenticated
         </Badge>
@@ -341,7 +344,9 @@ export default function QRCodeDisplay({
               🎉 WhatsApp Successfully Connected!
             </p>
             <p className="text-xs text-green-600 mt-1">
-              {autoCloseOnAuth ? "Modal will close automatically in 2 seconds..." : "You can now close this modal."}
+              {autoCloseOnAuth
+                ? "Modal will close automatically in 2 seconds..."
+                : "You can now close this modal."}
             </p>
           </div>
         )}
@@ -351,8 +356,8 @@ export default function QRCodeDisplay({
           <div className="text-xs text-center text-muted-foreground p-3 bg-blue-50 rounded-lg">
             <p className="font-medium text-blue-800 mb-1">📱 How to scan:</p>
             <p>
-              Open WhatsApp → Settings → Linked Devices → Link a Device → Scan QR
-              Code
+              Open WhatsApp → Settings → Linked Devices → Link a Device → Scan
+              QR Code
             </p>
           </div>
         )}

@@ -159,8 +159,10 @@ export default function BotMonitorCard({
   metrics: BotMetrics;
 }) {
   const online =
-    /online|ready|connected/i.test(metrics.status || '') ||
-    (typeof metrics.apiServerStatus === 'number' ? metrics.apiServerStatus === 1 : false);
+    /online|ready|connected/i.test(metrics.status || "") ||
+    (typeof metrics.apiServerStatus === "number"
+      ? metrics.apiServerStatus === 1
+      : false);
   const hasErrors = (metrics.errorCount ?? 0) > 0;
   const statusTone = hasErrors
     ? "destructive"
@@ -190,7 +192,7 @@ export default function BotMonitorCard({
   const pid = metrics.pid ?? 0;
 
   const qrNeeded = /scan|qr_ready/i.test(
-    `${metrics.qrCodeStatus || ''} ${metrics.whatsappStatus || ''}`
+    `${metrics.qrCodeStatus || ""} ${metrics.whatsappStatus || ""}`
   );
 
   return (
@@ -234,11 +236,7 @@ export default function BotMonitorCard({
             </div>
           </div>
           <div className="col-span-1 flex flex-col items-end gap-1">
-            <Metric
-              icon={Timer}
-              label="uptime"
-              value={fmt.time(uptime)}
-            />
+            <Metric icon={Timer} label="uptime" value={fmt.time(uptime)} />
             <Metric
               icon={RefreshCcw}
               label="restarts"
@@ -256,9 +254,7 @@ export default function BotMonitorCard({
         <div className="grid grid-cols-3 gap-2">
           <div className="flex items-center gap-1.5">
             <Activity className="size-3.5 opacity-70" />
-            <Pill
-              tone={hasErrors ? "bad" : errorCount ? "warn" : "default"}
-            >
+            <Pill tone={hasErrors ? "bad" : errorCount ? "warn" : "default"}>
               {errorCount} errs
             </Pill>
           </div>
@@ -272,9 +268,7 @@ export default function BotMonitorCard({
 
           <div className="flex items-center justify-end gap-1.5">
             <Server className="size-3.5 opacity-70" />
-            <span className="text-[11px] text-muted-foreground">
-              pid {pid}
-            </span>
+            <span className="text-[11px] text-muted-foreground">pid {pid}</span>
           </div>
         </div>
 
@@ -331,17 +325,20 @@ export default function BotMonitorCard({
         {/* Client Information (Dynamic from PM2) */}
         {(metrics.clientPhoneNumber || metrics.clientPushName) && (
           <div className="mt-2 border-t border-muted pt-2">
-            <div className="text-[10px] text-muted-foreground mb-1">Cliente Conectado:</div>
+            <div className="text-[10px] text-muted-foreground mb-1">
+              Cliente Conectado:
+            </div>
             <div className="space-y-1">
-              {metrics.clientPhoneNumber && metrics.clientPhoneNumber !== '0' && (
-                <div className="flex items-center gap-1.5">
-                  <Smartphone className="size-3 text-emerald-600" />
-                  <span className="text-[11px] font-mono text-foreground">
-                    {metrics.clientPhoneNumber}
-                  </span>
-                </div>
-              )}
-              {metrics.clientPushName && metrics.clientPushName !== '0' && (
+              {metrics.clientPhoneNumber &&
+                metrics.clientPhoneNumber !== "0" && (
+                  <div className="flex items-center gap-1.5">
+                    <Smartphone className="size-3 text-emerald-600" />
+                    <span className="text-[11px] font-mono text-foreground">
+                      {metrics.clientPhoneNumber}
+                    </span>
+                  </div>
+                )}
+              {metrics.clientPushName && metrics.clientPushName !== "0" && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] text-emerald-600">👤</span>
                   <span className="text-[11px] font-medium text-foreground">

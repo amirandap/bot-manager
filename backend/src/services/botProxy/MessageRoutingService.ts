@@ -7,74 +7,74 @@ export interface EndpointRoutingResult {
 export class MessageRoutingService {
   /**
    * Determine the optimal endpoint based on message data and file attachment
+   *
+   * ✅ SIMPLIFIED: Always use unified /send-message endpoint
+   * The bot's /send-message handles all types: text, images, videos, audio, documents
+   * and all recipients: individual phones, multiple phones, groups, mixed
    */
   public determineOptimalEndpoint(
     data: any,
     file?: Express.Multer.File
   ): EndpointRoutingResult {
-    // Check if there's a file attachment
-    if (file) {
-      console.log(
-        `📎 [BACKEND] File attachment detected: ${file.originalname} (${file.mimetype})`
-      );
+    // Always use the unified /send-message endpoint
+    // The bot will auto-detect content type and recipient types
+    const messageType = this.determineMessageType(data, file);
+    const bodyData = this.createUnifiedBodyData(data);
 
-      // Determine endpoint based on file type
-      const mimeType = file.mimetype.toLowerCase();
+    console.log(
+      `� [BACKEND] Using UNIFIED endpoint → /send-message (${messageType})`
+    );
 
-      if (mimeType.startsWith("image/")) {
-        console.log(`🖼️ [BACKEND] IMAGE attachment → /send-image`);
-        return {
-          endpoint: "/send-image",
-          bodyData: this.createMediaBodyData(data),
-          messageType: "IMAGE_ATTACHMENT",
-        };
-      } else if (mimeType.startsWith("video/")) {
-        console.log(`🎬 [BACKEND] VIDEO attachment → /send-video`);
-        return {
-          endpoint: "/send-video",
-          bodyData: this.createMediaBodyData(data),
-          messageType: "VIDEO_ATTACHMENT",
-        };
-      } else if (mimeType.startsWith("audio/")) {
-        console.log(`🎵 [BACKEND] AUDIO attachment → /send-audio`);
-        return {
-          endpoint: "/send-audio",
-          bodyData: this.createMediaBodyData(data),
-          messageType: "AUDIO_ATTACHMENT",
-        };
-      } else {
-        // Everything else goes to document endpoint
-        console.log(`📄 [BACKEND] DOCUMENT attachment → /send-document`);
-        return {
-          endpoint: "/send-document",
-          bodyData: this.createMediaBodyData(data),
-          messageType: "DOCUMENT_ATTACHMENT",
-        };
-      }
-    }
-
-    // No file attachment - use existing logic
-    return this.determineTextMessageEndpoint(data);
+    return {
+      endpoint: "/send-message",
+      bodyData,
+      messageType,
+    };
   }
 
   /**
-   * Create body data for media endpoints using correct bot field structure
+   * Determine message type for logging/analytics purposes
    */
-  private createMediaBodyData(data: any): any {
+  private determineMessageType(data: any, file?: Express.Multer.File): string {
+    if (file) {
+      const mimeType = file.mimetype.toLowerCase();
+      if (mimeType.startsWith("image/")) return "IMAGE_ATTACHMENT";
+      if (mimeType.startsWith("video/")) return "VIDEO_ATTACHMENT";
+      if (mimeType.startsWith("audio/")) return "AUDIO_ATTACHMENT";
+      return "DOCUMENT_ATTACHMENT";
+    }
+
     const allRecipients = this.normalizeRecipients(data);
     const { groups, phones } = this.separateRecipients(allRecipients);
 
+    if (groups.length > 0 && phones.length > 0) return "HYBRID";
+    if (groups.length > 0) return "GROUP";
+    if (phones.length > 1) return "BROADCAST";
+    if (phones.length === 1) return "INDIVIDUAL";
+    return "TEXT_ONLY";
+  }
+
+  /**
+   * Create unified body data using bot's /send-message format
+   * Uses "to" field as per bot's unified endpoint specification
+   */
+  private createUnifiedBodyData(data: any): any {
+    const allRecipients = this.normalizeRecipients(data);
+
+    // Use bot's unified format with "to" field
     const bodyData: any = {
-      message: data.message || "", // Caption for media
-      discorduserid: data.discorduserid, // Pass through if exists
+      to: allRecipients.length === 1 ? allRecipients[0] : allRecipients,
+      message: data.message || "", // Message or caption
     };
 
-    // Set appropriate recipient fields based on what we have
-    if (phones.length > 0) {
-      bodyData.phoneNumber = phones.length === 1 ? phones[0] : phones;
+    // Pass through Discord integration if exists
+    if (data.discorduserid) {
+      bodyData.discorduserid = data.discorduserid;
     }
-    if (groups.length > 0) {
-      bodyData.group_id = groups.length === 1 ? groups[0] : groups;
+
+    // Handle legacy caption field (for compatibility)
+    if (data.caption) {
+      bodyData.message = data.caption;
     }
 
     return bodyData;
@@ -82,6 +82,7 @@ export class MessageRoutingService {
 
   /**
    * Normalize recipients from various input formats
+   * Supports: phoneNumber, to, groupId, group_id fields
    */
   public normalizeRecipients(data: any): string[] {
     const toField = data.to || [];
@@ -117,7 +118,7 @@ export class MessageRoutingService {
 
   /**
    * Separate recipients into groups and phone numbers
-   * Consistent implementation matching bot utilities
+   * Groups contain "@g.us", phones don't
    */
   private separateRecipients(recipients: string[]): {
     groups: string[];
@@ -131,68 +132,5 @@ export class MessageRoutingService {
     );
 
     return { groups, phones };
-  }
-
-  /**
-   * Determine endpoint for text-only messages (existing logic)
-   */
-  private determineTextMessageEndpoint(data: any): EndpointRoutingResult {
-    const allRecipients = this.normalizeRecipients(data);
-
-    // Use consistent recipient separation logic
-    const { groups, phones } = this.separateRecipients(allRecipients);
-
-    // Determine optimal endpoint and format data
-    if (groups.length > 0 && phones.length > 0) {
-      // HYBRID: Use broadcast endpoint
-      console.log(
-        `🔄 [BACKEND] HYBRID message → /send-broadcast (${phones.length} phones + ${groups.length} groups)`
-      );
-      return {
-        endpoint: "/send-broadcast",
-        bodyData: {
-          to: allRecipients,
-          message: data.message,
-          discorduserid: data.discorduserid, // Pass through if exists
-        },
-        messageType: "HYBRID",
-      };
-    } else if (groups.length > 0) {
-      // GROUP ONLY: Use group-specific endpoint
-      console.log(
-        `🏢 [BACKEND] GROUP message → /send-to-group (${groups.length} group(s))`
-      );
-      return {
-        endpoint: "/send-to-group",
-        bodyData: {
-          group_id: groups.length === 1 ? groups[0] : groups,
-          message: data.message,
-          discorduserid: data.discorduserid, // Pass through if exists
-        },
-        messageType: "GROUP",
-      };
-    } else if (phones.length >= 1) {
-      // PHONE(S): Use phone-specific endpoint
-      console.log(
-        `📱 [BACKEND] PHONE message → /send-to-phone (${phones.length} phone(s))`
-      );
-      return {
-        endpoint: "/send-to-phone",
-        bodyData: {
-          phoneNumber: phones.length === 1 ? phones[0] : phones,
-          message: data.message,
-          discorduserid: data.discorduserid, // Pass through if exists
-        },
-        messageType: phones.length === 1 ? "INDIVIDUAL" : "BROADCAST",
-      };
-    } else {
-      // NO VALID RECIPIENTS: Fallback to legacy endpoint
-      console.warn(`⚠️ [BACKEND] UNKNOWN message → /send-message (fallback)`);
-      return {
-        endpoint: "/send-message",
-        bodyData: data,
-        messageType: "UNKNOWN",
-      };
-    }
   }
 }

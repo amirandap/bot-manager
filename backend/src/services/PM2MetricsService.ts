@@ -145,7 +145,10 @@ export class PM2MetricsService {
         status: processMetrics.status,
         cpu: processMetrics.cpu,
         memory: processMetrics.memory,
-        customMetrics: Object.keys(metrics.customMetrics || {}).length > 0 ? metrics.customMetrics : 'none'
+        customMetrics:
+          Object.keys(metrics.customMetrics || {}).length > 0
+            ? metrics.customMetrics
+            : "none",
       });
 
       return processMetrics;

@@ -115,7 +115,7 @@ export class BotService {
       // Extract client info from custom metrics if available
       let clientPhone = bot.phoneNumber;
       let clientPushName = bot.pushName;
-      
+
       if (metrics.customMetrics) {
         // Try to get dynamic phone and pushname from metrics
         clientPhone = metrics.customMetrics.clientPhone || bot.phoneNumber;

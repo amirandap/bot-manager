@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bot Monitor – Rediseño de Tarjetas</title>
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/card-layout.css" />
+<style>
+  .wrap {
+    padding: var(--space-xl);
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+  .card-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+  .label {
+    color: var(--fg-dim);
+    font-size: var(--font-size-md);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card-container">
+      <h1 style="font-size: 20px; margin-bottom: 24px;">Rediseño de Tarjetas de Bot</h1>
+      
+      <!-- Bot A - Online (rediseñado) -->
+      <article class="card-redesign" aria-label="Bot A">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="dot" style="background:var(--ok)"></span>
+            <div class="title">Bot A</div>
+            <span class="badge ok card-status-badge">Online</span>
+          </div>
+          <div class="bot-identity">
+            <div class="bot-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="6" height="6" rx="1" stroke-width="1.5"/>
+                <path d="M5 10h2M5 14h2M17 10h2M17 14h2M10 5v2M14 5v2M10 17v2M14 17v2" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div class="bot-meta">
+              <div class="bot-number">+52 1 55 1234 5678</div>
+              <div class="bot-pushname">Asistente Virtual</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna izquierda: Estado y recursos -->
+        <div class="card-status">
+          <div class="metric-group">
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/>
+                  <path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/>
+                </svg>
+                <span>CPU</span>
+              </div>
+              <div class="metric-value">9%</div>
+              <div class="progress-bar ok">
+                <div class="fill" style="width: 9%"></div>
+              </div>
+            </div>
+            
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 3v18M4 7h16M4 17h16" stroke-width="1.5"/>
+                </svg>
+                <span>Heap</span>
+              </div>
+              <div class="metric-value">95%</div>
+              <div class="progress-bar bad">
+                <div class="fill" style="width: 95%"></div>
+              </div>
+            </div>
+
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/>
+                  <path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/>
+                </svg>
+                <span>Chrome Mem</span>
+              </div>
+              <div class="metric-value">220MB</div>
+              <div class="progress-bar ok">
+                <div class="fill" style="width: 22%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna derecha: Métricas clave -->
+        <div class="card-metrics">
+          <div class="metric-group">
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
+                  <path d="M12 7v5l3 2" stroke-width="1.5"/>
+                </svg>
+                <span>Tiempo Activo</span>
+              </div>
+              <div class="metric-value">5h 24m</div>
+            </div>
+
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/>
+                  <path d="M20 4v6h-6" stroke-width="1.5"/>
+                </svg>
+                <span>Reinicios</span>
+              </div>
+              <div class="metric-value" style="color: var(--bad)">23</div>
+            </div>
+
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M3 12h4l2 6 4-12 2 6h4" stroke-width="1.5"/>
+                </svg>
+                <span>Errores</span>
+              </div>
+              <div class="metric-value">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de detalles -->
+        <div class="card-details">
+          <div class="detail-group">
+            <div class="detail-title">Estado</div>
+            <div class="detail-content">
+              <div class="state" title="QR listo para escanear">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--warn)">
+                  <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" stroke-width="1.5"/>
+                </svg>
+                <span>QR listo para escanear</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="detail-group">
+            <div class="detail-title">Proceso</div>
+            <div class="detail-content">
+              <div class="mono">pid 64579</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas -->
+        <div class="card-alerts">
+          <div class="alert-message">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 8v5" stroke-width="1.5"/>
+              <circle cx="12" cy="17" r="1" />
+              <path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/>
+            </svg>
+            <span>Uso de heap alto</span>
+          </div>
+          
+          <div class="card-actions">
+            <button class="iconbtn refresh" title="Restart">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/>
+                <path d="M20 4v6h-6" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn warn" title="Recreate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn danger" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 7h16" stroke-width="1.5"/>
+                <path d="M10 11v6M14 11v6" stroke-width="1.5"/>
+                <rect x="6" y="7" width="12" height="12" rx="2" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Bot G - QR Required (rediseñado) -->
+      <article class="card-redesign attn-warn" aria-label="Bot G">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="dot" style="background:var(--warn)"></span>
+            <div class="title">Bot G</div>
+            <span class="badge warn card-status-badge">QR Required</span>
+          </div>
+          <div class="bot-identity">
+            <div class="bot-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="6" height="6" rx="1" stroke-width="1.5"/>
+                <path d="M5 10h2M5 14h2M17 10h2M17 14h2M10 5v2M14 5v2M10 17v2M14 17v2" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div class="bot-meta">
+              <div class="bot-number">+52 1 55 7531 9024</div>
+              <div class="bot-pushname">Sin nombre</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-status" style="grid-column: 1 / -1; border-right: none;">
+          <div class="qr-container">
+            Escanea el QR
+          </div>
+          
+          <div class="state" title="QR listo para escanear">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color:var(--warn)">
+              <path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4" stroke-width="1.5"/>
+            </svg>
+            <span>QR listo para escanear</span>
+          </div>
+        </div>
+
+        <!-- Área de detalles -->
+        <div class="card-details">
+          <div class="detail-group">
+            <div class="detail-title">Chrome CPU</div>
+            <div class="detail-content">
+              <div class="row gap8">
+                <div class="bar sm ok"><i style="width:1%"></i></div>
+                <span class="mono muted" style="font-size:11px">1%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="detail-group">
+            <div class="detail-title">Chrome Memoria</div>
+            <div class="detail-content">
+              <div class="row gap8">
+                <div class="bar sm ok"><i style="width:14%"></i></div>
+                <span class="mono muted" style="font-size:11px">140MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas -->
+        <div class="card-alerts">
+          <div class="alert-message warning">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 8v5" stroke-width="1.5"/>
+              <circle cx="12" cy="17" r="1" />
+              <path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/>
+            </svg>
+            <span>Se requiere escanear QR para continuar</span>
+          </div>
+          
+          <div class="card-actions">
+            <button class="iconbtn refresh" title="Restart">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/>
+                <path d="M20 4v6h-6" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn warn" title="Recreate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn danger" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 7h16" stroke-width="1.5"/>
+                <path d="M10 11v6M14 11v6" stroke-width="1.5"/>
+                <rect x="6" y="7" width="12" height="12" rx="2" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Bot C - Offline (rediseñado) -->
+      <article class="card-redesign attn-bad" aria-label="Bot C">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="dot" style="background:var(--border)"></span>
+            <div class="title">Bot C</div>
+            <span class="badge bad card-status-badge">Offline</span>
+          </div>
+          <div class="bot-identity">
+            <div class="bot-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="6" height="6" rx="1" stroke-width="1.5"/>
+                <path d="M5 10h2M5 14h2M17 10h2M17 14h2M10 5v2M14 5v2M10 17v2M14 17v2" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div class="bot-meta">
+              <div class="bot-number">+52 1 55 2468 1357</div>
+              <div class="bot-pushname">Bot Ventas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna izquierda: Estado y recursos -->
+        <div class="card-status">
+          <div class="metric-group">
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/>
+                  <path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/>
+                </svg>
+                <span>CPU</span>
+              </div>
+              <div class="metric-value">0%</div>
+              <div class="progress-bar">
+                <div class="fill" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 3v18M4 7h16M4 17h16" stroke-width="1.5"/>
+                </svg>
+                <span>Heap</span>
+              </div>
+              <div class="metric-value">0%</div>
+              <div class="progress-bar">
+                <div class="fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Columna derecha: Métricas clave -->
+        <div class="card-metrics">
+          <div class="metric-group">
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
+                  <path d="M12 7v5l3 2" stroke-width="1.5"/>
+                </svg>
+                <span>Tiempo Activo</span>
+              </div>
+              <div class="metric-value">0m</div>
+            </div>
+
+            <div class="metric-item">
+              <div class="metric-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/>
+                  <path d="M20 4v6h-6" stroke-width="1.5"/>
+                </svg>
+                <span>Reinicios</span>
+              </div>
+              <div class="metric-value" style="color: var(--bad)">8</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de detalles -->
+        <div class="card-details">
+          <div class="detail-group">
+            <div class="detail-title">Estado</div>
+            <div class="detail-content">
+              <div class="state" title="Desconectado">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M6 6l12 12M6 18L18 6" stroke-width="1.5"/>
+                </svg>
+                <span>Desconectado</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="detail-group">
+            <div class="detail-title">Proceso</div>
+            <div class="detail-content">
+              <div class="mono">pid —</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas -->
+        <div class="card-alerts">
+          <div class="alert-message">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M12 8v5" stroke-width="1.5"/>
+              <circle cx="12" cy="17" r="1" />
+              <path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/>
+            </svg>
+            <span>Servicio detenido</span>
+          </div>
+          
+          <div class="card-actions">
+            <button class="iconbtn refresh" title="Restart">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/>
+                <path d="M20 4v6h-6" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn warn" title="Recreate">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/>
+              </svg>
+            </button>
+            <button class="iconbtn danger" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M4 7h16" stroke-width="1.5"/>
+                <path d="M10 11v6M14 11v6" stroke-width="1.5"/>
+                <rect x="6" y="7" width="12" height="12" rx="2" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</body>
+</html>
