@@ -279,23 +279,26 @@ export class BotStatusController {
   }
 
   // 🚀 NEW ENDPOINTS: PM2 Metrics-based status (replaces deprecated API calls)
-  
+
   /**
    * GET /api/bots/:botId/status/metrics - Get bot status via PM2 metrics
    */
-  public async getBotStatusViaMetrics(req: Request, res: Response): Promise<void> {
+  public async getBotStatusViaMetrics(
+    req: Request,
+    res: Response
+  ): Promise<void> {
     try {
       const { botId } = req.params;
-      
+
       if (!botId) {
         res.status(400).json({ error: "Bot ID is required" });
         return;
       }
 
       console.log(`📊 Getting PM2-based status for bot: ${botId}`);
-      
+
       const status = await this.botService.getBotStatusViaMetrics(botId);
-      
+
       if (!status) {
         res.status(404).json({ error: "Bot not found" });
         return;
@@ -324,7 +327,7 @@ export class BotStatusController {
   public async getBotPM2Metrics(req: Request, res: Response): Promise<void> {
     try {
       const { botId } = req.params;
-      
+
       if (!botId) {
         res.status(400).json({ error: "Bot ID is required" });
         return;
@@ -337,23 +340,23 @@ export class BotStatusController {
       }
 
       if (bot.isExternal) {
-        res.status(400).json({ 
+        res.status(400).json({
           error: "PM2 metrics not available for external bots",
           botId,
-          isExternal: true 
+          isExternal: true,
         });
         return;
       }
 
       const pm2ProcessId = bot.pm2ServiceId || bot.id;
       console.log(`📊 Getting raw PM2 metrics for process: ${pm2ProcessId}`);
-      
+
       const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
-      
+
       if (!metrics) {
-        res.status(404).json({ 
+        res.status(404).json({
           error: "PM2 process not found",
-          pm2ProcessId 
+          pm2ProcessId,
         });
         return;
       }
@@ -384,13 +387,13 @@ export class BotStatusController {
   public async getAllPM2Metrics(req: Request, res: Response): Promise<void> {
     try {
       console.log("📊 Getting PM2 metrics for all processes");
-      
+
       const allMetrics = await pm2MetricsService.getAllProcessesMetrics();
-      
-      const results = allMetrics.map(metrics => ({
+
+      const results = allMetrics.map((metrics) => ({
         processName: metrics.name,
         metrics,
-        health: pm2MetricsService.evaluateProcessHealth(metrics)
+        health: pm2MetricsService.evaluateProcessHealth(metrics),
       }));
 
       res.json({
@@ -415,7 +418,7 @@ export class BotStatusController {
   public async getBotHealth(req: Request, res: Response): Promise<void> {
     try {
       const { botId } = req.params;
-      
+
       if (!botId) {
         res.status(400).json({ error: "Bot ID is required" });
         return;
@@ -428,22 +431,22 @@ export class BotStatusController {
       }
 
       if (bot.isExternal) {
-        res.status(400).json({ 
+        res.status(400).json({
           error: "Health metrics not available for external bots",
           botId,
           isExternal: true,
-          suggestion: "Use /api/bots/:botId/status for external bots"
+          suggestion: "Use /api/bots/:botId/status for external bots",
         });
         return;
       }
 
       const pm2ProcessId = bot.pm2ServiceId || bot.id;
       const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
-      
+
       if (!metrics) {
-        res.status(404).json({ 
+        res.status(404).json({
           error: "PM2 process not found",
-          pm2ProcessId 
+          pm2ProcessId,
         });
         return;
       }
@@ -460,7 +463,7 @@ export class BotStatusController {
           uptime: metrics.uptime,
           memoryUsage: metrics.memory,
           cpuUsage: metrics.cpu,
-          restartCount: metrics.restarts
+          restartCount: metrics.restarts,
         },
         recommendations: this.generateHealthRecommendations(health, metrics),
         timestamp: new Date().toISOString(),
@@ -486,7 +489,9 @@ export class BotStatusController {
     }
 
     if (metrics.memory && metrics.memory > 512) {
-      recommendations.push("Monitor memory usage - consider increasing available memory");
+      recommendations.push(
+        "Monitor memory usage - consider increasing available memory"
+      );
     }
 
     if (metrics.restarts && metrics.restarts > 5) {
@@ -502,7 +507,9 @@ export class BotStatusController {
     }
 
     if (health.status === "critical") {
-      recommendations.push("Immediate attention required - bot may be non-functional");
+      recommendations.push(
+        "Immediate attention required - bot may be non-functional"
+      );
     }
 
     if (recommendations.length === 0) {

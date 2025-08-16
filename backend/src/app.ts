@@ -45,52 +45,60 @@ app.get("/health", (req, res) => {
 // 🚀 Start server with auto port cleanup
 async function startServer() {
   const PORT = process.env.BACKEND_PORT || process.env.PORT || 3001;
-  const host = process.env.BACKEND_HOST || process.env.SERVER_HOST || "localhost";
-  
+  const host =
+    process.env.BACKEND_HOST || process.env.SERVER_HOST || "localhost";
+
   try {
     console.log(`🔍 Checking port ${PORT} before starting...`);
-    
+
     // Kill any existing processes on our port
     const portCleared = await killProcessOnPort(Number(PORT));
-    
+
     if (!portCleared) {
-      console.warn(`⚠️ Warning: Could not fully clear port ${PORT}, but continuing...`);
+      console.warn(
+        `⚠️ Warning: Could not fully clear port ${PORT}, but continuing...`
+      );
     }
-    
+
     // Start the server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Backend server started successfully on http://${host}:${PORT}`);
-      console.log(`📚 Swagger documentation available at http://${host}:${PORT}/api-docs`);
+      console.log(
+        `🚀 Backend server started successfully on http://${host}:${PORT}`
+      );
+      console.log(
+        `📚 Swagger documentation available at http://${host}:${PORT}/api-docs`
+      );
     });
-    
+
     // Handle server startup errors
-    server.on('error', (error: any) => {
-      if (error.code === 'EADDRINUSE') {
+    server.on("error", (error: any) => {
+      if (error.code === "EADDRINUSE") {
         console.error(`❌ Port ${PORT} is still in use after cleanup attempt`);
-        console.log(`💡 Try manually killing processes: lsof -ti:${PORT} | xargs kill -9`);
+        console.log(
+          `💡 Try manually killing processes: lsof -ti:${PORT} | xargs kill -9`
+        );
       } else {
         console.error(`❌ Server startup error:`, error);
       }
       process.exit(1);
     });
-    
+
     // Graceful shutdown handling
-    process.on('SIGTERM', () => {
-      console.log('🛑 SIGTERM received, shutting down gracefully');
+    process.on("SIGTERM", () => {
+      console.log("🛑 SIGTERM received, shutting down gracefully");
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log("✅ Server closed");
         process.exit(0);
       });
     });
-    
-    process.on('SIGINT', () => {
-      console.log('🛑 SIGINT received, shutting down gracefully');
+
+    process.on("SIGINT", () => {
+      console.log("🛑 SIGINT received, shutting down gracefully");
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log("✅ Server closed");
         process.exit(0);
       });
     });
-    
   } catch (error) {
     console.error(`❌ Failed to start server:`, error);
     process.exit(1);

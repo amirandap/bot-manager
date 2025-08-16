@@ -31,7 +31,8 @@ export const api = {
     `${API_BASE_URL}/api/deploy/history${limit ? `?limit=${limit}` : ""}`,
 
   // 🚀 NEW: PM2 Metrics-based status endpoints (recommended - primary source)
-  getBotStatusMetrics: (id: string) => `${API_BASE_URL}/api/bots/${id}/status/metrics`,
+  getBotStatusMetrics: (id: string) =>
+    `${API_BASE_URL}/api/bots/${id}/status/metrics`,
   getBotMetrics: (id: string) => `${API_BASE_URL}/api/bots/${id}/metrics`,
   getBotHealth: (id: string) => `${API_BASE_URL}/api/bots/${id}/health`,
   getAllBotsMetrics: () => `${API_BASE_URL}/api/bots/metrics/all`,
