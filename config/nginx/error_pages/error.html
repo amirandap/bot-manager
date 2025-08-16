@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Bot Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fc;
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+        .error-box {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e1e4e8;
+        }
+        .status-code {
+            font-size: 72px;
+            font-weight: 700;
+            color: #0066cc;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 102, 204, 0.1);
+        }
+        .error-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        .error-message {
+            font-size: 18px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .actions {
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 102, 204, 0.2);
+        }
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid #0066cc;
+            color: #0066cc;
+        }
+        .btn-outline:hover {
+            background-color: #f0f7ff;
+            color: #0056b3;
+        }
+        .status-info {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e4e8;
+            font-size: 14px;
+            color: #718096;
+        }
+        .error-icon {
+            font-size: 80px;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        .tech-info {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f1f5f9;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #64748b;
+            text-align: left;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        @media (max-width: 768px) {
+            .status-code {
+                font-size: 60px;
+            }
+            .error-title {
+                font-size: 24px;
+            }
+            .error-message {
+                font-size: 16px;
+            }
+            .actions {
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+            .btn {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-box">
+            <div class="error-icon">
+                ⚠️
+            </div>
+            <div class="status-code" id="status-code">Error</div>
+            <h1 class="error-title" id="error-title">Something went wrong</h1>
+            <div class="error-message">
+                <p id="error-message">We encountered an unexpected error. Please try again later or contact support if the problem persists.</p>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="window.location.reload()">Retry</button>
+                <a href="/" class="btn btn-outline">Go to Homepage</a>
+            </div>
+            <div class="status-info">
+                <p>Server Status: <strong>Bot Manager</strong> • Error Code: <strong id="error-code">Unknown</strong></p>
+            </div>
+            <div class="tech-info">
+                <p>Time: <span id="current-time"></span></p>
+                <p>Server: nginx/1.18.0 (Ubuntu)</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get error code from URL or default to 500
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorCode = urlParams.get('code') || 500;
+        
+        // Set error information based on code
+        document.getElementById('status-code').textContent = errorCode;
+        document.getElementById('error-code').textContent = errorCode;
+        
+        // Configure error message based on code
+        switch(parseInt(errorCode)) {
+            case 400:
+                document.getElementById('error-title').textContent = 'Bad Request';
+                document.getElementById('error-message').textContent = 'The request could not be understood by the server due to malformed syntax.';
+                break;
+            case 401:
+                document.getElementById('error-title').textContent = 'Unauthorized';
+                document.getElementById('error-message').textContent = 'Authentication is required and has failed or has not been provided.';
+                break;
+            case 403:
+                document.getElementById('error-title').textContent = 'Forbidden';
+                document.getElementById('error-message').textContent = 'You don\'t have permission to access this resource.';
+                break;
+            case 404:
+                document.getElementById('error-title').textContent = 'Page Not Found';
+                document.getElementById('error-message').textContent = 'The requested page could not be found.';
+                break;
+            case 408:
+                document.getElementById('error-title').textContent = 'Request Timeout';
+                document.getElementById('error-message').textContent = 'The server timed out waiting for the request.';
+                break;
+            case 500:
+                document.getElementById('error-title').textContent = 'Internal Server Error';
+                document.getElementById('error-message').textContent = 'The server encountered an internal error and was unable to complete your request.';
+                break;
+            case 502:
+                document.getElementById('error-title').textContent = 'Bad Gateway';
+                document.getElementById('error-message').textContent = 'The server received an invalid response from an upstream server.';
+                break;
+            case 503:
+                document.getElementById('error-title').textContent = 'Service Unavailable';
+                document.getElementById('error-message').textContent = 'The server is temporarily unavailable. Please try again later.';
+                break;
+            case 504:
+                document.getElementById('error-title').textContent = 'Gateway Timeout';
+                document.getElementById('error-message').textContent = 'The server was acting as a gateway and did not receive a timely response.';
+                break;
+        }
+        
+        // Display current time
+        function updateTime() {
+            const timeElement = document.getElementById('current-time');
+            timeElement.textContent = new Date().toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
