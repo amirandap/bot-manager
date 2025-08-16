@@ -81,7 +81,7 @@ export class QRCodeService {
       // When QR files are overwritten, mtime updates but birthtime may not
       const createdAt = stats.mtime;
       const ageMinutes = (Date.now() - createdAt.getTime()) / (1000 * 60);
-      const expired = ageMinutes > 2; // QR codes typically expire after 2 minutes
+      const expired = ageMinutes > 0.33; // QR codes regenerate every 20 seconds (0.33 minutes)
 
       return {
         available: true,
