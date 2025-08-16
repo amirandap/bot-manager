@@ -42,46 +42,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// QR Code popup endpoint for frontend
-app.get("/qr-popup", (req, res) => {
-  const botName = req.query.bot || 'Bot';
-  const qrUrl = req.query.qr || '';
-  
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>WhatsApp QR - ${botName}</title>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body{font-family:system-ui;margin:0;padding:20px;background:#f5f5f5;text-align:center}
-    .container{max-width:400px;margin:0 auto;background:white;border-radius:12px;padding:20px;box-shadow:0 4px 6px rgba(0,0,0,0.1)}
-    .header{background:#25D366;color:white;padding:20px;margin:-20px -20px 20px;border-radius:12px 12px 0 0}
-    .qr{margin:20px 0;padding:15px;border:2px solid #25D366;border-radius:8px;background:#f8f9fa}
-    img{max-width:100%;height:auto;border-radius:4px}
-    .btn{padding:10px 20px;border:none;border-radius:6px;cursor:pointer;margin:5px;background:#25D366;color:white;font-size:14px}
-    .btn:hover{background:#128C7E}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h2 style="margin:0">📱 WhatsApp QR Code</h2>
-      <p style="margin:5px 0 0 0;opacity:0.9">Bot: ${botName}</p>
-    </div>
-    <div class="qr">
-      <img src="${qrUrl}" alt="QR Code" onerror="this.parentElement.innerHTML='❌ Error loading QR code'">
-    </div>
-    <button class="btn" onclick="location.reload()">🔄 Refresh</button>
-    <button class="btn" onclick="window.close()">✕ Close</button>
-  </div>
-</body>
-</html>`;
-  
-  res.setHeader('Content-Type', 'text/html');
-  res.send(html);
-});
-
 // 🚀 Start server with auto port cleanup
 async function startServer() {
   const PORT = process.env.BACKEND_PORT || process.env.PORT || 3001;

@@ -77,7 +77,9 @@ export class QRCodeService {
 
     try {
       const stats = fs.statSync(qrPath);
-      const createdAt = stats.birthtime;
+      // Use mtime (modification time) instead of birthtime for better compatibility
+      // When QR files are overwritten, mtime updates but birthtime may not
+      const createdAt = stats.mtime;
       const ageMinutes = (Date.now() - createdAt.getTime()) / (1000 * 60);
       const expired = ageMinutes > 2; // QR codes typically expire after 2 minutes
 
