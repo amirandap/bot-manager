@@ -704,38 +704,63 @@ export class BotSpawnerService {
       return false;
     }
 
-    const pm2ServiceId = bot.pm2ServiceId;
-    if (!pm2ServiceId) {
-      console.error(`❌ No PM2 service ID found for bot: ${botId}`);
-      return false;
+    // Lista de nombres posibles para el servicio PM2
+    const possibleNames = [
+      bot.pm2ServiceId,
+      botId,
+      `wabot-${botId}`,
+      `whatsapp-${botId}`,
+      `bot-${botId}`,
+      `discord-${botId}`
+    ].filter(Boolean); // Remove null/undefined values
+
+    // Si tenemos el puerto, agregarlo también
+    if (bot.apiPort) {
+      possibleNames.push(`wabot-${bot.apiPort}`);
     }
 
-    console.log(`🎯 Using PM2 service: ${pm2ServiceId}`);
+    console.log(`🎯 Trying to stop PM2 services: ${possibleNames.join(', ')}`);
 
     return new Promise((resolve) => {
-      pm2.connect((err) => {
+      pm2.connect(async (err) => {
         if (err) {
           console.error(`❌ Failed to connect to PM2:`, err);
           resolve(false);
           return;
         }
 
-        pm2.stop(pm2ServiceId, (err) => {
-          pm2.disconnect();
+        let stoppedAny = false;
 
-          if (err) {
-            console.error(
-              `❌ Error stopping bot ${botId} (PM2: ${pm2ServiceId}):`,
-              err
-            );
-            resolve(false);
-          } else {
-            console.log(
-              `✅ Bot ${botId} (PM2: ${pm2ServiceId}) stopped successfully`
-            );
-            resolve(true);
+        // Intentar detener cada posible nombre
+        for (const serviceName of possibleNames) {
+          if (!serviceName) continue; // Skip null/undefined values
+          
+          try {
+            await new Promise<void>((resolveStop) => {
+              pm2.stop(serviceName, (stopErr) => {
+                if (!stopErr) {
+                  console.log(`✅ Stopped PM2 service: ${serviceName}`);
+                  stoppedAny = true;
+                } else {
+                  console.warn(`⚠️  Could not stop ${serviceName}: ${stopErr.message}`);
+                }
+                resolveStop();
+              });
+            });
+          } catch (stopError) {
+            console.warn(`⚠️  Error stopping ${serviceName}:`, stopError);
           }
-        });
+        }
+
+        pm2.disconnect();
+
+        if (stoppedAny) {
+          console.log(`✅ Successfully stopped bot: ${botId}`);
+          resolve(true);
+        } else {
+          console.warn(`⚠️  No PM2 service found to stop for bot: ${botId}`);
+          resolve(false);
+        }
       });
     });
   }
@@ -880,25 +905,71 @@ export class BotSpawnerService {
       // 1. Detener bot en PM2
       await this.stopBot(botId);
 
-      // 2. Eliminar de PM2
+      // 2. Eliminar de PM2 (intentar diferentes nombres posibles)
       await new Promise<void>((resolve) => {
-        pm2.connect((err) => {
+        pm2.connect(async (err) => {
           if (err) {
             console.warn(`⚠️  Warning connecting to PM2: ${err.message}`);
             resolve();
             return;
           }
 
-          pm2.delete(botId, (err) => {
-            pm2.disconnect();
+          // Lista de nombres posibles para el servicio PM2
+          const possibleNames = [
+            botId,
+            `wabot-${botId}`,
+            `whatsapp-${botId}`,
+            `bot-${botId}`,
+            `discord-${botId}`
+          ];
 
-            if (err) {
-              console.warn(`⚠️  Warning deleting from PM2: ${err.message}`);
-            } else {
-              console.log(`✅ Bot ${botId} removed from PM2`);
+          // Intentar eliminar cada posible nombre
+          let deletedAny = false;
+          for (const name of possibleNames) {
+            if (!name) continue; // Skip null/undefined values
+            
+            try {
+              await new Promise<void>((resolveDelete) => {
+                pm2.delete(name, (deleteErr) => {
+                  if (!deleteErr) {
+                    console.log(`✅ Bot service ${name} removed from PM2`);
+                    deletedAny = true;
+                  }
+                  resolveDelete();
+                });
+              });
+            } catch (deleteError) {
+              // Continue trying other names
             }
-            resolve();
-          });
+          }
+
+          // Si no se eliminó ningún servicio, buscar por port
+          if (!deletedAny) {
+            try {
+              const bot = this.configService.getBotById(botId);
+              if (bot && bot.apiPort) {
+                await new Promise<void>((resolveDelete) => {
+                  pm2.delete(`wabot-${bot.apiPort}`, (deleteErr) => {
+                    if (!deleteErr) {
+                      console.log(`✅ Bot service wabot-${bot.apiPort} removed from PM2`);
+                      deletedAny = true;
+                    }
+                    resolveDelete();
+                  });
+                });
+              }
+            } catch (portDeleteError) {
+              console.warn(`⚠️  Could not delete by port: ${portDeleteError}`);
+            }
+          }
+
+          pm2.disconnect();
+          
+          if (!deletedAny) {
+            console.warn(`⚠️  No PM2 service found for bot ${botId}`);
+          }
+          
+          resolve();
         });
       });
 
