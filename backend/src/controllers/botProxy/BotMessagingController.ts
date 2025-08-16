@@ -30,7 +30,7 @@ export class BotMessagingController {
     try {
       console.log(`📨 [BACKEND] Message request ${requestId} received`);
 
-      const { botId, ...rawBodyData } = req.body;
+      const { botId, imageUrl, ...rawBodyData } = req.body;
       if (!botId) {
         this.errorHandlingService.handleValidationError(
           "Bot ID is required in request body",
@@ -40,11 +40,52 @@ export class BotMessagingController {
         return;
       }
 
+      // Handle imageUrl by downloading the image
+      let processedFile = req.file;
+      if (imageUrl && !req.file) {
+        try {
+          console.log(`🌐 [BACKEND] Downloading image from URL: ${imageUrl}`);
+          const response = await fetch(imageUrl);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const contentType = response.headers.get('content-type') || 'image/jpeg';
+          
+          // Extract filename from URL or use default
+          const urlPath = new URL(imageUrl).pathname;
+          const filename = urlPath.split('/').pop() || 'image.jpg';
+          
+          // Create a mock file object similar to multer
+          processedFile = {
+            fieldname: 'file',
+            originalname: filename,
+            encoding: '7bit',
+            mimetype: contentType,
+            size: buffer.length,
+            buffer: buffer
+          } as Express.Multer.File;
+          
+          console.log(`✅ [BACKEND] Image downloaded: ${filename} (${buffer.length} bytes)`);
+        } catch (error) {
+          console.error(`❌ [BACKEND] Failed to download image from ${imageUrl}:`, error);
+          this.errorHandlingService.handleValidationError(
+            `Failed to download image from URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            requestId,
+            res
+          );
+          return;
+        }
+      }
+
       // Normalize message data and determine optimal endpoint
       const { endpoint, bodyData, messageType } =
         this.messageRoutingService.determineOptimalEndpoint(
           rawBodyData,
-          req.file
+          processedFile
         );
 
       console.log(`📋 [BACKEND] Request ${requestId} details:`, {
@@ -53,7 +94,8 @@ export class BotMessagingController {
         endpoint,
         originalData: rawBodyData,
         normalizedData: bodyData,
-        hasFile: !!req.file,
+        hasFile: !!processedFile,
+        imageUrl: imageUrl || undefined,
       });
 
       const result = await this.botCommunicationService.forwardRequest({
@@ -61,7 +103,7 @@ export class BotMessagingController {
         endpoint,
         method: "POST",
         requestData: bodyData,
-        file: req.file,
+        file: processedFile,
       });
 
       console.log(`✅ [BACKEND] Request ${requestId} completed successfully`);

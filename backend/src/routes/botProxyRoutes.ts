@@ -303,6 +303,10 @@ export function setBotProxyRoutes(app: Router) {
    *                 type: string
    *                 description: Message content or caption for media files
    *                 example: "Hello from WhatsApp Bot!"
+   *               imageUrl:
+   *                 type: string
+   *                 description: URL of an image to download and send (alternative to file upload)
+   *                 example: "https://picsum.photos/400/300"
    *               file:
    *                 type: string
    *                 format: binary

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   RotateCcw,
   Settings,
@@ -22,6 +23,7 @@ import {
 import type { Bot, BotStatus } from "@/lib/types";
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
+import QRCodeDisplay from "@/components/qr-code-display";
 
 interface HeadlessBotCardProps {
   bot: Bot;
@@ -44,6 +46,7 @@ export default function HeadlessBotCard({
 }: HeadlessBotCardProps) {
   const [status, setStatus] = useState<BotMetrics | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Determine process state based on PM2 status
   const getProcessState = (): ProcessState => {
@@ -175,21 +178,8 @@ export default function HeadlessBotCard({
   };
 
   const handleScanQR = async () => {
-    // Only execute this in browser environment
-    if (typeof window === 'undefined') return;
-    
-    // Create a complete QR URL with proper host
-    const qrPath = api.proxy.getQRCodeImage(bot.id);
-    // Construct full URL for QR image
-    const qrUrl = qrPath.startsWith('http') ? qrPath : `${window.location.origin}${qrPath}`;
-    const popupUrl = `${api.base}/qr-popup?bot=${encodeURIComponent(bot.name)}&qr=${encodeURIComponent(qrUrl)}`;
-    
-    // Open QR window
-    window.open(
-      popupUrl,
-      "_blank",
-      "width=450,height=650,resizable=yes,scrollbars=yes"
-    );
+    // Open the QR modal instead of external popup
+    setShowQRModal(true);
   };
 
   const handleRefreshStatus = async () => {
@@ -603,6 +593,19 @@ export default function HeadlessBotCard({
           </div>
         </div>
       </CardContent>
+
+      {/* QR Code Modal */}
+      <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
+        <DialogContent className="sm:max-w-md">
+          <QRCodeDisplay
+            bot={bot}
+            onClose={() => setShowQRModal(false)}
+            autoRefresh={true}
+            refreshInterval={3000}
+            autoCloseOnAuth={true}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
