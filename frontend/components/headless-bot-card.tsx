@@ -371,13 +371,6 @@ export default function HeadlessBotCard({
 
   const metrics = status?.pm2;
 
-  // Debug logs
-  console.log("Bot ID:", bot.id);
-  console.log("Status:", status);
-  console.log("Metrics:", metrics);
-  console.log("Bot Status:", metrics?.botStatus);
-  console.log("Browser CPU:", metrics?.browserCpuUsage);
-
   return (
     <Card className="rounded-2xl shadow-md">
       <CardHeader className="pb-4">
