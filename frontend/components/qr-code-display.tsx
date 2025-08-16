@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ interface QRCodeDisplayProps {
   onClose?: () => void;
   autoRefresh?: boolean;
   refreshInterval?: number;
+  autoCloseOnAuth?: boolean; // New prop for auto-close on authentication
 }
 
 export default function QRCodeDisplay({
@@ -39,6 +40,7 @@ export default function QRCodeDisplay({
   onClose,
   autoRefresh = true,
   refreshInterval = 5000,
+  autoCloseOnAuth = true, // Default to auto-close when authenticated
 }: QRCodeDisplayProps) {
   const {
     qrStatus,
@@ -49,30 +51,21 @@ export default function QRCodeDisplay({
     startAutoRefresh,
     stopAutoRefresh,
     isAutoRefreshing,
+    isAuthenticated,
+    timeRemaining,
   } = useQRCode(bot.id, refreshInterval);
 
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-
-  // Calculate time remaining for QR expiration
+  // Auto-close modal when authenticated
   useEffect(() => {
-    if (!qrStatus?.qrCode.available || !qrStatus.qrCode.createdAt) {
-      setTimeRemaining(0);
-      return;
+    if (autoCloseOnAuth && isAuthenticated && onClose) {
+      // Add a small delay to show success state before closing
+      const closeTimer = setTimeout(() => {
+        onClose();
+      }, 2000); // 2 seconds delay
+
+      return () => clearTimeout(closeTimer);
     }
-
-    const updateTimeRemaining = () => {
-      const createdAt = new Date(qrStatus.qrCode.createdAt!);
-      const expiresAt = new Date(createdAt.getTime() + 2 * 60 * 1000); // 2 minutes
-      const now = new Date();
-      const remaining = Math.max(0, expiresAt.getTime() - now.getTime());
-      setTimeRemaining(remaining);
-    };
-
-    updateTimeRemaining();
-    const interval = setInterval(updateTimeRemaining, 1000);
-
-    return () => clearInterval(interval);
-  }, [qrStatus?.qrCode.createdAt, qrStatus?.qrCode.available]);
+  }, [isAuthenticated, onClose, autoCloseOnAuth]);
 
   // Auto-start refresh if enabled
   useEffect(() => {
@@ -106,6 +99,16 @@ export default function QRCodeDisplay({
 
     if (!qrStatus) {
       return <Badge variant="secondary">Loading...</Badge>;
+    }
+
+    // Check if authenticated first
+    if (isAuthenticated) {
+      return (
+        <Badge variant="default" className="flex items-center gap-1 bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3" />
+          Authenticated
+        </Badge>
+      );
     }
 
     if (!qrStatus.qrCode.available) {
@@ -253,13 +256,21 @@ export default function QRCodeDisplay({
             <div className="flex justify-between">
               <span>Status:</span>
               <span className="font-medium">
-                {qrStatus.qrCode.available
+                {isAuthenticated
+                  ? "Authenticated"
+                  : qrStatus.qrCode.available
                   ? qrStatus.qrCode.expired
                     ? "Expired"
                     : "Available"
                   : "Not Available"}
               </span>
             </div>
+            {qrStatus.whatsappStatus && (
+              <div className="flex justify-between">
+                <span>WhatsApp:</span>
+                <span className="font-medium">{qrStatus.whatsappStatus}</span>
+              </div>
+            )}
             {qrStatus.qrCode.createdAt && (
               <div className="flex justify-between">
                 <span>Generated:</span>
@@ -278,6 +289,12 @@ export default function QRCodeDisplay({
               <span>Last updated:</span>
               <span>{new Date(qrStatus.timestamp).toLocaleTimeString()}</span>
             </div>
+            {isAutoRefreshing && (
+              <div className="flex justify-between">
+                <span>Auto-refresh:</span>
+                <span className="text-green-600 font-medium">Active</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -316,14 +333,29 @@ export default function QRCodeDisplay({
           </Button>
         </div>
 
+        {/* Success message when authenticated */}
+        {isAuthenticated && (
+          <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+            <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-800">
+              🎉 WhatsApp Successfully Connected!
+            </p>
+            <p className="text-xs text-green-600 mt-1">
+              {autoCloseOnAuth ? "Modal will close automatically in 2 seconds..." : "You can now close this modal."}
+            </p>
+          </div>
+        )}
+
         {/* Instructions */}
-        <div className="text-xs text-center text-muted-foreground p-3 bg-blue-50 rounded-lg">
-          <p className="font-medium text-blue-800 mb-1">📱 How to scan:</p>
-          <p>
-            Open WhatsApp → Settings → Linked Devices → Link a Device → Scan QR
-            Code
-          </p>
-        </div>
+        {!isAuthenticated && (
+          <div className="text-xs text-center text-muted-foreground p-3 bg-blue-50 rounded-lg">
+            <p className="font-medium text-blue-800 mb-1">📱 How to scan:</p>
+            <p>
+              Open WhatsApp → Settings → Linked Devices → Link a Device → Scan QR
+              Code
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

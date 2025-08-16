@@ -361,17 +361,17 @@ export class BotSpawnerService {
       NODE_ENV: "development",
       PM2_HOME: path.join(this.dataDirectory, "pm2"),
       TS_NODE_PROJECT: path.join(this.botDirectory, "tsconfig.json"),
-      
+
       // PM2 Metrics Configuration - disable metrics logging for cleaner output
       PM2_ADVANCED_METRICS: "false",
       PM2_DISABLE_LOGGING: "false",
       PM2_SILENT: "false",
       DEBUG: "", // Disable debug logs to prevent PM2/AXM noise
-      
+
       // Bot-specific metrics configuration
       SILENT_METRICS: "true",
       LOG_LEVEL: "info",
-      
+
       // Only include PATH if it exists
       ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
     };

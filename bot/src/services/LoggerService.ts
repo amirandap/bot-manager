@@ -440,6 +440,26 @@ export class LoggerService {
       this.error(error, { component: 'shutdown', signal, reason });
     }
   }
+
+  /**
+   * Update client push name metric
+   */
+  public updateClientPushName(pushName: string): void {
+    this.updateMetric('CLIENT_PUSHNAME', pushName);
+    if (!this.config.silentMetrics) {
+      this.log('info', `Client push name updated: ${pushName}`, { pushName, metric: 'CLIENT_PUSHNAME' });
+    }
+  }
+
+  /**
+   * Update client phone number metric
+   */
+  public updateClientPhoneNumber(phoneNumber: string): void {
+    this.updateMetric('CLIENT_PHONE', phoneNumber);
+    if (!this.config.silentMetrics) {
+      this.log('info', `Client phone number updated: ${phoneNumber}`, { phoneNumber, metric: 'CLIENT_PHONE' });
+    }
+  }
 }
 
 // Export for backward compatibility

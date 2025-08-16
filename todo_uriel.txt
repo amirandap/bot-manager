@@ -1,0 +1,5 @@
+1. Implementar metricas reales del navegador
+2. Implementar counters de mensajes enviados/mensajes fallados
+3. Implementar metrica para Push Name y Phone Number
+4. Agregar en front view listado de grupos con su ID
+5. Eliminar la metrica de qr generated

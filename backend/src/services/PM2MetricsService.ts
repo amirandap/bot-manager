@@ -31,15 +31,8 @@ export interface PM2ProcessMetrics {
   httpLatencyMean?: number;
   httpLatencyP95?: number;
 
-  // Bot-specific custom metrics
-  botStatus?: string;
-  browserCpuUsage?: number;
-  browserMemoryUsage?: number;
-  messageProcessingTime?: number;
-  qrCodeStatus?: string;
-  qrCodesGenerated?: number;
-  apiServerStatus?: number;
-  whatsappStatus?: string;
+  // Bot-specific custom metrics (dynamic)
+  [key: string]: any; // Allow any custom metrics
 
   // PM2 environment
   pm2Id?: number;
@@ -135,19 +128,8 @@ export class PM2MetricsService {
         heapSize: metrics.heap_size,
         usedHeapSize: metrics.used_heap_size,
 
-        // Custom bot metrics - these come directly from PM2's axm_monitor
-        botStatus: metrics.botStatus,
-        browserCpuUsage: metrics.browserCpuUsage,
-        browserMemoryUsage: metrics.browserMemoryUsage,
-        messageProcessingTime: metrics.messageProcessingTime,
-        errorCount: metrics.errorCount,
-        httpRequests: metrics.httpRequests,
-        httpLatencyMean: metrics.httpLatencyMean,
-        httpLatencyP95: metrics.httpLatencyP95,
-        qrCodeStatus: metrics.qrCodeStatus,
-        qrCodesGenerated: metrics.qrCodesGenerated,
-        apiServerStatus: metrics.apiServerStatus,
-        whatsappStatus: metrics.whatsappStatus,
+        // Custom bot metrics - these come directly from PM2's axm_monitor (dynamic)
+        ...(metrics.customMetrics || {}),
 
         // PM2 specific fields
         pm2Id: undefined,
@@ -161,11 +143,9 @@ export class PM2MetricsService {
 
       console.log(`📊 PM2 Metrics extracted via API for ${processName}:`, {
         status: processMetrics.status,
-        whatsappStatus: processMetrics.whatsappStatus,
-        qrCodeStatus: processMetrics.qrCodeStatus,
-        botStatus: processMetrics.botStatus,
         cpu: processMetrics.cpu,
         memory: processMetrics.memory,
+        customMetrics: Object.keys(metrics.customMetrics || {}).length > 0 ? metrics.customMetrics : 'none'
       });
 
       return processMetrics;
