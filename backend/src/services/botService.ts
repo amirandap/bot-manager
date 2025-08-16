@@ -251,7 +251,7 @@ export class BotService {
 
     try {
       const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
-      
+
       if (!metrics) {
         console.log(`❌ No PM2 metrics found for ${pm2ProcessId}`);
         return { ...botStatus, status: "offline" };
@@ -263,14 +263,19 @@ export class BotService {
         cpu: metrics.cpu,
         uptime: metrics.uptime,
         restarts: metrics.restarts,
-        errorCount: metrics.errorCount
+        errorCount: metrics.errorCount,
       });
 
       // Evaluate health based on metrics
       const healthEvaluation = pm2MetricsService.evaluateProcessHealth(metrics);
-      
+
       // Map health status to bot status
-      let computedStatus: "online" | "offline" | "errored" | "unknown" | "launching";
+      let computedStatus:
+        | "online"
+        | "offline"
+        | "errored"
+        | "unknown"
+        | "launching";
       switch (healthEvaluation.status) {
         case "healthy":
           computedStatus = metrics.status === "online" ? "online" : "launching";
@@ -308,38 +313,42 @@ export class BotService {
         health: {
           status: healthEvaluation.status,
           score: healthEvaluation.score,
-          issues: healthEvaluation.issues
-        }
+          issues: healthEvaluation.issues,
+        },
       };
 
       // If process is online, try a quick API ping (optional)
-      if (metrics.status === "online" && healthEvaluation.status !== "critical") {
+      if (
+        metrics.status === "online" &&
+        healthEvaluation.status !== "critical"
+      ) {
         try {
           const endpoint = bot.type === "discord" ? "/health" : "/status";
           const url = `${bot.apiHost}:${bot.apiPort}${endpoint}`;
-          
+
           console.log(`🏓 Quick API ping to: ${url}`);
           const startTime = Date.now();
-          
+
           const response = await axios.get(url, {
             timeout: 2000, // Quick ping only
           });
-          
+
           const responseTime = Date.now() - startTime;
-          
+
           botStatus.apiResponsive = true;
           botStatus.apiResponseTime = responseTime;
-          
+
           // Try to extract real bot data if available
           if (bot.type === "whatsapp" && response.data?.client) {
-            const realPhoneNumber = response.data.client.wid?.user || 
-                                   response.data.client.me?.user || 
-                                   bot.phoneNumber;
+            const realPhoneNumber =
+              response.data.client.wid?.user ||
+              response.data.client.me?.user ||
+              bot.phoneNumber;
             const realPushName = response.data.client.pushname || bot.pushName;
-            
+
             botStatus.phoneNumber = realPhoneNumber;
             botStatus.pushName = realPushName;
-            
+
             // Update config with real data
             this.configService.updateBotWithRealData(
               bot.id,
@@ -347,17 +356,20 @@ export class BotService {
               realPushName || undefined
             );
           }
-          
+
           console.log(`✅ API ping successful (${responseTime}ms)`);
         } catch (apiError) {
-          console.log(`⚠️ API ping failed, but PM2 metrics show process is healthy`);
+          console.log(
+            `⚠️ API ping failed, but PM2 metrics show process is healthy`
+          );
           // Don't change status - trust PM2 metrics over API
         }
       }
 
-      console.log(`✅ Bot ${bot.id} status via metrics: ${computedStatus} (health: ${healthEvaluation.status}, score: ${healthEvaluation.score})`);
+      console.log(
+        `✅ Bot ${bot.id} status via metrics: ${computedStatus} (health: ${healthEvaluation.status}, score: ${healthEvaluation.score})`
+      );
       return botStatus;
-
     } catch (error) {
       console.error(`❌ Failed to get PM2 metrics for ${bot.id}:`, error);
       return { ...botStatus, status: "offline" };
@@ -367,26 +379,32 @@ export class BotService {
   /**
    * Helper method for external bot API checking
    */
-  private async checkExternalBotAPI(bot: any, baseStatus: BotStatus): Promise<BotStatus> {
+  private async checkExternalBotAPI(
+    bot: any,
+    baseStatus: BotStatus
+  ): Promise<BotStatus> {
     try {
       const endpoint = bot.type === "discord" ? "/health" : "/status";
       const url = `${bot.apiHost}:${bot.apiPort}${endpoint}`;
-      
+
       const startTime = Date.now();
       const response = await axios.get(url, { timeout: 5000 });
       const responseTime = Date.now() - startTime;
 
-      const isOnline = bot.type === "discord" 
-        ? response.status === 200
-        : response.data.connected === true || response.data.status === "online";
+      const isOnline =
+        bot.type === "discord"
+          ? response.status === 200
+          : response.data.connected === true ||
+            response.data.status === "online";
 
       let realPhoneNumber = bot.phoneNumber;
       let realPushName = bot.pushName;
 
       if (bot.type === "whatsapp" && response.data.client) {
-        realPhoneNumber = response.data.client.wid?.user || 
-                         response.data.client.me?.user || 
-                         bot.phoneNumber;
+        realPhoneNumber =
+          response.data.client.wid?.user ||
+          response.data.client.me?.user ||
+          bot.phoneNumber;
         realPushName = response.data.client.pushname || bot.pushName;
 
         this.configService.updateBotWithRealData(
@@ -597,7 +615,7 @@ export class BotService {
           // Don't mark as errored immediately - give it benefit of the doubt
           // if it's just starting up or has temporary API issues
           const isStartupPhase = pm2Status.uptime && pm2Status.uptime < 30000; // Less than 30 seconds
-          
+
           if (isStartupPhase) {
             botStatus = {
               ...botStatus,

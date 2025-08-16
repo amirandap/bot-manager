@@ -1,7 +1,7 @@
 /**
  * Puppeteer Configuration Manager
- * 
- * Handles OS-specific Chrome paths, Chrome validation, and Puppeteer arguments for optimal 
+ *
+ * Handles OS-specific Chrome paths, Chrome validation, and Puppeteer arguments for optimal
  * browser initialization across different operating systems (macOS, Linux, Windows).
  * Consolidated Chrome validation - single source of truth for all Chrome-related operations.
  */
@@ -52,11 +52,11 @@ export class PuppeteerConfigManager {
     switch (this.currentOS) {
       case "darwin": // macOS
         return [
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
           "/Applications/Chromium.app/Contents/MacOS/Chromium",
-          "/usr/local/bin/chromium",
-          "/usr/local/bin/google-chrome",
           "/opt/homebrew/bin/chromium",
+          "/usr/local/bin/chromium",
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "/usr/local/bin/google-chrome",
           "/opt/homebrew/bin/google-chrome",
         ];
 
@@ -78,9 +78,12 @@ export class PuppeteerConfigManager {
           "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
           "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
           "C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe",
-          process.env.LOCALAPPDATA + "\\Google\\Chrome\\Application\\chrome.exe",
-          process.env.PROGRAMFILES + "\\Google\\Chrome\\Application\\chrome.exe",
-          process.env["PROGRAMFILES(X86)"] + "\\Google\\Chrome\\Application\\chrome.exe",
+          process.env.LOCALAPPDATA +
+            "\\Google\\Chrome\\Application\\chrome.exe",
+          process.env.PROGRAMFILES +
+            "\\Google\\Chrome\\Application\\chrome.exe",
+          process.env["PROGRAMFILES(X86)"] +
+            "\\Google\\Chrome\\Application\\chrome.exe",
         ].filter(Boolean);
 
       default:
@@ -101,13 +104,17 @@ export class PuppeteerConfigManager {
 
     // If no path provided, try to find one
     if (!chromePath) {
-      logs.push("No Chrome path provided, attempting to find Chrome installation...");
+      logs.push(
+        "No Chrome path provided, attempting to find Chrome installation..."
+      );
       const foundPath = this.findChromePath();
       if (!foundPath) {
         result.error = "No Chrome installation found in default locations";
         result.alternativePaths = this.getDefaultChromePaths();
         logs.push("❌ No valid Chrome installation found");
-        logs.push("💡 Please install Google Chrome or set CHROME_PATH environment variable");
+        logs.push(
+          "💡 Please install Google Chrome or set CHROME_PATH environment variable"
+        );
         return result;
       }
       chromePath = foundPath;
@@ -117,14 +124,14 @@ export class PuppeteerConfigManager {
       // Check if file exists
       if (!fs.existsSync(chromePath)) {
         result.error = `Chrome executable not found at: ${chromePath}`;
-        result.alternativePaths = this.getDefaultChromePaths().filter(path => 
+        result.alternativePaths = this.getDefaultChromePaths().filter((path) =>
           fs.existsSync(path)
         );
         logs.push(`❌ File not found: ${chromePath}`);
-        
+
         if (result.alternativePaths.length > 0) {
           logs.push("💡 Found alternative Chrome installations:");
-          result.alternativePaths.forEach(altPath => {
+          result.alternativePaths.forEach((altPath) => {
             logs.push(`   ✅ ${altPath}`);
           });
         }
@@ -137,12 +144,12 @@ export class PuppeteerConfigManager {
         result.isValid = true;
         result.path = chromePath;
         logs.push(`✅ Chrome validation successful: ${chromePath}`);
-        
+
         // Log additional info about the Chrome installation
         const stats = fs.statSync(chromePath);
         logs.push(`📄 File size: ${Math.round(stats.size / 1024 / 1024)}MB`);
         logs.push(`📅 Modified: ${stats.mtime.toISOString()}`);
-        
+
         return result;
       } catch (accessError) {
         result.error = `Chrome executable is not accessible or not executable: ${chromePath}`;
@@ -190,7 +197,7 @@ export class PuppeteerConfigManager {
 
     // Try default paths for the current OS
     const defaultPaths = this.getDefaultChromePaths();
-    
+
     for (const chromePath of defaultPaths) {
       const result = this.validateChrome(chromePath);
       if (result.isValid) {
@@ -238,7 +245,7 @@ export class PuppeteerConfigManager {
           "--disable-renderer-backgrounding",
           "--disable-backgrounding-occluded-windows",
           "--no-zygote", // Remove this for macOS as it can cause issues
-        ].filter(arg => arg !== "--no-zygote");
+        ].filter((arg) => arg !== "--no-zygote");
 
       case "linux":
         return [
@@ -287,20 +294,20 @@ export class PuppeteerConfigManager {
    */
   public cleanupBrowserSession(sessionPath: string): boolean {
     try {
-      const lockFiles = [
-        "SingletonLock",
-        "SingletonSocket", 
-        "SingletonCookie",
-      ];
+      const lockFiles = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
 
       let cleaned = false;
-      
+
       // Check session directories
       if (fs.existsSync(sessionPath)) {
-        const sessionDirs = fs.readdirSync(sessionPath).filter(dir => 
-          dir.startsWith('session-') && fs.statSync(`${sessionPath}/${dir}`).isDirectory()
-        );
-        
+        const sessionDirs = fs
+          .readdirSync(sessionPath)
+          .filter(
+            (dir) =>
+              dir.startsWith("session-") &&
+              fs.statSync(`${sessionPath}/${dir}`).isDirectory()
+          );
+
         for (const sessionDir of sessionDirs) {
           for (const lockFile of lockFiles) {
             // Check in Default directory
@@ -310,7 +317,7 @@ export class PuppeteerConfigManager {
               botLogger.info(`Removed lock file: ${defaultLockPath}`);
               cleaned = true;
             }
-            
+
             // Check in session root
             const rootLockPath = `${sessionPath}/${sessionDir}/${lockFile}`;
             if (fs.existsSync(rootLockPath)) {
@@ -355,7 +362,9 @@ export class PuppeteerConfigManager {
     if (chromePath) {
       config.executablePath = chromePath;
     } else {
-      botLogger.warn("Using system default Chrome (may cause issues if not installed)");
+      botLogger.warn(
+        "Using system default Chrome (may cause issues if not installed)"
+      );
     }
 
     // Only log configuration details in development or when debugging
@@ -364,7 +373,7 @@ export class PuppeteerConfigManager {
       botLogger.info(`  - Chrome path: ${chromePath || "system default"}`);
       botLogger.info(`  - Headless: ${headless}`);
       botLogger.info(`  - Args count: ${config.args.length}`);
-      
+
       if (process.env.NODE_ENV === "development") {
         botLogger.info(`  - Full args: ${config.args.join(" ")}`);
       }
@@ -390,7 +399,9 @@ export class PuppeteerConfigManager {
       platform: this.currentOS,
       arch: os.arch(),
       nodeVersion: process.version,
-      availableMemory: `${Math.round(freeMem / 1024 / 1024)}MB free / ${Math.round(totalMem / 1024 / 1024)}MB total`,
+      availableMemory: `${Math.round(
+        freeMem / 1024 / 1024
+      )}MB free / ${Math.round(totalMem / 1024 / 1024)}MB total`,
       chromePath: this.findChromePath(),
     };
   }
@@ -410,7 +421,9 @@ export class PuppeteerConfigManager {
     const chromePath = this.findChromePath();
     if (!chromePath) {
       issues.push("No valid Chrome installation found");
-      recommendations.push("Install Google Chrome or set CHROME_PATH environment variable");
+      recommendations.push(
+        "Install Google Chrome or set CHROME_PATH environment variable"
+      );
     }
 
     // Check memory
@@ -418,7 +431,9 @@ export class PuppeteerConfigManager {
     const freeMemMB = Math.round(freeMem / 1024 / 1024);
     if (freeMemMB < 512) {
       issues.push(`Low available memory: ${freeMemMB}MB`);
-      recommendations.push("Ensure at least 512MB of free memory for stable operation");
+      recommendations.push(
+        "Ensure at least 512MB of free memory for stable operation"
+      );
     }
 
     // Check disk space (where temp files are stored)
@@ -435,7 +450,9 @@ export class PuppeteerConfigManager {
     if (this.currentOS === "linux") {
       // Check for display server (important for Linux servers)
       if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
-        recommendations.push("Consider setting up a virtual display for headless operation");
+        recommendations.push(
+          "Consider setting up a virtual display for headless operation"
+        );
       }
     }
 

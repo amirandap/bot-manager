@@ -11,6 +11,12 @@ export const METRICS: Record<string, MetricDefinition> = {
     type: 'meter',
     id: 'whatsapp/connections'
   },
+  WHATSAPP_STATUS: {
+    name: 'WhatsApp Status',
+    type: 'metric',
+    id: 'whatsapp/status',
+    unit: 'enum'
+  },
   QR_CODES: {
     name: 'QR Codes Generated',
     type: 'counter',

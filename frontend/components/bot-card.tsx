@@ -70,7 +70,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
       }
     } catch (error) {
       console.error("PM2 metrics failed, trying proxy fallback:", error);
-      
+
       // 📦 FALLBACK: Use legacy proxy API if PM2 metrics fail
       try {
         const fallbackResponse = await fetch(api.proxy.getBotStatus(bot.id), {

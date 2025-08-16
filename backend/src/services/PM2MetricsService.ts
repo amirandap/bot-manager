@@ -11,11 +11,11 @@ export interface PM2ProcessMetrics {
   pid?: number;
   uptime?: number;
   restarts?: number;
-  
+
   // Resource usage
   cpu?: number;
   memory?: number; // in MB
-  
+
   // Advanced metrics
   activeHandles?: number;
   activeRequests?: number;
@@ -24,12 +24,12 @@ export interface PM2ProcessMetrics {
   heapSize?: number;
   usedHeapSize?: number;
   errorCount?: number;
-  
+
   // HTTP metrics (if available)
   httpRequests?: number;
   httpLatencyMean?: number;
   httpLatencyP95?: number;
-  
+
   // PM2 environment
   pm2Id?: number;
   createdAt?: string;
@@ -77,7 +77,9 @@ export class PM2MetricsService {
   /**
    * Get comprehensive PM2 metrics for a specific process
    */
-  public async getProcessMetrics(processName: string): Promise<PM2ProcessMetrics | null> {
+  public async getProcessMetrics(
+    processName: string
+  ): Promise<PM2ProcessMetrics | null> {
     try {
       const basicMetrics = await this.getBasicProcessMetrics(processName);
       if (!basicMetrics) {
@@ -85,10 +87,10 @@ export class PM2MetricsService {
       }
 
       const codeMetrics = await this.getCodeMetrics(processName);
-      
+
       return {
         ...basicMetrics,
-        ...codeMetrics
+        ...codeMetrics,
       };
     } catch (error) {
       console.error(`❌ Failed to get PM2 metrics for ${processName}:`, error);
@@ -99,7 +101,9 @@ export class PM2MetricsService {
   /**
    * Get basic process metrics using pm2.describe()
    */
-  private async getBasicProcessMetrics(processName: string): Promise<PM2ProcessMetrics | null> {
+  private async getBasicProcessMetrics(
+    processName: string
+  ): Promise<PM2ProcessMetrics | null> {
     return new Promise((resolve) => {
       pm2.connect((err) => {
         if (err) {
@@ -111,7 +115,11 @@ export class PM2MetricsService {
         pm2.describe(processName, (describeErr, processDescription) => {
           pm2.disconnect();
 
-          if (describeErr || !processDescription || processDescription.length === 0) {
+          if (
+            describeErr ||
+            !processDescription ||
+            processDescription.length === 0
+          ) {
             console.log(`ℹ️ PM2 process ${processName} not found`);
             resolve(null);
             return;
@@ -125,17 +133,23 @@ export class PM2MetricsService {
             name: pm2Env?.name || processName,
             status: this.mapPM2Status(pm2Env?.status || "unknown"),
             pid: proc?.pid,
-            uptime: pm2Env?.pm_uptime ? Date.now() - pm2Env.pm_uptime : undefined,
+            uptime: pm2Env?.pm_uptime
+              ? Date.now() - pm2Env.pm_uptime
+              : undefined,
             restarts: pm2Env?.restart_time || 0,
             cpu: monit?.cpu,
-            memory: monit?.memory ? Math.round(monit.memory / 1024 / 1024) : undefined,
+            memory: monit?.memory
+              ? Math.round(monit.memory / 1024 / 1024)
+              : undefined,
             pm2Id: pm2Env?.pm_id,
-            createdAt: pm2Env?.created_at ? new Date(pm2Env.created_at).toISOString() : undefined,
+            createdAt: pm2Env?.created_at
+              ? new Date(pm2Env.created_at).toISOString()
+              : undefined,
             nodeVersion: pm2Env?.node_version,
             execPath: pm2Env?.pm_exec_path,
             logPath: pm2Env?.pm_out_log_path,
             errorLogPath: pm2Env?.pm_err_log_path,
-            outLogPath: pm2Env?.pm_out_log_path
+            outLogPath: pm2Env?.pm_out_log_path,
           };
 
           resolve(metrics);
@@ -147,18 +161,20 @@ export class PM2MetricsService {
   /**
    * Get code metrics (heap, event loop, etc.) using pm2 jlist
    */
-  private async getCodeMetrics(processName: string): Promise<Partial<PM2ProcessMetrics>> {
+  private async getCodeMetrics(
+    processName: string
+  ): Promise<Partial<PM2ProcessMetrics>> {
     try {
       const { stdout } = await execAsync("pm2 jlist");
       const processes = JSON.parse(stdout);
-      
+
       const process = processes.find((p: any) => p.name === processName);
       if (!process) {
         return {};
       }
 
       const axm = process.axm_monitor || {};
-      
+
       return {
         activeHandles: this.parseMetricValue(axm["Active handles"]),
         activeRequests: this.parseMetricValue(axm["Active requests"]),
@@ -169,7 +185,7 @@ export class PM2MetricsService {
         errorCount: this.parseMetricValue(axm["Error Count"]),
         httpRequests: this.parseMetricValue(axm["HTTP"]),
         httpLatencyMean: this.parseMetricValue(axm["HTTP Mean Latency"]),
-        httpLatencyP95: this.parseMetricValue(axm["HTTP P95 Latency"])
+        httpLatencyP95: this.parseMetricValue(axm["HTTP P95 Latency"]),
       };
     } catch (error) {
       console.warn(`⚠️ Failed to get code metrics for ${processName}:`, error);
@@ -180,18 +196,25 @@ export class PM2MetricsService {
   /**
    * Try to get custom bot metrics via PM2 triggers (if implemented)
    */
-  public async getCustomBotMetrics(processName: string): Promise<PM2CustomMetrics> {
+  public async getCustomBotMetrics(
+    processName: string
+  ): Promise<PM2CustomMetrics> {
     try {
       // Try to get custom metrics via PM2 trigger
-      const { stdout } = await execAsync(`pm2 trigger ${processName} get_all_status`);
-      
+      const { stdout } = await execAsync(
+        `pm2 trigger ${processName} get_all_status`
+      );
+
       if (stdout && stdout.trim()) {
         // Parse the response if it's JSON
         try {
           const customMetrics = JSON.parse(stdout);
           return { componentStatus: customMetrics };
         } catch (parseError) {
-          console.warn(`⚠️ Failed to parse custom metrics response:`, parseError);
+          console.warn(
+            `⚠️ Failed to parse custom metrics response:`,
+            parseError
+          );
         }
       }
     } catch (error) {
@@ -209,16 +232,16 @@ export class PM2MetricsService {
     try {
       const { stdout } = await execAsync("pm2 jlist");
       const processes = JSON.parse(stdout);
-      
+
       const metrics: PM2ProcessMetrics[] = [];
-      
+
       for (const proc of processes) {
         const processMetrics = await this.getProcessMetrics(proc.name);
         if (processMetrics) {
           metrics.push(processMetrics);
         }
       }
-      
+
       return metrics;
     } catch (error) {
       console.error(`❌ Failed to get all PM2 processes metrics:`, error);
@@ -301,7 +324,9 @@ export class PM2MetricsService {
   /**
    * Map PM2 status strings to our standard status
    */
-  private mapPM2Status(pm2Status: string): "online" | "stopped" | "errored" | "launching" | "unknown" {
+  private mapPM2Status(
+    pm2Status: string
+  ): "online" | "stopped" | "errored" | "launching" | "unknown" {
     switch (pm2Status) {
       case "online":
         return "online";
@@ -319,7 +344,10 @@ export class PM2MetricsService {
   /**
    * Parse metric values from PM2 monitor data
    */
-  private parseMetricValue(value: any, isPercentage: boolean = false): number | undefined {
+  private parseMetricValue(
+    value: any,
+    isPercentage: boolean = false
+  ): number | undefined {
     if (value === undefined || value === null) {
       return undefined;
     }
@@ -330,10 +358,11 @@ export class PM2MetricsService {
 
     if (typeof value === "string") {
       // Remove units and parse
-      const cleaned = value.toString()
+      const cleaned = value
+        .toString()
         .replace(/[^\d.-]/g, "")
         .trim();
-      
+
       const parsed = parseFloat(cleaned);
       return isNaN(parsed) ? undefined : parsed;
     }
