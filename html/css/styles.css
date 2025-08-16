@@ -1,0 +1,503 @@
+/* =============================================================================
+ * BOT MANAGER STYLES
+ * Conjunto de estilos para el panel de gestión de bots
+ * =============================================================================*/
+
+/* -----------------------------------------------------------------------------
+ * VARIABLES Y TEMAS
+ * -----------------------------------------------------------------------------*/
+:root {
+  /* Colores base - Modo oscuro */
+  --bg: #0b0c0f;
+  --panel: #111318;
+  --muted: #1b1f27;
+  --border: #222632;
+  --fg: #e7eaf0;
+  --fg-dim: #aab1bf;
+  
+  /* Colores semánticos */
+  --ok: #1f9d61;
+  --warn: #d39b11;
+  --bad: #e14d5a;
+  
+  /* Espaciado */
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-xxl: 24px;
+  
+  /* Radios */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  
+  /* Tipografía */
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-md: 12px;
+  --font-size-lg: 13px;
+  
+  /* Sombras */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.15);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.25);
+  --shadow-lg: 0 6px 24px rgba(0,0,0,.35);
+}
+
+/* Tema claro */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7fb;
+    --panel: #ffffff;
+    --muted: #f0f2f7;
+    --border: #e3e7f0;
+    --fg: #0f1222;
+    --fg-dim: #5a6376;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * RESET Y ESTILOS BASE
+ * -----------------------------------------------------------------------------*/
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--font-size-lg)/1.35 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Helvetica, Arial, sans-serif;
+}
+
+/* -----------------------------------------------------------------------------
+ * LAYOUT Y CONTENEDORES
+ * -----------------------------------------------------------------------------*/
+.wrap {
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  padding: var(--space-xxl);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* Tarjeta de bot */
+.card {
+  width: 320px;
+  max-width: 92vw;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  position: relative;
+}
+
+/* -----------------------------------------------------------------------------
+ * ELEMENTOS FLEXIBLES Y ESPACIADO
+ * -----------------------------------------------------------------------------*/
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.space {
+  justify-content: space-between;
+}
+
+/* Espaciados */
+.gap6 {
+  gap: var(--space-sm);
+}
+
+.gap8 {
+  gap: var(--space-md);
+}
+
+.gap10 {
+  gap: 10px;
+}
+
+.p12 {
+  padding: var(--space-lg);
+}
+
+.px12 {
+  padding-inline: var(--space-lg);
+}
+
+.py8 {
+  padding-block: var(--space-md);
+}
+
+/* Sección con borde superior */
+.section {
+  border-top: 1px dashed var(--border);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+}
+
+/* -----------------------------------------------------------------------------
+ * TIPOGRAFÍA Y UTILIDADES DE TEXTO
+ * -----------------------------------------------------------------------------*/
+.muted {
+  color: var(--fg-dim);
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bot-number {
+  font-size: var(--font-size-sm);
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-pushname {
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
+  font-size: var(--font-size-sm);
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 48%;
+  text-align: right;
+}
+
+/* -----------------------------------------------------------------------------
+ * INDICADORES Y BARRAS DE PROGRESO
+ * -----------------------------------------------------------------------------*/
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Barras de progreso */
+.bar {
+  height: 6px;
+  width: 110px;
+  background: var(--muted);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.bar.sm {
+  width: 120px;
+  height: 6px;
+}
+
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+}
+
+.bar.ok > i {
+  background: var(--ok);
+}
+
+.bar.warn > i {
+  background: var(--warn);
+}
+
+.bar.bad > i {
+  background: var(--bad);
+}
+
+/* -----------------------------------------------------------------------------
+ * BADGES Y ETIQUETAS
+ * -----------------------------------------------------------------------------*/
+.badge {
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+
+.badge.ok {
+  background: var(--ok);
+  color: #fff;
+}
+
+.badge.warn {
+  background: var(--warn);
+  color: #000;
+}
+
+.badge.bad {
+  background: var(--bad);
+  color: #fff;
+}
+
+.pill {
+  font-size: var(--font-size-xs);
+  padding: 3px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--muted);
+  color: var(--fg-dim);
+}
+
+/* -----------------------------------------------------------------------------
+ * KPI Y MÉTRICAS
+ * -----------------------------------------------------------------------------*/
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.kpi svg {
+  width: 14px;
+  height: 14px;
+  opacity: .7;
+}
+
+.kpi b {
+  font-weight: 700;
+  font-size: var(--font-size-md);
+}
+
+.kpi small {
+  color: var(--fg-dim);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+/* Chrome metrics */
+.metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.metric .label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--fg-dim);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+}
+
+.metric .value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.metric svg {
+  width: 14px;
+  height: 14px;
+  opacity: .7;
+}
+
+/* -----------------------------------------------------------------------------
+ * ESTADOS Y ALERTAS
+ * -----------------------------------------------------------------------------*/
+.state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.state svg {
+  width: 14px;
+  height: 14px;
+}
+
+.state span {
+  font-size: var(--font-size-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alert {
+  margin-top: var(--space-md);
+  color: var(--bad);
+  font-size: var(--font-size-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.alert svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.footer {
+  margin-top: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+/* -----------------------------------------------------------------------------
+ * ACCIONES Y BOTONES
+ * -----------------------------------------------------------------------------*/
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-dim);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.iconbtn:hover {
+  background: var(--muted);
+  color: var(--fg);
+}
+
+.iconbtn.danger:hover {
+  background: rgba(225, 77, 90, .12);
+  color: var(--bad);
+  border-color: rgba(225, 77, 90, .4);
+}
+
+.iconbtn.warn:hover {
+  background: rgba(211, 155, 17, .12);
+  color: var(--warn);
+  border-color: rgba(211, 155, 17, .4);
+}
+
+.iconbtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.iconbtn.refresh:hover svg {
+  animation: spin 1s ease;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * ESTADOS DE ATENCIÓN Y ANIMACIONES
+ * -----------------------------------------------------------------------------*/
+.card.attn-bad::before,
+.card.attn-warn::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+}
+
+.card.attn-bad::before {
+  background: var(--bad);
+}
+
+.card.attn-warn::before {
+  background: var(--warn);
+}
+
+.card.attn-bad {
+  box-shadow: 0 0 0 2px rgba(225, 77, 90, .35), var(--shadow-lg);
+}
+
+.card.attn-warn {
+  box-shadow: 0 0 0 2px rgba(211, 155, 17, .35), var(--shadow-lg);
+}
+
+@keyframes attnPulse {
+  0%, 100% {
+    filter: none;
+  }
+  50% {
+    filter: brightness(1.04);
+  }
+}
+
+.card.attn-bad,
+.card.attn-warn {
+  animation: attnPulse 2s ease-in-out infinite;
+}
+
+/* -----------------------------------------------------------------------------
+ * ELEMENTOS ESPECIALES
+ * -----------------------------------------------------------------------------*/
+.qr {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: repeating-linear-gradient(45deg, var(--muted) 0 12px, transparent 12px 24px),
+              repeating-linear-gradient(-45deg, var(--muted) 0 12px, transparent 12px 24px);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  color: var(--fg-dim);
+  font-weight: 700;
+}
+
+.qr small {
+  font-weight: 600;
+  color: var(--fg-dim);
+}

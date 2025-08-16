@@ -1,10 +1,8 @@
-
 import { logger } from "../services/LoggerService";
 /**
  * Centralized middleware for common bot operations
  * Reduces code duplication across routes
  */
-
 
 import { Request, Response, NextFunction } from "express";
 import { getClient } from "../config/clientExporter";
@@ -73,20 +71,20 @@ export function logRequest(
   const { method, originalUrl } = req;
   const requestId = req.bot?.requestId;
 
-  logger.info(
-    `${method} ${originalUrl} - Request ${requestId} started`
-  );
+  logger.info(`${method} ${originalUrl} - Request ${requestId} started`);
 
   // Log response
   const originalSend = res.json;
   res.json = function (body: any) {
     const duration = Date.now() - (req.bot?.startTime || 0);
     const success = body?.success !== false;
-    const logMethod = success ? logger.success : logger.error;
+    const message = `${method} ${originalUrl} - Request ${requestId} completed in ${duration}ms`;
 
-    logMethod(
-      `${method} ${originalUrl} - Request ${requestId} completed in ${duration}ms`
-    );
+    if (success) {
+      logger.success(message);
+    } else {
+      logger.error(message);
+    }
 
     return originalSend.call(this, body);
   };

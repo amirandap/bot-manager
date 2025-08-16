@@ -43,38 +43,49 @@ export function useQRCode(
   const [lastQrTimestamp, setLastQrTimestamp] = useState<string | null>(null);
 
   // Calculate if the bot is authenticated (QR was successfully scanned)
-  const isAuthenticated = qrStatus?.whatsappStatus === "READY" || 
-                          qrStatus?.whatsappStatus === "AUTHENTICATING" ||
-                          qrStatus?.botStatus === "ready";
+  const isAuthenticated =
+    qrStatus?.whatsappStatus === "READY" ||
+    qrStatus?.whatsappStatus === "AUTHENTICATING" ||
+    qrStatus?.botStatus === "ready";
 
   // Calculate time remaining until QR expiry
-  const calculateTimeRemaining = useCallback((status: QRCodeStatus | null): number => {
-    if (!status?.qrCode.available || status.qrCode.expired || !status.qrCode.createdAt) {
-      return 0;
-    }
+  const calculateTimeRemaining = useCallback(
+    (status: QRCodeStatus | null): number => {
+      if (
+        !status?.qrCode.available ||
+        status.qrCode.expired ||
+        !status.qrCode.createdAt
+      ) {
+        return 0;
+      }
 
-    const createdAt = new Date(status.qrCode.createdAt).getTime();
-    const now = Date.now();
-    const expiryTime = createdAt + (2 * 60 * 1000); // 2 minutes expiry
-    const remaining = Math.max(0, expiryTime - now);
+      const createdAt = new Date(status.qrCode.createdAt).getTime();
+      const now = Date.now();
+      const expiryTime = createdAt + 2 * 60 * 1000; // 2 minutes expiry
+      const remaining = Math.max(0, expiryTime - now);
 
-    return remaining;
-  }, []);
+      return remaining;
+    },
+    []
+  );
 
   // Check if we need to fetch a new QR image based on timestamp changes
-  const shouldRefreshImage = useCallback((newStatus: QRCodeStatus | null): boolean => {
-    if (!newStatus?.qrCode.available || newStatus.qrCode.expired) {
+  const shouldRefreshImage = useCallback(
+    (newStatus: QRCodeStatus | null): boolean => {
+      if (!newStatus?.qrCode.available || newStatus.qrCode.expired) {
+        return false;
+      }
+
+      // If this is the first QR or timestamp changed, we need new image
+      const newTimestamp = newStatus.qrCode.createdAt;
+      if (!lastQrTimestamp || lastQrTimestamp !== newTimestamp) {
+        return true;
+      }
+
       return false;
-    }
-
-    // If this is the first QR or timestamp changed, we need new image
-    const newTimestamp = newStatus.qrCode.createdAt;
-    if (!lastQrTimestamp || lastQrTimestamp !== newTimestamp) {
-      return true;
-    }
-
-    return false;
-  }, [lastQrTimestamp]);
+    },
+    [lastQrTimestamp]
+  );
 
   const fetchQRImage = useCallback(async () => {
     try {
@@ -90,12 +101,12 @@ export function useQRCode(
 
       const blob = await response.blob();
       const imageUrl = URL.createObjectURL(blob);
-      
+
       // Clean up previous image URL to prevent memory leaks
       if (qrImageUrl) {
         URL.revokeObjectURL(qrImageUrl);
       }
-      
+
       setQrImageUrl(imageUrl);
     } catch (err) {
       console.error("Error fetching QR image:", err);
@@ -121,7 +132,7 @@ export function useQRCode(
 
       // Check if we need to refresh the QR image
       if (shouldRefreshImage(statusData)) {
-        console.log('🔄 QR timestamp changed, fetching new image...');
+        console.log("🔄 QR timestamp changed, fetching new image...");
         await fetchQRImage();
         setLastQrTimestamp(statusData.qrCode.createdAt || null);
       } else if (!statusData.qrCode.available || statusData.qrCode.expired) {
@@ -139,7 +150,13 @@ export function useQRCode(
       console.error("Error fetching QR status:", err);
       return null;
     }
-  }, [botId, calculateTimeRemaining, shouldRefreshImage, fetchQRImage, qrImageUrl]);
+  }, [
+    botId,
+    calculateTimeRemaining,
+    shouldRefreshImage,
+    fetchQRImage,
+    qrImageUrl,
+  ]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -159,7 +176,7 @@ export function useQRCode(
 
     // Adjust refresh interval based on bot state
     let adjustedInterval = autoRefreshInterval;
-    
+
     if (qrStatus?.qrCode.available && !qrStatus.qrCode.expired) {
       // If QR is available, check more frequently (every 3 seconds) for authentication
       adjustedInterval = Math.min(autoRefreshInterval, 3000);
@@ -169,10 +186,17 @@ export function useQRCode(
     }
 
     console.log(`🔄 Starting auto-refresh with ${adjustedInterval}ms interval`);
-    
+
     const id = setInterval(refresh, adjustedInterval);
     setIntervalId(id);
-  }, [refresh, autoRefreshInterval, intervalId, qrStatus?.qrCode.available, qrStatus?.qrCode.expired, isAuthenticated]);
+  }, [
+    refresh,
+    autoRefreshInterval,
+    intervalId,
+    qrStatus?.qrCode.available,
+    qrStatus?.qrCode.expired,
+    isAuthenticated,
+  ]);
 
   const stopAutoRefresh = useCallback(() => {
     if (intervalId) {
@@ -196,7 +220,7 @@ export function useQRCode(
     const timeInterval = setInterval(() => {
       const remaining = calculateTimeRemaining(qrStatus);
       setTimeRemaining(remaining);
-      
+
       // If time expired, refresh status to get updated state
       if (remaining <= 0) {
         refresh();
@@ -212,7 +236,13 @@ export function useQRCode(
       // Restart with potentially adjusted interval
       startAutoRefresh();
     }
-  }, [qrStatus?.qrCode.available, qrStatus?.qrCode.expired, isAuthenticated, intervalId, startAutoRefresh]);
+  }, [
+    qrStatus?.qrCode.available,
+    qrStatus?.qrCode.expired,
+    isAuthenticated,
+    intervalId,
+    startAutoRefresh,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {

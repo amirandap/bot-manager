@@ -4,84 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Bot Monitor – Card Compacta</title>
-<style>
-  :root{
-    --bg:#0b0c0f; --panel:#111318; --muted:#1b1f27; --border:#222632;
-    --fg:#e7eaf0; --fg-dim:#aab1bf;
-    --ok:#1f9d61; --warn:#d39b11; --bad:#e14d5a;
-  }
-  @media (prefers-color-scheme: light){
-    :root{ --bg:#f6f7fb; --panel:#ffffff; --muted:#f0f2f7; --border:#e3e7f0; --fg:#0f1222; --fg-dim:#5a6376; }
-  }
-  *{ box-sizing:border-box }
-  body{ margin:0; background:var(--bg); color:var(--fg); font:13px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Helvetica,Arial,sans-serif; }
-  .wrap{ min-height:100svh; display:grid; place-content:center; padding:24px }
-  .card{
-    width:320px; max-width:92vw; background:var(--panel); border:1px solid var(--border);
-  border-radius:16px; box-shadow:0 4px 16px rgba(0,0,0,.25); overflow:hidden; position:relative;
-  }
-  .row{ display:flex; align-items:center }
-  .space{ justify-content:space-between }
-  .gap6{ gap:6px } .gap8{ gap:8px } .gap10{ gap:10px }
-  .p12{ padding:12px } .px12{ padding-inline:12px } .py8{ padding-block:8px }
-  .muted{ color:var(--fg-dim) } .mono{ font-variant-numeric:tabular-nums }
-  .title{ font-weight:700; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-  .dot{ width:8px; height:8px; border-radius:50% }
-  .badge{ font-size:10px; line-height:1; padding:4px 6px; border-radius:999px; font-weight:700; }
-  .badge.ok{ background:var(--ok); color:#fff }
-  .badge.warn{ background:var(--warn); color:#000 }
-  .badge.bad{ background:var(--bad); color:#fff }
-  .section{ border-top:1px dashed var(--border); margin-top:8px; padding-top:8px }
-  .kpi{ display:flex; align-items:center; gap:6px; min-width:0 }
-  .kpi svg{ width:14px; height:14px; opacity:.7 }
-  .kpi b{ font-weight:700; font-size:12px }
-  .kpi small{ color:var(--fg-dim); font-size:11px; white-space:nowrap }
-  .bar{ height:6px; width:110px; background:var(--muted); border-radius:999px; overflow:hidden }
-  .bar > i{ display:block; height:100%; background:var(--ok) }
-  .bar.ok > i{ background:var(--ok) }
-  .bar.warn > i{ background:var(--warn) }
-  .bar.bad > i{ background:var(--bad) }
-  .hint{ font-size:11px; color:var(--fg-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:48%; text-align:right }
-  .pill{ font-size:10px; padding:3px 6px; border-radius:999px; background:var(--muted); color:var(--fg-dim); }
-  .alert{ margin-top:8px; color:var(--bad); font-size:12px; display:flex; align-items:center; gap:6px }
-  .alert svg{ width:16px; height:16px; flex:0 0 16px }
-  .footer{ margin-top:6px; display:flex; align-items:center; justify-content:space-between; gap:8px }
-  .state{ display:flex; align-items:center; gap:6px; min-width:0 }
-  .state svg{ width:14px; height:14px }
-  .state span{ font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:16px; align-items:start }
-
-  /* Acciones de card */
-  .actions{ display:flex; align-items:center; gap:6px }
-  .iconbtn{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border:1px solid var(--border); background:transparent; color:var(--fg-dim); border-radius:8px; cursor:pointer }
-  .iconbtn:hover{ background:var(--muted); color:var(--fg) }
-  .iconbtn.danger:hover{ background:rgba(225,77,90,.12); color:var(--bad); border-color:rgba(225,77,90,.4) }
-  .iconbtn.warn:hover{ background:rgba(211,155,17,.12); color:var(--warn); border-color:rgba(211,155,17,.4) }
-  .iconbtn svg{ width:14px; height:14px }
-
-  /* Resaltado de atención */
-  .card.attn-bad::before, .card.attn-warn::before{ content:""; position:absolute; inset:auto 0 0 0; height:3px }
-  .card.attn-bad::before{ background:var(--bad) }
-  .card.attn-warn::before{ background:var(--warn) }
-  .card.attn-bad{ box-shadow:0 0 0 2px rgba(225,77,90,.35), 0 6px 18px rgba(0,0,0,.35) }
-  .card.attn-warn{ box-shadow:0 0 0 2px rgba(211,155,17,.35), 0 6px 18px rgba(0,0,0,.35) }
-  @keyframes attnPulse { 0%,100%{ filter:none } 50%{ filter:brightness(1.04) } }
-  .card.attn-bad, .card.attn-warn{ animation:attnPulse 2s ease-in-out infinite }
-
-  /* Placeholder QR */
-  .qr{ width:100%; aspect-ratio:1/1; background:repeating-linear-gradient(45deg, var(--muted) 0 12px, transparent 12px 24px),
-    repeating-linear-gradient(-45deg, var(--muted) 0 12px, transparent 12px 24px); border:1px dashed var(--border); border-radius:8px; display:grid; place-items:center; color:var(--fg-dim); font-weight:700 }
-  .qr small{ font-weight:600; color:var(--fg-dim) }
-
-  /* Chrome metrics */
-  .metrics{ display:flex; flex-direction:column; gap:6px; width:100% }
-  .metric{ display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0 }
-  .metric .label{ display:flex; align-items:center; gap:6px; color:var(--fg-dim); font-size:11px; min-width:0 }
-  .metric .value{ display:flex; align-items:center; gap:6px }
-  .bar.sm{ width:120px; height:6px }
-  .metric svg{ width:14px; height:14px; opacity:.7 }
-  .iconbtn.refresh:hover svg{ transform:rotate(90deg); transition:transform .2s ease }
-</style>
+<link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <div class="wrap">
@@ -93,13 +16,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--ok)"></span>
-            <div class="title" title="Bot A">Bot A</div>
+            <div class="bot-info">
+              <div class="title" title="Bot A">Bot A</div>
+              <div class="bot-number" title="+52 1 55 1234 5678">+52 1 55 1234 5678</div>
+              <div class="bot-pushname" title="Asistente Virtual">Asistente Virtual</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge ok">Online</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -131,7 +58,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>23</b>
                 <small>restarts</small>
               </div>
@@ -157,9 +84,29 @@
             </div>
             <div class="hint" title="Launching Chrome">Launching Chrome</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar"><i style="width:0%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <!-- cpu icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:8%"></i></div>
+                <span class="mono muted" style="font-size:11px">8%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <!-- memory icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:22%"></i></div>
+                <span class="mono muted" style="font-size:11px">220MB</span>
+              </div>
+            </div>
           </div>
           <div class="alert" role="alert">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v5" stroke-width="1.5"/><circle cx="12" cy="17" r="1" /><path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/></svg>
@@ -173,13 +120,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--warn)"></span>
-            <div class="title" title="Bot B">Bot B</div>
+            <div class="bot-info">
+              <div class="title" title="Bot B">Bot B</div>
+              <div class="bot-number" title="+52 1 55 8765 4321">+52 1 55 8765 4321</div>
+              <div class="bot-pushname" title="Bot Soporte">Bot Soporte</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge warn">Degraded</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -211,7 +162,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>3</b>
                 <small>restarts</small>
               </div>
@@ -237,9 +188,27 @@
             </div>
             <div class="hint" title="Reconnecting">Reconnecting</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar warn"><i style="width:25%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm warn"><i style="width:25%"></i></div>
+                <span class="mono muted" style="font-size:11px">25%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm warn"><i style="width:75%"></i></div>
+                <span class="mono muted" style="font-size:11px">750MB</span>
+              </div>
+            </div>
           </div>
           <div class="alert" role="alert" style="color:var(--warn)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v5" stroke-width="1.5"/><circle cx="12" cy="17" r="1" /><path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/></svg>
@@ -253,13 +222,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--border)"></span>
-            <div class="title" title="Bot C">Bot C</div>
+            <div class="bot-info">
+              <div class="title" title="Bot C">Bot C</div>
+              <div class="bot-number" title="+52 1 55 2468 1357">+52 1 55 2468 1357</div>
+              <div class="bot-pushname" title="Bot Ventas">Bot Ventas</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge bad">Offline</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -291,7 +264,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>8</b>
                 <small>restarts</small>
               </div>
@@ -317,9 +290,27 @@
             </div>
             <div class="hint" title="Process stopped">Proceso detenido</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar"><i style="width:0%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm"><i style="width:0%"></i></div>
+                <span class="mono muted" style="font-size:11px">0%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm"><i style="width:0%"></i></div>
+                <span class="mono muted" style="font-size:11px">0MB</span>
+              </div>
+            </div>
           </div>
           <div class="alert" role="alert">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v5" stroke-width="1.5"/><circle cx="12" cy="17" r="1" /><path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/></svg>
@@ -333,13 +324,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--warn)"></span>
-            <div class="title" title="Bot D">Bot D</div>
+            <div class="bot-info">
+              <div class="title" title="Bot D">Bot D</div>
+              <div class="bot-number" title="+52 1 55 9876 5432">+52 1 55 9876 5432</div>
+              <div class="bot-pushname" title="Bot Atención">Bot Atención</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge warn">Starting</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -371,7 +366,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>1</b>
                 <small>restarts</small>
               </div>
@@ -397,9 +392,27 @@
             </div>
             <div class="hint" title="Launching Chrome">Launching Chrome</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar"><i style="width:0%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm"><i style="width:0%"></i></div>
+                <span class="mono muted" style="font-size:11px">0%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:15%"></i></div>
+                <span class="mono muted" style="font-size:11px">150MB</span>
+              </div>
+            </div>
           </div>
         </div>
       </article>
@@ -409,13 +422,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--bad)"></span>
-            <div class="title" title="Bot E">Bot E</div>
+            <div class="bot-info">
+              <div class="title" title="Bot E">Bot E</div>
+              <div class="bot-number" title="+52 1 55 1357 2468">+52 1 55 1357 2468</div>
+              <div class="bot-pushname" title="Bot Marketing">Bot Marketing</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge bad">Error</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -447,7 +464,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>11</b>
                 <small>restarts</small>
               </div>
@@ -473,9 +490,27 @@
             </div>
             <div class="hint" title="Se requiere QR">QR requerido</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar"><i style="width:0%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:1%"></i></div>
+                <span class="mono muted" style="font-size:11px">1%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm bad"><i style="width:92%"></i></div>
+                <span class="mono muted" style="font-size:11px">920MB</span>
+              </div>
+            </div>
           </div>
           <div class="alert" role="alert">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v5" stroke-width="1.5"/><circle cx="12" cy="17" r="1" /><path d="M12 3l9 18H3L12 3z" stroke-width="1.2"/></svg>
@@ -489,13 +524,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--ok)"></span>
-            <div class="title" title="Bot F">Bot F</div>
+            <div class="bot-info">
+              <div class="title" title="Bot F">Bot F</div>
+              <div class="bot-number" title="+52 1 55 3698 1472">+52 1 55 3698 1472</div>
+              <div class="bot-pushname" title="Bot Reservas">Bot Reservas</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge ok">Idle</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -527,7 +566,7 @@
                 <small>uptime</small>
               </div>
               <div class="kpi" title="Reinicios del proceso" style="margin-top:6px;color:var(--bad)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
                 <b>0</b>
                 <small>restarts</small>
               </div>
@@ -553,9 +592,27 @@
             </div>
             <div class="hint" title="Idle">Idle</div>
           </div>
-          <div class="section row space">
-            <small class="muted">Chromium CPU</small>
-            <div class="bar ok"><i style="width:3%"></i></div>
+          <div class="section metrics">
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome CPU</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:3%"></i></div>
+                <span class="mono muted" style="font-size:11px">3%</span>
+              </div>
+            </div>
+            <div class="metric">
+              <div class="label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+                <small class="muted">Chrome Mem</small>
+              </div>
+              <div class="value">
+                <div class="bar sm ok"><i style="width:18%"></i></div>
+                <span class="mono muted" style="font-size:11px">180MB</span>
+              </div>
+            </div>
           </div>
         </div>
       </article>
@@ -564,13 +621,17 @@
         <header class="p12 row space gap8">
           <div class="row gap8" style="min-width:0">
             <span class="dot" style="background:var(--warn)"></span>
-            <div class="title" title="Bot G">Bot G</div>
+            <div class="bot-info">
+              <div class="title" title="Bot G">Bot G</div>
+              <div class="bot-number" title="+52 1 55 7531 9024">+52 1 55 7531 9024</div>
+              <div class="bot-pushname" title="Sin nombre">Sin nombre</div>
+            </div>
           </div>
           <div class="row gap6">
             <span class="badge warn">QR Required</span>
             <div class="actions">
-              <button class="iconbtn" title="Restart">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5" stroke-width="1.5"/><path d="M9 7a7 7 0 1 1-1.7 11" stroke-width="1.5"/></svg>
+              <button class="iconbtn refresh" title="Restart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 12a8 8 0 1 1-2.34-5.66" stroke-width="1.5"/><path d="M20 4v6h-6" stroke-width="1.5"/></svg>
               </button>
               <button class="iconbtn warn" title="Recreate">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-5M20 7v5M4 17h5M4 17v-5" stroke-width="1.5"/></svg>
@@ -581,7 +642,7 @@
             </div>
           </div>
         </header>
-        <div class="px12 py8">
+  <div class="px12 py8">
           <div class="qr" aria-label="Código QR para escanear" style="margin-bottom:10px">
             Escanea el QR
           </div>
@@ -591,6 +652,28 @@
               <span>QR listo para escanear</span>
             </div>
             <div class="hint" title="Esperando autenticación">Esperando QR</div>
+          </div>
+        </div>
+        <div class="section metrics">
+          <div class="metric">
+            <div class="label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="7" y="7" width="10" height="10" rx="2" stroke-width="1.5"/><path d="M3 10h2M3 14h2M19 10h2M19 14h2M10 3v2M14 3v2M10 19v2M14 19v2" stroke-width="1.5"/></svg>
+              <small class="muted">Chrome CPU</small>
+            </div>
+            <div class="value">
+              <div class="bar sm ok"><i style="width:1%"></i></div>
+              <span class="mono muted" style="font-size:11px">1%</span>
+            </div>
+          </div>
+          <div class="metric">
+            <div class="label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="10" rx="2" stroke-width="1.5"/><path d="M7 7v-2M11 7v-2M15 7v-2M19 7v-2M7 19v-2M11 19v-2M15 19v-2M19 19v-2" stroke-width="1.5"/></svg>
+              <small class="muted">Chrome Mem</small>
+            </div>
+            <div class="value">
+              <div class="bar sm ok"><i style="width:14%"></i></div>
+              <span class="mono muted" style="font-size:11px">140MB</span>
+            </div>
           </div>
         </div>
       </article>

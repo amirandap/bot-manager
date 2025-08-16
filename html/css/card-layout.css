@@ -1,0 +1,265 @@
+/* =============================================================================
+ * BOT CARD REDESIGN
+ * Basado en principios de diseño de dashboards operativos
+ * =============================================================================*/
+
+/* Estructura de la tarjeta */
+.card-redesign {
+  display: grid;
+  grid-template-areas: 
+    "header header"
+    "status metrics"
+    "details details"
+    "alerts alerts";
+  grid-template-columns: 1fr 1fr;
+  width: 320px;
+  max-width: 92vw;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Cabecera con información principal del bot */
+.card-header {
+  grid-area: header;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.card-title .title {
+  font-weight: 700;
+  font-size: calc(var(--font-size-lg) + 1px);
+}
+
+.card-status-badge {
+  margin-left: auto;
+}
+
+.bot-identity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.bot-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-dim);
+}
+
+.bot-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.bot-number {
+  font-size: var(--font-size-sm);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.bot-pushname {
+  font-size: var(--font-size-xs);
+  color: var(--fg-dim);
+}
+
+/* Área de métricas clave */
+.card-status {
+  grid-area: status;
+  padding: var(--space-lg);
+  border-right: 1px dashed var(--border);
+}
+
+.card-metrics {
+  grid-area: metrics;
+  padding: var(--space-lg);
+}
+
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--fg-dim);
+}
+
+.metric-value {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Área de barra de progreso */
+.progress-bar {
+  height: 5px;
+  width: 100%;
+  background: var(--muted);
+  border-radius: var(--radius-pill);
+  margin-top: 2px;
+}
+
+.progress-bar .fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.3s ease;
+}
+
+.progress-bar.ok .fill {
+  background: var(--ok);
+}
+
+.progress-bar.warn .fill {
+  background: var(--warn);
+}
+
+.progress-bar.bad .fill {
+  background: var(--bad);
+}
+
+/* Área de detalles operativos */
+.card-details {
+  grid-area: details;
+  padding: var(--space-lg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.detail-group {
+  flex: 1;
+  min-width: 120px;
+}
+
+.detail-title {
+  font-size: var(--font-size-xs);
+  color: var(--fg-dim);
+  margin-bottom: var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-content {
+  font-size: var(--font-size-md);
+}
+
+/* Área de alertas y mensajes */
+.card-alerts {
+  grid-area: alerts;
+  padding: var(--space-lg);
+  border-top: 1px solid var(--border);
+}
+
+.alert-message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background: rgba(225, 77, 90, 0.1);
+  color: var(--bad);
+}
+
+.alert-message.warning {
+  background: rgba(211, 155, 17, 0.1);
+  color: var(--warn);
+}
+
+.alert-message.info {
+  background: rgba(70, 130, 180, 0.1);
+  color: #4682b4;
+}
+
+/* Área de acciones */
+.card-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  justify-content: flex-end;
+}
+
+/* Estados de atención */
+.card-redesign.attn-bad {
+  box-shadow: 0 0 0 2px rgba(225, 77, 90, .35), var(--shadow-lg);
+}
+
+.card-redesign.attn-warn {
+  box-shadow: 0 0 0 2px rgba(211, 155, 17, .35), var(--shadow-lg);
+}
+
+.card-redesign.attn-bad::before,
+.card-redesign.attn-warn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.card-redesign.attn-bad::before {
+  background: var(--bad);
+}
+
+.card-redesign.attn-warn::before {
+  background: var(--warn);
+}
+
+@keyframes attnPulse {
+  0%, 100% {
+    filter: none;
+  }
+  50% {
+    filter: brightness(1.04);
+  }
+}
+
+.card-redesign.attn-bad,
+.card-redesign.attn-warn {
+  animation: attnPulse 2s ease-in-out infinite;
+}
+
+/* Indicador de QR */
+.qr-container {
+  width: 100%;
+  max-height: 160px;
+  aspect-ratio: 1/1;
+  background: repeating-linear-gradient(45deg, var(--muted) 0 12px, transparent 12px 24px),
+              repeating-linear-gradient(-45deg, var(--muted) 0 12px, transparent 12px 24px);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--space-md);
+}

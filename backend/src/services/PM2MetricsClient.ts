@@ -199,12 +199,12 @@ export class PM2MetricsClient {
     }
 
     const customMetrics: Record<string, any> = {};
-    
+
     // Convertir nombres de métricas a camelCase y extraer valores
-    Object.keys(axmMonitor).forEach(metricName => {
+    Object.keys(axmMonitor).forEach((metricName) => {
       const metric = axmMonitor[metricName];
       const value = metric?.value;
-      
+
       if (value !== undefined) {
         // Convertir nombre de métrica a camelCase
         const camelCaseName = this.convertToCamelCase(metricName);
@@ -220,7 +220,7 @@ export class PM2MetricsClient {
    */
   private convertToCamelCase(name: string): string {
     return name
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Remover caracteres especiales
+      .replace(/[^a-zA-Z0-9\s]/g, "") // Remover caracteres especiales
       .split(/\s+/) // Dividir por espacios
       .map((word, index) => {
         if (index === 0) {
@@ -228,6 +228,6 @@ export class PM2MetricsClient {
         }
         return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
       })
-      .join('');
+      .join("");
   }
 }

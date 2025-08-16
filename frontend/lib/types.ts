@@ -60,7 +60,7 @@ export interface BotStatus {
     restarts?: number;
     uptime?: number; // in seconds
     lastRestart?: string;
-    
+
     // Advanced PM2 metrics
     activeHandles?: number;
     activeRequests?: number;
@@ -70,7 +70,7 @@ export interface BotStatus {
     usedHeapSize?: string;
     errorCount?: number;
     httpRequests?: number;
-    
+
     // Bot-specific custom metrics (dynamic from PM2 axm_monitor)
     botStatus?: string;
     clientPhoneNumber?: string;
@@ -91,7 +91,7 @@ export interface BotStatus {
     logPath?: string;
     errorLogPath?: string;
     outLogPath?: string;
-    
+
     // Allow any additional dynamic metrics
     [key: string]: string | number | boolean | undefined;
   };

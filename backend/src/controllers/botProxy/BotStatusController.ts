@@ -192,11 +192,13 @@ export class BotStatusController {
       // Get bot status via PM2 metrics to include WhatsApp status
       let whatsappStatus: string | undefined;
       let botStatus: string | undefined;
-      
+
       try {
-        const botService = new (await import("../../services/botService")).BotService();
+        const botService = new (
+          await import("../../services/botService")
+        ).BotService();
         const pm2Status = await botService.getBotStatusViaMetrics(botId);
-        
+
         if (pm2Status?.pm2) {
           whatsappStatus = pm2Status.pm2.whatsappStatus;
           botStatus = pm2Status.pm2.status;
