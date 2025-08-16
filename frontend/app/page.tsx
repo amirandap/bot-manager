@@ -1,16 +1,25 @@
-import { Suspense } from "react"
-import BotDashboard from "@/components/bot-dashboard"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Suspense } from "react";
+import Link from "next/link";
+import BotDashboard from "@/components/bot-dashboard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Home() {
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Bot Management Dashboard</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Bot Management Dashboard</h1>
+        <Link
+          href="/beta"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+        >
+          🧪 Ver Beta (Nuevas Tarjetas)
+        </Link>
+      </div>
       <Suspense fallback={<DashboardSkeleton />}>
         <BotDashboard />
       </Suspense>
     </main>
-  )
+  );
 }
 
 function DashboardSkeleton() {
@@ -27,6 +36,5 @@ function DashboardSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
-
