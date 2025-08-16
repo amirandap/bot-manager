@@ -1,15 +1,14 @@
 
-import { botLogger } from "../utils";
+import { logger } from "../services/LoggerService";
 import { MessageErrorHandlerService } from "../services";
-import { separateRecipients } from "../utils/recipientFormattingUtils";
 import { RequestValidationService } from "../services/RequestValidationService";
+import { RecipientProcessorService } from "../services/RecipientProcessorService";
 import { Request, Response } from "express";
 import { getClient } from "../config/clientExporter";
 import {
   sendToPhones,
   sendToGroups,
   sendMessageWithErrorHandling,
-  sendImageFromUrl
 } from "./MessageHandlerController";
 import {
   sendImageMessage,
@@ -18,10 +17,8 @@ import {
   sendVideoMessage,
 } from "../services/MediaMessagingService";
 import {
-  MessageType,
   SendResponse,
   MediaSendResponse,
-  BaseMessageRequestBody,
 } from "../types/types";
 
 // Initialize error handler service
@@ -59,23 +56,6 @@ export class MessageController {
   }
 
   /**
-   * Extract recipients from request body - consolidated logic
-   */
-  private static extractRecipients(body: BaseMessageRequestBody): string[] {
-    const { phoneNumber, to, group_id } = body;
-    
-    if (phoneNumber) {
-      return Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber];
-    } else if (to) {
-      return Array.isArray(to) ? to : [to];
-    } else if (group_id) {
-      return Array.isArray(group_id) ? group_id : [group_id];
-    }
-    
-    return [];
-  }
-
-  /**
    * Unified response formatting - uses RequestValidationService methods
    */
   private static formatResponse(
@@ -109,9 +89,8 @@ export class MessageController {
     endpoint: string,
     requestId: string
   ): Promise<void> {
-    botLogger.error(`❌ [BOT] Request ${requestId} failed:`);
+    logger.error(`❌ [BOT] Request ${requestId} failed:`);
 
-    const client = getClient();
     const errorResult = await messageErrorHandler.handleMessageError(
       error as Error,
       endpoint,
@@ -147,10 +126,10 @@ export class MessageController {
     if (!recipientValidation.isValid) return;
     const { message } = validation.body!;
     const file = validation.file;
-    const recipients = MessageController.extractRecipients(recipientValidation.body!);
     
-    // Filter only phone numbers
-    const { phoneNumbers } = separateRecipients(recipients);
+    // Use RecipientProcessorService instead of extractRecipients
+    const { phoneNumbers } = await RecipientProcessorService.processRecipients(recipientValidation.body!);
+    
     if (phoneNumbers.length === 0) {
       res.status(400).json({
         success: false,
@@ -162,7 +141,7 @@ export class MessageController {
     }
 
     try {
-      botLogger.info(`📱 [BOT] Request ${requestId}: Sending to ${phoneNumbers.length} phone(s)`);
+      logger.info(`📱 [BOT] Request ${requestId}: Sending to ${phoneNumbers.length} phone(s)`);
 
       // Use MessageHandlerController - no old messageHandler.ts
       const results = await sendToPhones(client, phoneNumbers, message!, file);
@@ -179,7 +158,7 @@ export class MessageController {
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      botLogger.success(
+      logger.info(
         `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
@@ -207,10 +186,10 @@ export class MessageController {
 
     const { message } = validation.body!;
     const file = validation.file;
-    const recipients = MessageController.extractRecipients(recipientValidation.body!);
     
-    // Filter only group IDs
-    const { groups } = separateRecipients(recipients);
+    // Use RecipientProcessorService instead of extractRecipients  
+    const { groups } = await RecipientProcessorService.processRecipients(recipientValidation.body!);
+    
     if (groups.length === 0) {
       res.status(400).json({
         success: false,
@@ -222,7 +201,7 @@ export class MessageController {
     }
 
     try {
-      botLogger.info(`📱 [BOT] Request ${requestId}: Sending to ${groups.length} group(s)`, '🏢');
+      logger.info(`📱 [BOT] Request ${requestId}: Sending to ${groups.length} group(s)`, '🏢');
 
       const results = await sendToGroups(client, groups, message!, file);
 
@@ -238,7 +217,7 @@ export class MessageController {
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      botLogger.success(
+      logger.info(
         `✅ [BOT] Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
@@ -266,12 +245,12 @@ export class MessageController {
 
     const { message } = validation.body!;
     const file = validation.file;
-    const recipients = MessageController.extractRecipients(recipientValidation.body!);
     
-    const { groups, phoneNumbers } = separateRecipients(recipients);
+    // Use RecipientProcessorService for unified processing
+    const { groups, phoneNumbers } = await RecipientProcessorService.processRecipients(recipientValidation.body!);
 
     try {
-      botLogger.info(
+      logger.info(
         `📡 [BOT] Request ${requestId}: Broadcasting to ${phoneNumbers.length} phone(s) and ${groups.length} group(s)`
       );
 
@@ -295,7 +274,7 @@ export class MessageController {
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      botLogger.success(
+      logger.info(
         `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
@@ -331,10 +310,13 @@ export class MessageController {
     if (!recipientValidation.isValid) return;
 
     const file = fileValidation.file!;
-    const recipients = MessageController.extractRecipients(recipientValidation.body!);
+    
+    // Use RecipientProcessorService for unified processing
+    const { phoneNumbers, groups } = await RecipientProcessorService.processRecipients(recipientValidation.body!);
+    const recipients = [...phoneNumbers, ...groups];
 
     try {
-      botLogger.info(`📎 [BOT] Request ${requestId}: Sending ${mediaType} to ${recipients.length} recipient(s)`);
+      logger.info(`📎 [BOT] Request ${requestId}: Sending ${mediaType} to ${recipients.length} recipient(s)`);
 
       let results;
       switch (mediaType) {
@@ -370,7 +352,7 @@ export class MessageController {
         fileSize: file.size,
       });
 
-      botLogger.success(
+      logger.info(
         `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 
@@ -411,7 +393,7 @@ export class MessageController {
     }
 
     try {
-      botLogger.info(`📱 [BOT] Request ${requestId}: Simple message to ${recipients.length} recipient(s)`, '💬');
+      logger.info(`📱 [BOT] Request ${requestId}: Simple message to ${recipients.length} recipient(s)`, '💬');
 
       const results = await sendMessageWithErrorHandling(
         client,
@@ -422,7 +404,7 @@ export class MessageController {
 
       const { statusCode, response } = MessageController.formatResponse(results, requestId);
 
-      botLogger.success(
+      logger.info(
         `Request ${requestId} completed: ${results.messagesSent.length} sent, ${results.errors.length} errors`
       );
 

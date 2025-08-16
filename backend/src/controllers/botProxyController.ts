@@ -37,10 +37,6 @@ export class BotProxyController {
     return this.statusController.getBotQRCodeStatus(req, res);
   }
 
-  public async getBotStatusById(req: Request, res: Response): Promise<void> {
-    return this.statusController.getBotStatusById(req, res);
-  }
-
   public async updateBotQRCode(req: Request, res: Response): Promise<void> {
     return this.statusController.updateBotQRCode(req, res);
   }

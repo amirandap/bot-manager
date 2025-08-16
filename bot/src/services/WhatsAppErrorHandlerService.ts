@@ -4,9 +4,8 @@
  */
 
 import { Client } from "whatsapp-web.js";
-import { DEFAULT_FALLBACK_PHONE_NUMBER } from "../config/EnvironmentManager";
 import { formatPhoneForWhatsApp } from "../utils/recipientFormattingUtils";
-import { botLogger } from "../utils/loggerWrapper";
+import { logger } from "./LoggerService";
 import {
   ErrorSeverity,
   ErrorCategory,
@@ -262,8 +261,7 @@ export class WhatsAppErrorHandlerService {
    */
   public async handleError(
     error: Error,
-    context: string = "Unknown",
-    metadata: Record<string, unknown> = {}
+    context: string = "Unknown"
   ): Promise<ErrorValidationResult> {
     try {
       // Classify the error
@@ -271,12 +269,12 @@ export class WhatsAppErrorHandlerService {
 
       // Log the error
       if (this.options.enableLogging) {
-        this.logError(classifiedError, context, metadata);
+        this.logError(classifiedError, context);
       }
 
       // Send notification if enabled
       if (this.options.enableFallback) {
-        await this.sendErrorNotification(classifiedError, context);
+        await this.sendErrorNotification();
       }
 
       return {
@@ -287,7 +285,7 @@ export class WhatsAppErrorHandlerService {
       };
     } catch (handlingError) {
       // If error handling itself fails, log and return safe fallback
-      botLogger.error("Error in error handler:", handlingError);
+      logger.error("Error in error handler:", handlingError);
       return {
         shouldIgnore: false,
         errorType: ErrorCategory.UNKNOWN_ERROR,
@@ -348,7 +346,7 @@ export class WhatsAppErrorHandlerService {
         canRecover,
       };
     } catch (error) {
-      botLogger.error("Error checking client health:", error);
+      logger.error("Error checking client health:", error);
       return {
         isHealthy: false,
         issues: ["Health check failed"],
@@ -367,38 +365,34 @@ export class WhatsAppErrorHandlerService {
 
   private logError(
     error: WhatsAppError,
-    context: string,
-    metadata: Record<string, unknown>
+    context: string
   ): void {
     const logMessage = `${context} - ${error.category}: ${error.message} (Recoverable: ${error.isRecoverable}, PostSend: ${error.isPostSend})`;
 
     switch (error.severity) {
       case ErrorSeverity.CRITICAL:
-        botLogger.error(`🚨 CRITICAL WhatsApp Error: ${logMessage}`);
+        logger.error(`🚨 CRITICAL WhatsApp Error: ${logMessage}`);
         break;
       case ErrorSeverity.HIGH:
-        botLogger.error(`⚠️ HIGH Severity WhatsApp Error: ${logMessage}`);
+        logger.error(`⚠️ HIGH Severity WhatsApp Error: ${logMessage}`);
         break;
       case ErrorSeverity.MEDIUM:
-        botLogger.warn(`⚡ MEDIUM Severity WhatsApp Error: ${logMessage}`);
+        logger.warn(`⚡ MEDIUM Severity WhatsApp Error: ${logMessage}`);
         break;
       case ErrorSeverity.LOW:
-        botLogger.info(`📋 LOW Severity WhatsApp Error: ${logMessage}`);
+        logger.info(`📋 LOW Severity WhatsApp Error: ${logMessage}`);
         break;
       default:
-        botLogger.warn(`❓ Unknown Severity WhatsApp Error: ${logMessage}`);
+        logger.warn(`❓ Unknown Severity WhatsApp Error: ${logMessage}`);
     }
   }
 
-  private async sendErrorNotification(
-    error: WhatsAppError,
-    context: string
-  ): Promise<void> {
+  private async sendErrorNotification(): Promise<void> {
     try {
       // Simple notification for now
-      botLogger.success("Fallback notification sent");
+      logger.info("Fallback notification sent");
     } catch (notificationError) {
-      botLogger.error(
+      logger.error(
         "Failed to send error notification:",
         notificationError
       );
@@ -452,17 +446,10 @@ export class MessageErrorHandlerService {
   }> {
     try {
       const context = `MESSAGE_SEND_${endpoint.toUpperCase()}`;
-      const metadata = {
-        recipient,
-        messageType,
-        endpoint,
-        timestamp: new Date().toISOString(),
-      };
 
       const result = await this.errorHandler.handleError(
         error,
-        context,
-        metadata
+        context
       );
 
       // Format phone number for logging if provided
@@ -471,7 +458,7 @@ export class MessageErrorHandlerService {
         : "unknown";
 
       // Log specific message error
-      botLogger.error(
+      logger.error(
         `❌ [MESSAGE_ERROR] Failed to send ${messageType} to ${formattedRecipient} via ${endpoint}: ${error.message}`
       );
 
@@ -481,7 +468,7 @@ export class MessageErrorHandlerService {
         shouldRetry: !result.isPostSendError,
         retryAfter: 30000, // Default retry after 30 seconds
       };
-    } catch (handlingError) {
+    } catch {
       console.error(`❌ [BOT_ROUTE] Critical error in ${endpoint}:`, error);
       return {
         success: false,
@@ -505,7 +492,7 @@ export class MessageErrorHandlerService {
     let criticalErrors = 0;
     let recoverableErrors = 0;
 
-    for (const { error, context, recipient } of errors) {
+    for (const { error } of errors) {
       const classifiedError = WhatsAppErrorClassifier.classifyError(error);
 
       if (

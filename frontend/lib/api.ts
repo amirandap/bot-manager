@@ -1,5 +1,3 @@
-import type { Bot } from "./types";
-
 // API configuration
 // Use empty string for relative URLs when NEXT_PUBLIC_API_BASE_URL is not set
 // This allows nginx to proxy the requests to the backend
@@ -30,14 +28,14 @@ export const api = {
   deployHistory: (limit?: number) =>
     `${API_BASE_URL}/api/deploy/history${limit ? `?limit=${limit}` : ""}`,
 
-  // 🚀 NEW: PM2 Metrics-based status endpoints (recommended - primary source)
+  // 🚀 PM2 Metrics-based status endpoints (primary source - PM2 only)
   getBotStatusMetrics: (id: string) =>
     `${API_BASE_URL}/api/bots/${id}/status/metrics`,
   getBotMetrics: (id: string) => `${API_BASE_URL}/api/bots/${id}/metrics`,
   getBotHealth: (id: string) => `${API_BASE_URL}/api/bots/${id}/health`,
   getAllBotsMetrics: () => `${API_BASE_URL}/api/bots/metrics/all`,
 
-  // Legacy status endpoints (DEPRECATED - use PM2 metrics instead)
+  // Status endpoints using PM2 metrics exclusively
   getBotStatus: (id: string) => `${API_BASE_URL}/api/status/${id}`,
   getDiscordStatus: () => `${API_BASE_URL}/api/status/discord`,
   getWhatsAppStatus: () => `${API_BASE_URL}/api/status/whatsapp`,
@@ -47,10 +45,9 @@ export const api = {
   recreateBotPM2: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/recreate`,
   getBotPM2Status: (id: string) => `${API_BASE_URL}/api/bots/${id}/pm2/status`,
 
-  // Bot Proxy endpoints - unified access to all bot operations
+  // Bot Proxy endpoints - unified access to bot operations (no direct status calls)
   proxy: {
-    // Core operations (ID-based)
-    getBotStatus: (id: string) => `${API_BASE_URL}/api/bots/${id}/status`,
+    // Core operations (ID-based) - no HTTP status calls to bots
     getQRCode: () => `${API_BASE_URL}/api/bots/qr-code`,
     getQRCodeById: (id: string) => `${API_BASE_URL}/api/bots/${id}/qr-code`,
     getQRCodeImage: (id: string) =>
@@ -71,18 +68,4 @@ export const api = {
       `${API_BASE_URL}/api/bots/receive-image-and-json`,
     sendConfirmation: () => `${API_BASE_URL}/api/bots/confirmation`,
   },
-};
-
-// Bot API helpers - for direct communication with bots
-export const botApi = {
-  // WhatsApp Bot endpoints
-  getWhatsAppStatus: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/status`,
-  getWhatsAppQR: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/qr-code`,
-  sendWhatsAppMessage: (bot: Bot) =>
-    `${bot.apiHost}:${bot.apiPort}/send-message`,
-
-  // Discord Bot endpoints
-  getDiscordHealth: (bot: Bot) => `${bot.apiHost}:${bot.apiPort}/health`,
-  sendDiscordMessage: (bot: Bot) =>
-    `${bot.apiHost}:${bot.apiPort}/send-message`,
 };

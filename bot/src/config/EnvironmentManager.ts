@@ -1,5 +1,5 @@
 
-import { botLogger } from "../utils";
+import { logger } from "../services/LoggerService";
 import * as path from "path";
 import * as fs from "fs";
 import * as dotenv from "dotenv";
@@ -43,17 +43,17 @@ export class EnvironmentManager {
 
     if (fs.existsSync(envPath)) {
       dotenv.config({ path: envPath });
-      botLogger.environmentInfo(`Loaded environment variables from: ${envPath}`);
+      logger.environmentInfo(`Loaded environment variables from: ${envPath}`);
     } else {
       // Fallback to default dotenv behavior
       dotenv.config();
-      botLogger.environmentInfo("Using default .env file loading");
+      logger.environmentInfo("Using default .env file loading");
     }
   }
 
   private loadEnvironmentConfig(): EnvironmentConfig {
     // BOT_ID is required and must be provided via environment variables or PM2
-    // eslint-disable-next-line node/no-process-env
+     
     const BOT_ID = process.env.BOT_ID;
 
     if (!BOT_ID) {
@@ -63,25 +63,29 @@ export class EnvironmentManager {
       );
     }
 
-    // eslint-disable-next-line node/no-process-env
+     
     const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
-    // eslint-disable-next-line node/no-process-env
+     
     const BOT_PORT = parseInt(process.env.BOT_PORT || "3000");
-    // eslint-disable-next-line node/no-process-env
+     
     const BOT_TYPE = process.env.BOT_TYPE || "whatsapp";
-    // eslint-disable-next-line node/no-process-env
+     
     const NODE_ENV = process.env.NODE_ENV || "development";
-    // eslint-disable-next-line node/no-process-env
+     
     const CHROME_PATH =
-      // eslint-disable-next-line node/no-process-env
+       
       process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
 
+    // Logging configuration
+     
+    const SILENT_METRICS = process.env.SILENT_METRICS !== "false"; // Por defecto true, evitar ruido en logs
+
     // Phone number configuration
-    // eslint-disable-next-line node/no-process-env
+     
     const DEFAULT_FALLBACK_PHONE_NUMBER = process.env.FALLBACKNUMBER || "+18298870174";
 
-    // Centralized data paths
-    const DATA_ROOT = path.join(__dirname, "../../../../data");
+    // Centralized data paths - Create data folder in project root
+    const DATA_ROOT = path.join(__dirname, "../../../data");
     const SESSION_PATH = path.join(DATA_ROOT, "sessions", BOT_ID);
     const QR_PATH = path.join(DATA_ROOT, "qr-codes");
     const LOGS_PATH = path.join(DATA_ROOT, "logs", BOT_ID);
@@ -93,6 +97,7 @@ export class EnvironmentManager {
       BOT_TYPE,
       NODE_ENV,
       CHROME_PATH,
+      SILENT_METRICS,
       DEFAULT_FALLBACK_PHONE_NUMBER,
       DATA_ROOT,
       SESSION_PATH,
@@ -106,12 +111,12 @@ export class EnvironmentManager {
   }
 
   public getEnvSource(envVar: string): string {
-    // eslint-disable-next-line node/no-process-env
+     
     const value = process.env[envVar];
     if (!value) return "default";
 
     // Check if running under PM2
-    // eslint-disable-next-line node/no-process-env
+     
     if (process.env.pm_id) return "PM2";
 
     // Check if .env file exists and contains this variable
@@ -122,7 +127,7 @@ export class EnvironmentManager {
         if (envFileContent.includes(`${envVar}=`)) {
           return ".env file";
         }
-      } catch (error) {
+      } catch {
         // Ignore file read errors
       }
     }
@@ -131,7 +136,6 @@ export class EnvironmentManager {
   }
 
   public isPM2(): boolean {
-    // eslint-disable-next-line node/no-process-env
     return !!process.env.pm_id;
   }
 
@@ -139,11 +143,8 @@ export class EnvironmentManager {
     if (!this.isPM2()) return {};
 
     return {
-      // eslint-disable-next-line node/no-process-env
       PM2_ID: process.env.pm_id || "N/A",
-      // eslint-disable-next-line node/no-process-env
       PM2_INSTANCE_ID: process.env.PM2_INSTANCE_ID || "N/A",
-      // eslint-disable-next-line node/no-process-env
       PM2_JSON_PROCESSING: process.env.PM2_JSON_PROCESSING || "N/A",
     };
   }
@@ -190,6 +191,7 @@ export const {
 export const {
   NODE_ENV,                  // Environment (development, production, test)
   CHROME_PATH,               // Path to Chrome executable
+  SILENT_METRICS,            // Silenciar logs automáticos de métricas
 } = config;
 
 // Bot-specific configuration
