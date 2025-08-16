@@ -175,96 +175,19 @@ export default function HeadlessBotCard({
   };
 
   const handleScanQR = async () => {
-    // Open QR display in new window/tab with enhanced interface
-    const qrWindow = window.open(
-      "",
+    // Only execute this in browser environment
+    if (typeof window === 'undefined') return;
+    
+    // Create a minimal popup URL with QR code
+    const qrUrl = api.proxy.getQRCodeImage(bot.id);
+    const popupUrl = `${api.base}/qr-popup?bot=${encodeURIComponent(bot.name)}&qr=${encodeURIComponent(qrUrl)}`;
+    
+    // Open QR window
+    window.open(
+      popupUrl,
       "_blank",
       "width=450,height=650,resizable=yes,scrollbars=yes"
     );
-    if (qrWindow) {
-      qrWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>WhatsApp QR Code - ${bot.name}</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body { 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
-                margin: 0; padding: 20px; background-color: #f5f5f5;
-              }
-              .container {
-                max-width: 400px; margin: 0 auto; background: white;
-                border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                overflow: hidden;
-              }
-              .header {
-                background: #25D366; color: white; padding: 20px; text-align: center;
-              }
-              .content { padding: 20px; text-align: center; }
-              .qr-container {
-                margin: 20px 0; padding: 15px; border: 2px solid #25D366;
-                border-radius: 8px; background: #f8f9fa;
-              }
-              .qr-image { max-width: 100%; height: auto; border-radius: 4px; }
-              .status {
-                margin: 15px 0; padding: 10px; border-radius: 6px; font-size: 14px;
-              }
-              .status.loading { background: #e3f2fd; color: #1976d2; }
-              .status.error { background: #ffebee; color: #c62828; }
-              .status.success { background: #e8f5e8; color: #2e7d32; }
-              .btn {
-                padding: 10px 20px; border: none; border-radius: 6px;
-                cursor: pointer; font-size: 14px; margin: 5px;
-              }
-              .btn-primary { background: #25D366; color: white; }
-              .btn-secondary { background: #6c757d; color: white; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2 style="margin: 0;">📱 WhatsApp QR Code</h2>
-                <p style="margin: 5px 0 0 0; opacity: 0.9;">Bot: ${bot.name}</p>
-              </div>
-              <div class="content">
-                <div id="status" class="status loading">Loading QR code...</div>
-                <div id="qr-container" class="qr-container" style="display: none;">
-                  <img id="qr-image" class="qr-image" alt="QR Code" />
-                </div>
-                <div>
-                  <button class="btn btn-primary" onclick="refreshQR()">🔄 Refresh</button>
-                  <button class="btn btn-secondary" onclick="window.close()">✕ Close</button>
-                </div>
-              </div>
-            </div>
-            <script>
-              async function refreshQR() {
-                try {
-                  const response = await fetch('${api.proxy.getQRCodeImage(
-                    bot.id
-                  )}');
-                  if (response.ok) {
-                    const blob = await response.blob();
-                    const imageUrl = URL.createObjectURL(blob);
-                    document.getElementById('qr-image').src = imageUrl;
-                    document.getElementById('qr-container').style.display = 'block';
-                    document.getElementById('status').className = 'status success';
-                    document.getElementById('status').innerHTML = '✅ QR Code ready to scan';
-                  }
-                } catch (error) {
-                  document.getElementById('status').className = 'status error';
-                  document.getElementById('status').innerHTML = '❌ Error loading QR code';
-                }
-              }
-              refreshQR();
-            </script>
-          </body>
-        </html>
-      `);
-      qrWindow.document.close();
-    }
   };
 
   const handleRefreshStatus = async () => {

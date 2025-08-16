@@ -291,10 +291,34 @@ export class PuppeteerConfigManager {
         return [
           ...baseArgs,
           "--no-zygote",
-          "--single-process", // Good for containers/limited environments
+          // Remove --single-process for better stability
           "--disable-background-timer-throttling",
-          "--disable-renderer-backgrounding",
+          "--disable-renderer-backgrounding", 
           "--disable-backgrounding-occluded-windows",
+          // Memory optimization for low-memory systems
+          "--memory-pressure-off",
+          "--max_old_space_size=512",
+          "--optimize-for-size",
+          "--enable-precise-memory-info",
+          "--disable-software-rasterizer",
+          "--disable-threaded-animation",
+          "--disable-threaded-scrolling",
+          "--disable-in-process-stack-traces",
+          "--disable-histogram-customizer",
+          "--disable-gl-extensions",
+          "--disable-d3d11",
+          "--disable-accelerated-mjpeg-decode",
+          "--disable-accelerated-video-decode",
+          "--disable-accelerated-video-encode",
+          "--disable-gpu-memory-buffer-video-frames",
+          "--disable-rtc-smoothness-algorithm",
+          "--disable-2d-canvas-clip-aa",
+          "--disable-3d-apis",
+          "--disable-accelerated-2d-canvas",
+          "--disable-accelerated-jpeg-decoding",
+          "--disable-accelerated-mjpeg-decode",
+          "--disable-app-list-dismiss-on-blur",
+          "--disable-accelerated-video-decode",
         ];
 
       case "win32": // Windows

@@ -507,7 +507,7 @@ export class BotSpawnerService {
       // Bot-specific metrics configuration
       SILENT_METRICS: "true",
       LOG_LEVEL: "info",
-
+      
       // Only include PATH if it exists
       ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
     };
@@ -515,22 +515,24 @@ export class BotSpawnerService {
     const pm2Config = {
       name: pm2ServiceId,
       script: path.join(this.botDirectory, "src/index.ts"),
-      interpreter: "npx",
-      interpreter_args: "ts-node --files --transpile-only",
+      interpreter: "./node_modules/.bin/ts-node", // Use local ts-node
+      interpreter_args: "--files -r tsconfig-paths/register", // Same as dev
       cwd: this.botDirectory,
       env: botEnv, // Now properly typed
       error_file: path.join(this.dataDirectory, "logs", botId, "error.log"),
       out_file: path.join(this.dataDirectory, "logs", botId, "out.log"),
       log_file: path.join(this.dataDirectory, "logs", botId, "combined.log"),
       autorestart: true,
-      max_restarts: 10,
-      min_uptime: 10000,
+      max_restarts: 5, // Reduce restarts to avoid resource exhaustion
+      min_uptime: 30000, // Increase minimum uptime
+      max_memory_restart: "400M", // Restart if memory exceeds 400MB
       watch: false,
       instances: 1,
       exec_mode: "fork",
       wait_ready: true,
-      listen_timeout: 10000,
-      kill_timeout: 5000,
+      listen_timeout: 15000, // Increase timeout for slow startup
+      kill_timeout: 10000, // Increase kill timeout
+      restart_delay: 5000, // Add delay between restarts
     };
 
     return new Promise((resolve, reject) => {

@@ -17,14 +17,14 @@ import {
   Settings,
   Trash2,
   QrCode,
-  PlayCircle,
 } from "lucide-react";
 import StatusIndicator from "./status-indicator";
 import PM2StatusIndicator from "./pm2-status-indicator";
 import QRCodeDisplay from "./qr-code-display";
-import type { Bot, BotStatus } from "@/lib/types";
-import { useState, useEffect, useCallback } from "react";
+import type { Bot } from "@/lib/types";
+import { useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useBotStatus, useBotPM2Metrics, useBotHealth } from "@/lib/contexts/BotsStatusContext";
 
 interface BotCardProps {
   bot: Bot;
@@ -41,7 +41,11 @@ interface QRStatus {
 }
 
 export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
-  const [status, setStatus] = useState<BotStatus | null>(null);
+  // Use unified context instead of individual hooks
+  const botStatus = useBotStatus(bot.id);
+  const pm2Metrics = useBotPM2Metrics(bot.id);
+  const health = useBotHealth(bot.id);
+
   const [qrStatus, setQrStatus] = useState<QRStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -72,10 +76,8 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
       if (response.ok) {
         const qrData = await response.json();
-        console.log("🔍 QR status received:", qrData);
         setQrStatus(qrData.qrCode || qrData);
       } else {
-        console.log("⚠️ QR status request failed:", response.status);
         setQrStatus({ available: false });
       }
     } catch (error) {
@@ -84,76 +86,25 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
     }
   }, [bot.id, bot.type]);
 
-  const fetchBotStatus = useCallback(async () => {
-    setLoading(true);
+  const handleViewQR = async () => {
+    const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";
+    if (safeType !== "whatsapp") return;
+
     try {
-      // 🚀 Use the PM2 metrics endpoint for complete custom metrics
-      const response = await fetch(api.getBotStatusMetrics(bot.id), {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const statusData = result.status || result;
-        console.log("✅ Bot status received:", statusData);
-        setStatus(statusData);
-
-        // Also fetch QR status for WhatsApp bots
-        if (bot.type === "whatsapp") {
-          fetchQRStatus();
-        }
-      } else {
-        console.warn("PM2 metrics not available for bot:", bot.id);
-
-        // Set status to indicate bot is not running (but don't error)
-        setStatus({
-          id: bot.id,
-          name: bot.name,
-          type: bot.type,
-          status: "offline",
-          apiResponsive: false,
-          pm2: {
-            pid: undefined,
-            cpu: 0,
-            memory: 0,
-            restarts: 0,
-            uptime: 0,
-            lastRestart: undefined,
-          },
-        });
-      }
+      setLoading(true);
+      await fetchQRStatus();
+      setShowQRModal(true);
     } catch (error) {
-      console.error("PM2 metrics failed:", error);
-
-      // No fallback - PM2 metrics only
-      setStatus({
-        id: bot.id,
-        name: bot.name,
-        type: bot.type,
-        status: "offline",
-        apiResponsive: false,
-      });
+      console.error("Error viewing QR:", error);
     } finally {
       setLoading(false);
     }
-  }, [bot.id, bot.name, bot.type, fetchQRStatus]);
-
-  const handleViewQR = async () => {
-    const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";
-    if (safeType === "whatsapp") {
-      // Open QR modal instead of new window
-      setShowQRModal(true);
-    }
   };
 
-  const handleSpawnBot = async () => {
-    setLoading(true);
+  const handleRestart = async () => {
     try {
-      // Call the PM2 spawn endpoint
-      const response = await fetch(api.base + `/api/bots/${bot.id}/spawn`, {
+      setLoading(true);
+      const response = await fetch(api.restartBotPM2(bot.id), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,301 +112,247 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
       });
 
       if (response.ok) {
-        console.log("Bot spawned successfully");
-        // Refresh status after spawning
-        setTimeout(() => {
-          fetchBotStatus();
-        }, 2000);
-      } else {
-        console.error("Failed to spawn bot");
+        if (onUpdate) {
+          onUpdate(bot);
+        }
       }
     } catch (error) {
-      console.error("Error spawning bot:", error);
+      console.error("Error restarting bot:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchBotStatus();
-    // Poll for status updates every 30 seconds
-    const interval = setInterval(fetchBotStatus, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBotStatus]);
+  const handleDelete = async () => {
+    if (!onDelete) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete bot "${bot.name}"? This action cannot be undone.`
+    );
+
+    if (confirmDelete) {
+      try {
+        setLoading(true);
+        const response = await fetch(api.deleteBot(bot.id), {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          onDelete(bot.id);
+        }
+      } catch (error) {
+        console.error("Error deleting bot:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const getStatusText = () => {
+    if (!botStatus) return "Unknown";
+    
+    // Check if we have custom WhatsApp status from PM2 metrics
+    if (pm2Metrics?.whatsappStatus) {
+      return pm2Metrics.whatsappStatus;
+    }
+    
+    return botStatus.status || "Unknown";
+  };
+
+  const getStatusVariant = () => {
+    if (!botStatus) return "secondary";
+    
+    const status = botStatus.status;
+    switch (status) {
+      case "online":
+        return "default";
+      case "errored":
+        return "destructive";
+      case "stopped":
+        return "secondary";
+      case "launching":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              {getBotIcon(bot.type)}
-              <CardTitle>{bot.name}</CardTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge
+      <Card className="w-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            {getBotIcon(bot.type)}
+            {bot.name}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant={getStatusVariant()}>
+              {getStatusText()}
+            </Badge>
+            {health && (
+              <Badge 
                 variant={
-                  typeof bot.type === "string" &&
-                  bot.type.toLowerCase() === "discord"
-                    ? "default"
-                    : "outline"
+                  health.status === "healthy" ? "default" : 
+                  health.status === "warning" ? "outline" : 
+                  "destructive"
                 }
               >
-                {bot.type || "Unknown"}
+                Health: {health.score}%
               </Badge>
-              <Badge
-                variant={bot.isExternal ? "secondary" : "default"}
-                title={
-                  bot.isExternal
-                    ? "External bot (not managed by our PM2)"
-                    : "Internal bot (managed by our PM2)"
-                }
-              >
-                {bot.isExternal ? "External" : "Internal"}
-              </Badge>
-            </div>
+            )}
           </div>
         </CardHeader>
 
-        <CardContent className="pb-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+        <CardContent>
+          <div className="space-y-4">
+            {/* Basic Bot Info */}
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Port:</span>
+              <Badge variant="outline">{bot.apiPort}</Badge>
+            </div>
+
+            {/* Status Indicators */}
+            <div className="space-y-2">
               <StatusIndicator
-                status={status?.status || "unknown"}
-                botStatus={status || undefined}
-                showDetails={false}
+                status={botStatus?.status || "unknown"}
               />
-              <span className="text-sm font-medium capitalize">
-                {status?.status || "Loading..."}
-              </span>
-              {/* Real PM2 Metrics in parentheses */}
-              {!bot.isExternal && status?.pm2 && (
-                <span className="text-xs text-gray-500">
-                  (CPU: {status.pm2.cpu}%, MEM: {status.pm2.memory}MB, ↻
-                  {status.pm2.restarts}, ⏱
-                  {Math.floor((status.pm2.uptime || 0) / 60000)}m
-                  {/* Custom PM2 Metrics */}
-                  {status.pm2.activeHandles &&
-                    `, AH: ${status.pm2.activeHandles}`}
-                  {status.pm2.eventLoopLatency &&
-                    `, EL: ${
-                      typeof status.pm2.eventLoopLatency === "number"
-                        ? Math.round(status.pm2.eventLoopLatency)
-                        : status.pm2.eventLoopLatency
-                    }ms`}
-                  {status.pm2.errorCount && `, ERR: ${status.pm2.errorCount}`})
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Essential bot info only */}
-          <div className="text-sm space-y-1 mb-4">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Port:</span>
-              <span>{bot.apiPort}</span>
-            </div>
-
-            {/* WhatsApp specific info */}
-            {bot.type === "whatsapp" && (
-              <>
-                {/* Dynamic client info from PM2 metrics (priority) */}
-                {status?.pm2?.clientPhoneNumber &&
-                  status.pm2.clientPhoneNumber !== "0" && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">📱 Cliente:</span>
-                      <span className="font-mono text-sm">
-                        {status.pm2.clientPhoneNumber}
-                      </span>
-                    </div>
-                  )}
-
-                {status?.pm2?.clientPushName &&
-                  status.pm2.clientPushName !== "0" && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">👤 Nombre:</span>
-                      <span className="font-medium">
-                        {status.pm2.clientPushName}
-                      </span>
-                    </div>
-                  )}
-
-                {/* Fallback to static config if dynamic not available */}
-                {!status?.pm2?.clientPhoneNumber && bot.phoneNumber && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Phone (Config):</span>
-                    <span>{bot.phoneNumber}</span>
-                  </div>
-                )}
-
-                {!status?.pm2?.clientPushName &&
-                  status?.status === "online" &&
-                  status?.pushName && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">WhatsApp Name:</span>
-                      <span>{status.pushName}</span>
-                    </div>
-                  )}
-
-                {/* QR Status - only show if relevant */}
-                {qrStatus?.available && !qrStatus?.expired && (
-                  <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
-                    <span className="text-green-600 font-medium">
-                      🔥 QR Ready to scan (
-                      {Math.round(qrStatus.ageMinutes || 0)}m old)
-                    </span>
-                  </div>
-                )}
-
-                {qrStatus?.expired && (
-                  <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm">
-                    <span className="text-orange-600 font-medium">
-                      ⏰ QR Code expired - refresh needed
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Advanced PM2 Metrics Section - only show if available */}
-            {!bot.isExternal &&
-              status?.pm2 &&
-              (status.pm2.activeHandles ||
-                status.pm2.eventLoopLatency ||
-                status.pm2.heapUsage ||
-                status.pm2.httpRequests) && (
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                  <div className="font-medium text-blue-700 mb-1">
-                    📊 PM2 Advanced Metrics:
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 text-blue-600">
-                    {status.pm2.activeHandles && (
-                      <div>Active Handles: {status.pm2.activeHandles}</div>
-                    )}
-                    {status.pm2.activeRequests && (
-                      <div>Active Requests: {status.pm2.activeRequests}</div>
-                    )}
-                    {status.pm2.eventLoopLatency && (
-                      <div>
-                        Event Loop:{" "}
-                        {typeof status.pm2.eventLoopLatency === "number"
-                          ? Math.round(status.pm2.eventLoopLatency)
-                          : status.pm2.eventLoopLatency}
-                        ms
-                      </div>
-                    )}
-                    {status.pm2.httpRequests && (
-                      <div>HTTP Requests: {status.pm2.httpRequests}</div>
-                    )}
-                    {status.pm2.heapUsage && (
-                      <div>
-                        Heap:{" "}
-                        {typeof status.pm2.heapUsage === "number"
-                          ? Math.round(status.pm2.heapUsage)
-                          : "N/A"}
-                        %
-                      </div>
-                    )}
-                    {status.pm2.errorCount !== undefined && (
-                      <div>Errors: {status.pm2.errorCount}</div>
-                    )}
-                  </div>
+              
+              {/* PM2 Metrics */}
+              {!bot.isExternal && pm2Metrics && (
+                <div className="text-xs text-muted-foreground">
+                  CPU: {pm2Metrics.cpu}%, MEM: {pm2Metrics.memory}MB, 
+                  Restarts: {pm2Metrics.restarts}, 
+                  Uptime: {Math.floor((pm2Metrics.uptime || 0) / 60000)}m
+                  {pm2Metrics.activeHandles && `, Handles: ${pm2Metrics.activeHandles}`}
+                  {pm2Metrics.eventLoopLatency && `, Latency: ${pm2Metrics.eventLoopLatency}ms`}
+                  {pm2Metrics.errorCount && `, Errors: ${pm2Metrics.errorCount}`}
                 </div>
               )}
-          </div>
 
-          {/* PM2 Status Indicator - separate detailed PM2 management */}
-          {!bot.isExternal && (
-            <PM2StatusIndicator bot={bot} onStatusChange={fetchBotStatus} />
-          )}
+              {/* WhatsApp Specific Metrics */}
+              {bot.type === "whatsapp" && pm2Metrics && (
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {pm2Metrics.qrCodeStatus && (
+                    <div>QR Status: {pm2Metrics.qrCodeStatus}</div>
+                  )}
+                  {pm2Metrics.messagesProcessed !== undefined && (
+                    <div>Messages: {pm2Metrics.messagesProcessed}</div>
+                  )}
+                  {pm2Metrics.qrCodesGenerated !== undefined && (
+                    <div>QR Codes: {pm2Metrics.qrCodesGenerated}</div>
+                  )}
+                  {pm2Metrics.botStatus && (
+                    <div>Bot Status: {pm2Metrics.botStatus}</div>
+                  )}
+                </div>
+              )}
 
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full cursor-pointer"
-              onClick={fetchBotStatus}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh Status
-            </Button>
+              {!bot.isExternal && (
+                <PM2StatusIndicator 
+                  bot={bot}
+                />
+              )}
+            </div>
 
-            {/* QR Code button - only show when QR is available and not expired */}
-            {bot.type === "whatsapp" &&
-              qrStatus?.available &&
-              !qrStatus?.expired && (
+            {/* Phone Info */}
+            {(bot.phoneNumber || botStatus?.pushName) && (
+              <div className="space-y-1">
+                {bot.phoneNumber && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Phone:</span>
+                    <span className="text-sm">{bot.phoneNumber}</span>
+                  </div>
+                )}
+                {botStatus?.pushName && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Name:</span>
+                    <span className="text-sm">{botStatus.pushName}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Health Issues */}
+            {health?.issues && health.issues.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-orange-600">Issues:</span>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {health.issues.map((issue, index) => (
+                    <li key={index}>• {issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              {bot.type === "whatsapp" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full cursor-pointer bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
                   onClick={handleViewQR}
+                  disabled={loading}
+                  className="flex items-center gap-1"
                 >
-                  <QrCode className="h-4 w-4 mr-1" />
-                  🔥 View QR Code
+                  <QrCode className="h-3 w-3" />
+                  QR Code
                 </Button>
               )}
 
-            {onUpdate && (
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full cursor-pointer"
-                onClick={() => onUpdate && onUpdate(bot)}
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                Edit
-              </Button>
-            )}
-
-            {/* Show spawn button only when bot is offline */}
-            {!bot.isExternal && status?.status === "offline" && (
-              <Button
-                variant="default"
-                size="sm"
-                className="w-full cursor-pointer bg-green-600 hover:bg-green-700"
-                onClick={handleSpawnBot}
+                onClick={handleRestart}
                 disabled={loading}
+                className="flex items-center gap-1"
               >
-                <PlayCircle className="h-4 w-4 mr-1" />
-                Create Bot Process
+                <RefreshCw className="h-3 w-3" />
+                Restart
               </Button>
-            )}
 
-            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loading}
+                className="flex items-center gap-1"
+              >
+                <Settings className="h-3 w-3" />
+                Settings
+              </Button>
+
               <Button
                 variant="destructive"
                 size="sm"
-                className="w-full cursor-pointer"
-                onClick={() => onDelete && onDelete(bot.id)}
+                onClick={handleDelete}
+                disabled={loading}
+                className="flex items-center gap-1"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
+                <Trash2 className="h-3 w-3" />
                 Delete
               </Button>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* QR Code Modal */}
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5" />
-              WhatsApp QR Code - {bot.name}
-            </DialogTitle>
+            <DialogTitle>WhatsApp QR Code</DialogTitle>
             <DialogDescription>
-              Scan this QR code with your WhatsApp to connect the bot
+              Scan this QR code with WhatsApp to connect your bot.
             </DialogDescription>
           </DialogHeader>
-          <QRCodeDisplay
-            bot={bot}
-            onClose={() => setShowQRModal(false)}
-            autoCloseOnAuth={true}
-          />
+          {qrStatus && (
+            <QRCodeDisplay
+              bot={bot}
+              onClose={() => setShowQRModal(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

@@ -195,4 +195,27 @@ export class BotService {
 
     return statuses;
   }
+
+  /**
+   * 🚀 NEW: Get all bots status via PM2 metrics (primary source)
+   */
+  public async getAllBotsStatusViaMetrics(): Promise<BotStatus[]> {
+    const allBots = this.configService.getAllBots();
+    const statuses: BotStatus[] = [];
+
+    for (const bot of allBots) {
+      // Skip external bots for PM2 metrics
+      if (bot.isExternal) {
+        console.log(`🌐 Bot ${bot.id} is external - skipping PM2 metrics`);
+        continue;
+      }
+
+      const status = await this.getBotStatusViaMetrics(bot.id);
+      if (status) {
+        statuses.push(status);
+      }
+    }
+
+    return statuses;
+  }
 }

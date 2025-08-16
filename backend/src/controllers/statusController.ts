@@ -9,6 +9,22 @@ export class StatusController {
   }
 
   /**
+   * 🚀 PM2-ONLY: Get all bots status via PM2 metrics exclusively
+   */
+  public getAllBotsStatus = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const allBots = await this.botService.getAllBotsStatusViaMetrics();
+      res.json(allBots);
+    } catch (error) {
+      console.error("❌ Error getting all bots status:", error);
+      res.status(500).json({ error: "Failed to retrieve all bots status" });
+    }
+  };
+
+  /**
    * 🚀 PM2-ONLY: Get Discord bot status via PM2 metrics exclusively
    */
   public getDiscordStatus = async (
