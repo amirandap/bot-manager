@@ -2,27 +2,60 @@
 
 ## 🚀 Base URL
 ```
-http://localhost:3000
+http://localhost:7201
 ```
 
-## 📱 Endpoints Principales
+## 🌟 ENDPOINT PRINCIPAL - `/send-message` (UNIFICADO)
 
-### 1. Enviar Mensaje de Texto
+### ⚡ Nuevo Endpoint Unificado
 ```http
 POST /send-message
 ```
 
-**Headers:**
-```
-Content-Type: application/json
-```
+**Descripción**: Endpoint principal que maneja automáticamente texto, imágenes, videos, audio y documentos a destinatarios mixtos (números + grupos).
 
-**Body:**
-```json
+**Detección Automática**: 
+- Sin archivo → mensaje de texto
+- Con archivo → detecta tipo automáticamente (imagen/video/audio/documento)
+
+**📖 Documentación Completa**: Ver `UNIFIED_SEND_MESSAGE_ENDPOINT.md`
+**🔧 Referencia Rápida**: Ver `QUICK_REFERENCE_SEND_MESSAGE.md`
+
+---
+
+## 📱 Ejemplos de Uso del Endpoint Unificado
+
+### 1. Mensaje de Texto (JSON)
+```http
+POST /send-message
+Content-Type: application/json
+
 {
-  "to": "1234567890",
+  "to": ["1234567890", "123456789-987654321@g.us"],
   "message": "Hola desde el bot!"
 }
+```
+
+### 2. Imagen con Caption (Multipart)
+```http
+POST /send-message
+Content-Type: multipart/form-data
+
+Form Data:
+- to: ["1234567890"]
+- caption: "¡Increíble imagen!"
+- file: imagen.jpg
+```
+
+### 3. Documento con Mensaje (Multipart)
+```http
+POST /send-message
+Content-Type: multipart/form-data
+
+Form Data:
+- to: "1234567890"
+- message: "Documento adjunto"
+- file: documento.pdf
 ```
 
 **Response Success (200):**

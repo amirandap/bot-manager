@@ -327,6 +327,31 @@ export default function BotMonitorCard({
             <span>{heap >= 90 ? "Heap alto" : "CPU alta"}</span>
           </div>
         )}
+
+        {/* Client Information (Dynamic from PM2) */}
+        {(metrics.clientPhoneNumber || metrics.clientPushName) && (
+          <div className="mt-2 border-t border-muted pt-2">
+            <div className="text-[10px] text-muted-foreground mb-1">Cliente Conectado:</div>
+            <div className="space-y-1">
+              {metrics.clientPhoneNumber && metrics.clientPhoneNumber !== '0' && (
+                <div className="flex items-center gap-1.5">
+                  <Smartphone className="size-3 text-emerald-600" />
+                  <span className="text-[11px] font-mono text-foreground">
+                    {metrics.clientPhoneNumber}
+                  </span>
+                </div>
+              )}
+              {metrics.clientPushName && metrics.clientPushName !== '0' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-emerald-600">👤</span>
+                  <span className="text-[11px] font-medium text-foreground">
+                    {metrics.clientPushName}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -253,6 +253,7 @@ export interface BaseMessageRequestBody {
   group_id?: string;
   group_name?: string;
   message?: string; // Adding message for validation purposes
+  caption?: string; // Adding caption for media messages
 }
 
 export interface SendMessageRequestBody extends BaseMessageRequestBody {

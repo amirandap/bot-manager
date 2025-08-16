@@ -116,28 +116,65 @@ const options: swaggerJsdoc.Options = {
           },
           required: ['success', 'messagesSent', 'errors', 'requestId', 'timestamp']
         },
-        MediaResponse: {
-          allOf: [
-            {
-              $ref: '#/components/schemas/StandardResponse'
+        MediaUploadResponse: {
+          type: 'object',
+          description: 'Respuesta exitosa del envío de multimedia',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true
             },
-            {
+            message: {
+              type: 'string',
+              example: 'Multimedia message sent successfully'
+            },
+            details: {
               type: 'object',
               properties: {
-                mediaType: {
+                messageType: {
                   type: 'string',
-                  enum: ['image', 'document', 'audio', 'video'],
-                  description: 'Tipo de archivo multimedia enviado'
+                  enum: ['image', 'video', 'audio', 'document'],
+                  example: 'image'
                 },
-                fileName: {
-                  type: 'string',
-                  description: 'Nombre del archivo enviado'
+                recipientCount: {
+                  type: 'number',
+                  example: 3
                 },
-                fileSize: {
-                  type: 'integer',
-                  description: 'Tamaño del archivo en bytes'
+                successfulDeliveries: {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  example: ['1234567890', '123456789-987654321@g.us']
+                },
+                fileInfo: {
+                  type: 'object',
+                  properties: {
+                    filename: {
+                      type: 'string',
+                      example: 'image.jpg'
+                    },
+                    mimeType: {
+                      type: 'string',
+                      example: 'image/jpeg'
+                    },
+                    size: {
+                      type: 'number',
+                      example: 1024567
+                    }
+                  }
                 }
               }
+            }
+          }
+        },
+        MediaResponse: {
+          oneOf: [
+            {
+              $ref: '#/components/schemas/MediaUploadResponse'
+            },
+            {
+              $ref: '#/components/schemas/ErrorResponse'
             }
           ]
         },
@@ -351,6 +388,41 @@ const options: swaggerJsdoc.Options = {
             }
           ]
         },
+        UnifiedMessageRequest: {
+          type: 'object',
+          description: 'Request schema para el endpoint unificado /send-message que maneja automáticamente texto y multimedia',
+          properties: {
+            to: {
+              oneOf: [
+                {
+                  type: 'string',
+                  description: 'Destinatario individual (número de teléfono o ID de grupo)',
+                  example: '1234567890'
+                },
+                {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  description: 'Lista de destinatarios mixtos (números de teléfono e IDs de grupo)',
+                  example: ['1234567890', '123456789-987654321@g.us', '0987654321']
+                }
+              ]
+            },
+            message: {
+              type: 'string',
+              description: 'Mensaje de texto (requerido para texto solo, opcional para multimedia)',
+              example: 'Hola, este es un mensaje desde el bot'
+            },
+            caption: {
+              type: 'string',
+              description: 'Caption para imágenes y videos (usado automáticamente para estos tipos)',
+              example: '¡Mira esta increíble imagen!'
+            }
+          },
+          required: ['to'],
+          additionalProperties: false
+        },
         MainMessageRequest: {
           allOf: [
             {
@@ -374,6 +446,11 @@ const options: swaggerJsdoc.Options = {
                     }
                   ],
                   example: ['1234567890', '123456789-987654321@g.us', '0987654321']
+                },
+                caption: {
+                  type: 'string',
+                  description: 'Caption para imágenes y videos (usado cuando se envía archivo multimedia)',
+                  example: '¡Mira esta increíble imagen!'
                 }
               },
               required: ['to']
