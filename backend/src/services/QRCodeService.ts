@@ -17,6 +17,13 @@ export class QRCodeService {
    * Get QR code file path for a specific bot
    */
   private getQRCodePath(botId: string): string {
+    // Try the new format first (qr-code-{botId}.png)
+    const newFormatPath = path.join(this.qrCodesPath, `qr-code-${botId}.png`);
+    if (fs.existsSync(newFormatPath)) {
+      return newFormatPath;
+    }
+
+    // Fallback to old format ({botId}.png)
     return path.join(this.qrCodesPath, `${botId}.png`);
   }
 
