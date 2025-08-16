@@ -178,8 +178,10 @@ export default function HeadlessBotCard({
     // Only execute this in browser environment
     if (typeof window === 'undefined') return;
     
-    // Create a minimal popup URL with QR code
-    const qrUrl = api.proxy.getQRCodeImage(bot.id);
+    // Create a complete QR URL with proper host
+    const qrPath = api.proxy.getQRCodeImage(bot.id);
+    // Construct full URL for QR image
+    const qrUrl = qrPath.startsWith('http') ? qrPath : `${window.location.origin}${qrPath}`;
     const popupUrl = `${api.base}/qr-popup?bot=${encodeURIComponent(bot.name)}&qr=${encodeURIComponent(qrUrl)}`;
     
     // Open QR window
