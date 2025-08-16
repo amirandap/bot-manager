@@ -124,3 +124,5 @@ backend/backups/
 # yarn.lock
 backend/ecosystem.config.js
 frontend/ecosystem.config.cjs
+backend/ecosystem.config.js
+frontend/ecosystem.config.cjs
