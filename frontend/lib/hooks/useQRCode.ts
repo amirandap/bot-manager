@@ -61,7 +61,7 @@ export function useQRCode(
 
       const createdAt = new Date(status.qrCode.createdAt).getTime();
       const now = Date.now();
-      const expiryTime = createdAt + 2 * 60 * 1000; // 2 minutes expiry
+      const expiryTime = createdAt + 20 * 1000; // 20 seconds expiry (QR regenerates every 20 seconds)
       const remaining = Math.max(0, expiryTime - now);
 
       return remaining;

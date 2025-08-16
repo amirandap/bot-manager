@@ -145,7 +145,7 @@ export default function QRCodeDisplay({
       return 0;
     }
 
-    const maxTime = 2 * 60 * 1000; // 2 minutes in ms
+    const maxTime = 20 * 1000; // 20 seconds in ms (QR regenerates every 20 seconds)
     return Math.max(0, (timeRemaining / maxTime) * 100);
   };
 
