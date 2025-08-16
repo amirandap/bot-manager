@@ -17,7 +17,7 @@ module.exports = {
         BOT_PORT_START: 7261,
         BACKEND_HOST: "0.0.0.0",
         FRONTEND_HOST: "0.0.0.0",
-        NEXT_PUBLIC_API_BASE_URL: "http://localhost:3001",
+        NEXT_PUBLIC_API_BASE_URL: "",
         FRONTEND_URL: "http://localhost:7260",
         BOT_CONFIG_PATH: "./config/bots.json",
         DEFAULT_BOT_HOST: "localhost",

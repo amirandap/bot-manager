@@ -13,7 +13,7 @@ module.exports = {
         PORT: 7260,
         FRONTEND_PORT: 7260,
         FRONTEND_HOST: "0.0.0.0",
-        NEXT_PUBLIC_API_BASE_URL: "http://localhost:3001",
+        NEXT_PUBLIC_API_BASE_URL: "", // Empty string for relative URLs to work with Nginx
         BACKEND_PORT: 3001,
         BOT_PORT_START: 7261
       },
