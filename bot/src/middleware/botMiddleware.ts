@@ -1,5 +1,5 @@
 
-import { botLogger } from "../utils";
+import { logger } from "../services/LoggerService";
 /**
  * Centralized middleware for common bot operations
  * Reduces code duplication across routes
@@ -73,7 +73,7 @@ export function logRequest(
   const { method, originalUrl } = req;
   const requestId = req.bot?.requestId;
 
-  botLogger.info(
+  logger.info(
     `${method} ${originalUrl} - Request ${requestId} started`
   );
 
@@ -82,7 +82,7 @@ export function logRequest(
   res.json = function (body: any) {
     const duration = Date.now() - (req.bot?.startTime || 0);
     const success = body?.success !== false;
-    const logMethod = success ? botLogger.success : botLogger.error;
+    const logMethod = success ? logger.success : logger.error;
 
     logMethod(
       `${method} ${originalUrl} - Request ${requestId} completed in ${duration}ms`
@@ -105,7 +105,7 @@ export function handleBotError(
 ): void {
   const requestId = req.bot?.requestId || "unknown";
 
-  botLogger.error(`❌ [BOT] Request ${requestId} failed:`);
+  logger.error(`❌ [BOT] Request ${requestId} failed:`);
 
   if (res.headersSent) {
     return next(error);

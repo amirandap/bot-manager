@@ -3,9 +3,9 @@ import { Client, MessageMedia } from "whatsapp-web.js";
 import { 
   formatRecipient, 
   createMessageMedia, 
-  createMessageMediaFromUrl, 
-  botLogger 
+  createMessageMediaFromUrl
 } from "../utils";
+import { logger } from "./LoggerService";
 import { WhatsAppErrorHandlerService } from "./WhatsAppErrorHandlerService";
 import { MediaResult } from "../types/types";
 /**
@@ -52,8 +52,8 @@ export async function sendImageMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      // eslint-disable-next-line no-console
-      botLogger.info(`🖼️ [BOT] Sending image to: ${formattedRecipient}`);
+       
+      logger.info(`🖼️ [BOT] Sending image to: ${formattedRecipient}`);
 
       // For images, WhatsApp uses sendMessage with media and optional caption
       if (caption && caption.trim()) {
@@ -62,20 +62,17 @@ export async function sendImageMessage(
         await client.sendMessage(formattedRecipient, media);
       }
 
-      // eslint-disable-next-line no-console
-      botLogger.success(`✅ [BOT] Image sent successfully to: ${formattedRecipient}`);
+       
+      logger.info(`✅ [BOT] Image sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const whatsappError = await errorHandler.handleError(error, "IMAGE_MESSAGE", {
-        recipient,
-        enableFallback: false, // We handle errors manually here
-      });
+      const whatsappError = await errorHandler.handleError(error, "IMAGE_MESSAGE");
 
       if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
-        botLogger.warn(
+        logger.warn(
           `Post-send error for image to ${recipient} (treating as success)`
         );
         continue;
@@ -119,8 +116,8 @@ export async function sendDocumentMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      // eslint-disable-next-line no-console
-      botLogger.info(`📄 [BOT] Sending document to: ${formattedRecipient}`);
+       
+      logger.info(`📄 [BOT] Sending document to: ${formattedRecipient}`);
 
       // For documents, send the file first, then optionally send a message
       await client.sendMessage(formattedRecipient, media);
@@ -129,31 +126,28 @@ export async function sendDocumentMessage(
         await client.sendMessage(formattedRecipient, message);
       }
 
-      // eslint-disable-next-line no-console
-      botLogger.success(
+       
+      logger.info(
         `✅ [BOT] Document sent successfully to: ${formattedRecipient}`
       );
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const whatsappError = await errorHandler.handleError(error, "DOCUMENT_MESSAGE", {
-        recipient,
-        enableFallback: false, // We handle errors manually here
-      });
+      const whatsappError = await errorHandler.handleError(error, "DOCUMENT_MESSAGE");
 
       if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
-        // eslint-disable-next-line no-console
-        botLogger.info(
+         
+        logger.info(
           "✅ [BOT] Document send successful despite post-send error"
         );
         continue;
       }
 
       // Critical error - actual delivery failure
-      // eslint-disable-next-line no-console
-      botLogger.error(`❌ [BOT] Error sending document to ${recipient}: ${error}`);
+       
+      logger.error(`❌ [BOT] Error sending document to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",
@@ -191,8 +185,8 @@ export async function sendAudioMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      // eslint-disable-next-line no-console
-      botLogger.info(`🎵 [BOT] Sending audio to: ${formattedRecipient}`);
+       
+      logger.info(`🎵 [BOT] Sending audio to: ${formattedRecipient}`);
 
       // For audio, send as voice message (ptt: true) or regular audio
       const options: any = { media };
@@ -208,29 +202,26 @@ export async function sendAudioMessage(
         await client.sendMessage(formattedRecipient, message);
       }
 
-      // eslint-disable-next-line no-console
-      botLogger.success(`✅ [BOT] Audio sent successfully to: ${formattedRecipient}`);
+       
+      logger.info(`✅ [BOT] Audio sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const whatsappError = await errorHandler.handleError(error, "AUDIO_MESSAGE", {
-        recipient,
-        enableFallback: false, // We handle errors manually here
-      });
+      const whatsappError = await errorHandler.handleError(error, "AUDIO_MESSAGE");
 
       if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
-        // eslint-disable-next-line no-console
-        botLogger.info(
+         
+        logger.info(
           "✅ [BOT] Treating audio send as successful despite post-send error"
         );
         continue;
       }
 
       // Critical error - actual delivery failure
-      // eslint-disable-next-line no-console
-      botLogger.error(`❌ [BOT] Error sending audio to ${recipient}: ${error}`);
+       
+      logger.error(`❌ [BOT] Error sending audio to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",
@@ -268,8 +259,8 @@ export async function sendVideoMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      // eslint-disable-next-line no-console
-      botLogger.info(`🎬 [BOT] Sending video to: ${formattedRecipient}`);
+       
+      logger.info(`🎬 [BOT] Sending video to: ${formattedRecipient}`);
 
       // For videos, WhatsApp uses sendMessage with media and optional caption
       if (caption && caption.trim()) {
@@ -278,29 +269,26 @@ export async function sendVideoMessage(
         await client.sendMessage(formattedRecipient, media);
       }
 
-      // eslint-disable-next-line no-console
-      botLogger.success(`✅ [BOT] Video sent successfully to: ${formattedRecipient}`);
+       
+      logger.info(`✅ [BOT] Video sent successfully to: ${formattedRecipient}`);
       messagesSent.push(formattedRecipient);
     } catch (error: any) {
       // Use the new error handler to classify and handle the error
-      const whatsappError = await errorHandler.handleError(error, "VIDEO_MESSAGE", {
-        recipient,
-        enableFallback: false, // We handle errors manually here
-      });
+      const whatsappError = await errorHandler.handleError(error, "VIDEO_MESSAGE");
 
       if (whatsappError.isPostSendError) {
         // Post-send error - message was likely delivered
         messagesSent.push(recipient);
-        // eslint-disable-next-line no-console
-        botLogger.info(
+         
+        logger.info(
           "✅ [BOT] Treating video send as successful despite post-send error"
         );
         continue;
       }
 
       // Critical error - actual delivery failure
-      // eslint-disable-next-line no-console
-      botLogger.error(`❌ [BOT] Error sending video to ${recipient}: ${error}`);
+       
+      logger.error(`❌ [BOT] Error sending video to ${recipient}: ${error}`);
       errors.push({
         recipient,
         error: error.message || "Unknown error",

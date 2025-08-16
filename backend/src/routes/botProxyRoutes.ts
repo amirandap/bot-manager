@@ -157,52 +157,9 @@ export function setBotProxyRoutes(app: Router) {
     botProxyController.updateBotQRCode.bind(botProxyController)
   );
 
-  /**
-   * @swagger
-   * /api/bots/{id}/status:
-   *   get:
-   *     summary: Get bot status by ID
-   *     tags: [Bot Proxy - Core]
-   *     description: Retrieve the current status of a specific bot instance using REST pattern
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: string
-   *         description: The bot ID
-   *         example: "whatsapp-bot-1234567890"
-   *     responses:
-   *       200:
-   *         description: Bot status retrieved successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 authenticated:
-   *                   type: boolean
-   *                   description: Whether the bot is authenticated
-   *                 ready:
-   *                   type: boolean
-   *                   description: Whether the bot is ready to send/receive messages
-   *                 phone:
-   *                   type: string
-   *                   description: The phone number associated with the bot
-   *                 qr:
-   *                   type: string
-   *                   description: QR code data if authentication is needed
-   *       400:
-   *         description: Bot ID is required
-   *       404:
-   *         description: Bot not found
-   *       500:
-   *         description: Bot not responding or server error
-   */
-  app.get(
-    "/api/bots/:id/status",
-    botProxyController.getBotStatusById.bind(botProxyController)
-  );
+  // Status endpoint removed - use PM2 metrics endpoints instead:
+  // - /api/status/:id (via StatusController with PM2 metrics)
+  // - /api/bots/:botId/status/metrics (via BotStatusController)
 
   /**
    * @swagger
@@ -286,33 +243,70 @@ export function setBotProxyRoutes(app: Router) {
    * @swagger
    * /api/bots/send-message:
    *   post:
-   *     summary: Send WhatsApp message
+   *     summary: Send WhatsApp message (Unified)
    *     tags: [Bot Proxy - Messaging]
-   *     description: Send a message through WhatsApp bot with optional file attachment
+   *     description: |
+   *       Send a message through WhatsApp bot with automatic endpoint routing.
+   *       The backend automatically selects the optimal bot endpoint based on:
+   *       - File attachments (image/video/audio/document endpoints)
+   *       - Recipients (phone/group/broadcast endpoints)
+   *       - Message content
    *     requestBody:
    *       required: true
    *       content:
    *         multipart/form-data:
    *           schema:
    *             type: object
-   *             required: [botId, phoneNumber, message]
+   *             required: [botId, message]
    *             properties:
    *               botId:
    *                 type: string
    *                 description: Unique bot identifier
    *                 example: "whatsapp-bot-1234567890"
    *               phoneNumber:
-   *                 type: string
-   *                 description: Recipient phone number with country code
+   *                 oneOf:
+   *                   - type: string
+   *                   - type: array
+   *                     items:
+   *                       type: string
+   *                 description: Recipient phone number(s) with country code
    *                 example: "+1234567890"
+   *               to:
+   *                 oneOf:
+   *                   - type: string
+   *                   - type: array
+   *                     items:
+   *                       type: string
+   *                 description: Alternative field for phoneNumber (for compatibility)
+   *                 example: "+1234567890"
+   *               group_id:
+   *                 oneOf:
+   *                   - type: string
+   *                   - type: array
+   *                     items:
+   *                       type: string
+   *                 description: WhatsApp group ID(s) - note the underscore format
+   *                 example: "1234567890-1234567890@g.us"
+   *               groupId:
+   *                 oneOf:
+   *                   - type: string
+   *                   - type: array
+   *                     items:
+   *                       type: string
+   *                 description: Alternative field for group_id (auto-converted to group_id)
+   *                 example: "1234567890-1234567890@g.us"
+   *               discorduserid:
+   *                 type: string
+   *                 description: Discord user ID for cross-platform messaging
+   *                 example: "123456789012345678"
    *               message:
    *                 type: string
-   *                 description: Message content
+   *                 description: Message content or caption for media files
    *                 example: "Hello from WhatsApp Bot!"
    *               file:
    *                 type: string
    *                 format: binary
-   *                 description: Optional file attachment
+   *                 description: Optional file attachment (image/video/audio/document)
    *           examples:
    *             text_message:
    *               summary: Text message only
@@ -330,7 +324,7 @@ export function setBotProxyRoutes(app: Router) {
    *         application/json:
    *           schema:
    *             type: object
-   *             required: [botId, phoneNumber, message]
+   *             required: [botId, message]
    *             properties:
    *               botId:
    *                 type: string

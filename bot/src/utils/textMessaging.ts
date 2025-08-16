@@ -3,7 +3,7 @@ import { Client } from "whatsapp-web.js";
 import { formatRecipient } from "./recipientFormattingUtils";
 import { shouldSendFallback, logWhatsAppError } from "./errorHandlerUtils";
 import { MediaResult } from "../types/types";
-import { botLogger } from "./loggerWrapper";
+import { logger } from "../services/LoggerService";
 
 /**
  * Text messaging utilities
@@ -33,7 +33,7 @@ export async function sendTextMessage(
   for (const recipient of recipients) {
     try {
       const formattedRecipient = formatRecipient(recipient);
-      botLogger.info(`Sending text message to: ${formattedRecipient}`);
+      logger.info(`Sending text message to: ${formattedRecipient}`);
 
       // Verify number exists on WhatsApp (for phone numbers only)
       if (!recipient.includes("@g.us")) {
@@ -56,24 +56,20 @@ export async function sendTextMessage(
       try {
         await client.sendMessage(formattedRecipient, message);
         messageSent = true;
-        botLogger.success(
+        logger.info(
           `Text message sent successfully to: ${formattedRecipient}`
         );
         messagesSent.push(recipient);
       } catch (sendError: any) {
         // Use centralized error validation instead of manual checking
-        const validation = logWhatsAppError(
-          sendError,
-          "TEXT_MESSAGE",
-          recipient
-        );
+        const validation = logWhatsAppError(sendError);
 
         if (messageSent || validation.isPostSendError) {
-          botLogger.warn(
+          logger.warn(
             `Post-send error (message likely sent): ${sendError.message}`
           );
           messagesSent.push(recipient);
-          botLogger.success(
+          logger.info(
             "Treating text send as successful despite post-send error"
           );
           continue;
@@ -81,8 +77,8 @@ export async function sendTextMessage(
         throw sendError;
       }
     } catch (error: any) {
-      shouldSendFallback(error, "TEXT_MESSAGE", recipient);
-      botLogger.error(
+      shouldSendFallback(error);
+      logger.error(
         `Error sending text message to ${recipient}: ${error}`
       );
 

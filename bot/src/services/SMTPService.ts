@@ -1,5 +1,5 @@
 
-import { botLogger } from "../utils";
+import { logger } from "./LoggerService";
 /**
  * SMTP Service
  * Functions to check and validate SMTP email configuration
@@ -42,13 +42,13 @@ export function getSmtpConfig(): {
  */
 export function logSmtpStatus(): void {
   if (isSmtpConfigured()) {
-    botLogger.success("✅ SMTP configured - email notifications enabled");
+    logger.info("✅ SMTP configured - email notifications enabled");
   } else {
     const missing = [];
     if (!process.env.GMAIL_USER) missing.push("GMAIL_USER");
     if (!process.env.GMAIL_PASS) missing.push("GMAIL_PASS");
     if (!process.env.MAIL_RECIPIENT) missing.push("MAIL_RECIPIENT");
     
-    botLogger.info(`📧 SMTP not configured - email notifications disabled (missing: ${missing.join(", ")})`);
+    logger.info(`📧 SMTP not configured - email notifications disabled (missing: ${missing.join(", ")})`);
   }
 }

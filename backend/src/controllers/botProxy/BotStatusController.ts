@@ -205,55 +205,6 @@ export class BotStatusController {
   }
 
   // GET /api/bots/:id/status - Get bot status using route parameter
-  public async getBotStatusById(req: Request, res: Response): Promise<void> {
-    try {
-      const botId = req.params.id;
-
-      if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in URL path" });
-        return;
-      }
-
-      const result = await this.botCommunicationService.forwardRequest({
-        botId,
-        endpoint: "/status",
-        method: "GET",
-      });
-
-      // Check if the result indicates an error
-      if (
-        result &&
-        typeof result === "object" &&
-        "error" in result &&
-        result.error
-      ) {
-        // Bot is not reachable or returned an error, but don't crash the backend
-        res.status(503).json({
-          error: true,
-          botId: botId,
-          status: result.status || "offline",
-          message: result.message || "Bot is not responding",
-          code: result.code || "BOT_UNREACHABLE",
-          timestamp: result.timestamp || new Date().toISOString(),
-        });
-        return;
-      }
-
-      // Bot responded successfully
-      res.json(result);
-    } catch (error) {
-      // This should rarely happen now, but keep as fallback
-      console.error(`Unexpected error in getBotStatusById:`, error);
-      res.status(500).json({
-        error: true,
-        message: `Failed to get bot status: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
   // POST /api/bots/qr-code/update - Update QR code (internal use)
   public async updateBotQRCode(req: Request, res: Response): Promise<void> {
     try {

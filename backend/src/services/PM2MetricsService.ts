@@ -30,6 +30,16 @@ export interface PM2ProcessMetrics {
   httpLatencyMean?: number;
   httpLatencyP95?: number;
 
+  // Bot-specific custom metrics
+  botStatus?: string;
+  browserCpuUsage?: number;
+  browserMemoryUsage?: number;
+  messageProcessingTime?: number;
+  qrCodeStatus?: string;
+  qrCodesGenerated?: number;
+  apiServerStatus?: number;
+  whatsappStatus?: string;
+
   // PM2 environment
   pm2Id?: number;
   createdAt?: string;
@@ -159,14 +169,15 @@ export class PM2MetricsService {
   }
 
   /**
-   * Get code metrics (heap, event loop, etc.) using pm2 jlist
+   * Get code metrics (heap, event loop, etc.) using pm2 describe for better metric access
    */
   private async getCodeMetrics(
     processName: string
   ): Promise<Partial<PM2ProcessMetrics>> {
     try {
-      const { stdout } = await execAsync("pm2 jlist");
-      const processes = JSON.parse(stdout);
+      // First try the original method (pm2 jlist)
+      const { stdout: jlistOutput } = await execAsync("pm2 jlist");
+      const processes = JSON.parse(jlistOutput);
 
       const process = processes.find((p: any) => p.name === processName);
       if (!process) {
@@ -175,22 +186,144 @@ export class PM2MetricsService {
 
       const axm = process.axm_monitor || {};
 
-      return {
-        activeHandles: this.parseMetricValue(axm["Active handles"]),
-        activeRequests: this.parseMetricValue(axm["Active requests"]),
-        eventLoopLatency: this.parseMetricValue(axm["Event Loop Latency"]),
-        heapUsage: this.parseMetricValue(axm["Heap Usage"], true), // percentage
-        heapSize: this.parseMetricValue(axm["Heap Size"]),
-        usedHeapSize: this.parseMetricValue(axm["Used Heap Size"]),
-        errorCount: this.parseMetricValue(axm["Error Count"]),
-        httpRequests: this.parseMetricValue(axm["HTTP"]),
-        httpLatencyMean: this.parseMetricValue(axm["HTTP Mean Latency"]),
-        httpLatencyP95: this.parseMetricValue(axm["HTTP P95 Latency"]),
-      };
+      // If axm_monitor has data, use it
+      if (Object.keys(axm).length > 0) {
+        return {
+          activeHandles: this.parseMetricValue(axm["Active handles"]),
+          activeRequests: this.parseMetricValue(axm["Active requests"]),
+          eventLoopLatency: this.parseMetricValue(axm["Event Loop Latency"]),
+          heapUsage: this.parseMetricValue(axm["Heap Usage"], true), // percentage
+          heapSize: this.parseMetricValue(axm["Heap Size"]),
+          usedHeapSize: this.parseMetricValue(axm["Used Heap Size"]),
+          errorCount: this.parseMetricValue(axm["Error Count"]),
+          httpRequests: this.parseMetricValue(axm["HTTP"]),
+          httpLatencyMean: this.parseMetricValue(axm["HTTP Mean Latency"]),
+          httpLatencyP95: this.parseMetricValue(axm["HTTP P95 Latency"]),
+        };
+      }
+
+      // If axm_monitor is empty, try pm2 describe for custom metrics
+      try {
+        const { stdout: describeOutput } = await execAsync(
+          `pm2 describe ${processName}`
+        );
+
+        // Parse the describe output to extract metrics
+        const metrics = this.parseDescribeOutput(describeOutput);
+
+        console.log(`📊 Extracted custom metrics for ${processName}:`, metrics);
+
+        return metrics;
+      } catch (describeError) {
+        console.warn(
+          `⚠️ Failed to get describe metrics for ${processName}:`,
+          describeError
+        );
+        return {};
+      }
     } catch (error) {
       console.warn(`⚠️ Failed to get code metrics for ${processName}:`, error);
       return {};
     }
+  }
+
+  /**
+   * Parse PM2 describe output to extract custom bot metrics
+   */
+  private parseDescribeOutput(
+    describeOutput: string
+  ): Partial<PM2ProcessMetrics> {
+    const metrics: Partial<PM2ProcessMetrics> = {};
+
+    try {
+      // Look for the "Code metrics value" section
+      const lines = describeOutput.split("\n");
+      let inMetricsSection = false;
+
+      for (const line of lines) {
+        if (line.includes("Code metrics value")) {
+          inMetricsSection = true;
+          continue;
+        }
+
+        if (inMetricsSection && line.includes("│")) {
+          // Parse metric lines like "│ Bot Status              │ Launching Chrome status │"
+          const match = line.match(/│\s*([^│]+?)\s*│\s*([^│]+?)\s*│/);
+          if (match) {
+            const metricName = match[1].trim();
+            const metricValue = match[2].trim();
+
+            // Map the specific bot metrics we're interested in
+            switch (metricName) {
+              case "Bot Status":
+                // Store as string for bot status
+                (metrics as any).botStatus = metricValue;
+                break;
+              case "Browser CPU Usage":
+                (metrics as any).browserCpuUsage =
+                  this.parseMetricValue(metricValue);
+                break;
+              case "Browser Memory Usage":
+                (metrics as any).browserMemoryUsage =
+                  this.parseMetricValue(metricValue);
+                break;
+              case "Message Processing Time":
+                (metrics as any).messageProcessingTime =
+                  this.parseMetricValue(metricValue);
+                break;
+              case "Error Count":
+                metrics.errorCount = this.parseMetricValue(metricValue);
+                break;
+              case "Messages Processed":
+                metrics.httpRequests = this.parseMetricValue(metricValue);
+                break;
+              case "QR Code Status":
+                (metrics as any).qrCodeStatus = metricValue;
+                break;
+              case "QR Codes Generated":
+                (metrics as any).qrCodesGenerated =
+                  this.parseMetricValue(metricValue);
+                break;
+              case "API Server Status":
+                (metrics as any).apiServerStatus =
+                  this.parseMetricValue(metricValue);
+                break;
+              case "WhatsApp Status":
+                (metrics as any).whatsappStatus = metricValue;
+                break;
+              // Keep the original system metrics too
+              case "Active handles":
+                metrics.activeHandles = this.parseMetricValue(metricValue);
+                break;
+              case "Active requests":
+                metrics.activeRequests = this.parseMetricValue(metricValue);
+                break;
+              case "Event Loop Latency":
+                metrics.eventLoopLatency = this.parseMetricValue(metricValue);
+                break;
+              case "Heap Usage":
+                metrics.heapUsage = this.parseMetricValue(metricValue, true);
+                break;
+              case "Heap Size":
+                metrics.heapSize = this.parseMetricValue(metricValue);
+                break;
+              case "Used Heap Size":
+                metrics.usedHeapSize = this.parseMetricValue(metricValue);
+                break;
+            }
+          }
+        }
+
+        // Stop parsing when we reach another section
+        if (inMetricsSection && line.includes("Divergent env variables")) {
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("⚠️ Failed to parse describe output:", error);
+    }
+
+    return metrics;
   }
 
   /**

@@ -23,9 +23,8 @@ export interface BotStatus {
   id: string;
   name: string;
   type?: "whatsapp" | "discord"; // Made optional to handle cases where type might be undefined
-  status:
-    // Standard states
-    | "online"
+  status: // Standard states
+  | "online"
     | "offline"
     | "stopped"
     | "stopping"
@@ -58,6 +57,17 @@ export interface BotStatus {
     restarts?: number;
     uptime?: number; // in milliseconds
     lastRestart?: string;
+    // Custom PM2 metrics from advanced monitoring
+    activeHandles?: number;
+    activeRequests?: number;
+    eventLoopLatency?: number; // in milliseconds
+    heapUsage?: {
+      used: number;
+      total: number;
+      percent: number;
+    };
+    errorCount?: number;
+    httpRequests?: number;
   };
   // API connectivity
   apiResponsive?: boolean;

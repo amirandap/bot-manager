@@ -1,5 +1,5 @@
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
-import { botLogger } from "./loggerWrapper";
+import { logger } from "../services/LoggerService";
 
 /**
  * Pure utility functions for recipient formatting and validation
@@ -42,7 +42,7 @@ export function separateRecipients(recipients: string[]): {
     }
   });
 
-  botLogger.info(
+  logger.info(
     `Processing ${groups.length} groups and ${phoneNumbers.length} phone numbers`
   );
 

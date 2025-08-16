@@ -7,7 +7,8 @@
  */
 import * as fs from "fs";
 import * as os from "os";
-import { botLogger } from "../utils";
+import * as path from "path";
+import { logger } from "../services/LoggerService";
 export interface PuppeteerConfiguration {
   executablePath?: string;
   args: string[];
@@ -31,7 +32,7 @@ export class PuppeteerConfigManager {
   private static instance: PuppeteerConfigManager;
   private currentOS: string;
   private validatedChromePath: string | null = null; // Cache validated Chrome path
-  // Remove logger dependency - use botLogger directly
+  // Remove logger dependency - use logger directly
 
   private constructor() {
     this.currentOS = os.platform();
@@ -52,12 +53,12 @@ export class PuppeteerConfigManager {
     switch (this.currentOS) {
       case "darwin": // macOS
         return [
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+          "/opt/homebrew/bin/google-chrome",
+          "/usr/local/bin/google-chrome",
           "/Applications/Chromium.app/Contents/MacOS/Chromium",
           "/opt/homebrew/bin/chromium",
           "/usr/local/bin/chromium",
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-          "/usr/local/bin/google-chrome",
-          "/opt/homebrew/bin/google-chrome",
         ];
 
       case "linux":
@@ -87,7 +88,7 @@ export class PuppeteerConfigManager {
         ].filter(Boolean);
 
       default:
-        botLogger.warn(`Unsupported OS detected: ${this.currentOS}`);
+        logger.warn(`Unsupported OS detected: ${this.currentOS}`);
         return [];
     }
   }
@@ -151,7 +152,7 @@ export class PuppeteerConfigManager {
         logs.push(`📅 Modified: ${stats.mtime.toISOString()}`);
 
         return result;
-      } catch (accessError) {
+      } catch {
         result.error = `Chrome executable is not accessible or not executable: ${chromePath}`;
         logs.push(`❌ Access denied or not executable: ${chromePath}`);
         logs.push(`💡 Try: chmod +x "${chromePath}"`);
@@ -181,13 +182,13 @@ export class PuppeteerConfigManager {
         this.validatedChromePath = customPath; // Cache the result
         return customPath;
       } else {
-        botLogger.warn(`Custom Chrome path invalid: ${customPath}`);
+        logger.warn(`Custom Chrome path invalid: ${customPath}`);
         // If custom path failed but alternatives were found, use the first one
         if (result.alternativePaths && result.alternativePaths.length > 0) {
           const altPath = result.alternativePaths[0];
           const altResult = this.validateChrome(altPath);
           if (altResult.isValid) {
-            botLogger.info(`Using alternative Chrome path: ${altPath}`);
+            logger.info(`Using alternative Chrome path: ${altPath}`);
             this.validatedChromePath = altPath; // Cache the result
             return altPath;
           }
@@ -206,7 +207,7 @@ export class PuppeteerConfigManager {
       }
     }
 
-    botLogger.warn("No valid Chrome installation found in default locations");
+    logger.warn("No valid Chrome installation found in default locations");
     return undefined;
   }
 
@@ -219,9 +220,29 @@ export class PuppeteerConfigManager {
   }
 
   /**
-   * Get OS-specific Puppeteer arguments
+   * Get dedicated user profile directory for the bot
+   */
+  private getBotProfileDir(): string {
+    const botId = process.env.BOT_ID || 'whatsapp-bot-default';
+    
+    // Create a dedicated profile directory for this bot instance
+    const profileDir = path.join(os.homedir(), '.whatsapp-bot-profiles', botId);
+    
+    // Ensure directory exists
+    if (!fs.existsSync(profileDir)) {
+      fs.mkdirSync(profileDir, { recursive: true });
+      logger.info(`Created dedicated Chrome profile: ${profileDir}`);
+    }
+    
+    return profileDir;
+  }
+
+  /**
+   * Get OS-specific Puppeteer arguments with dedicated profile
    */
   private getOSSpecificArgs(): string[] {
+    const profileDir = this.getBotProfileDir();
+    
     const baseArgs = [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -235,17 +256,36 @@ export class PuppeteerConfigManager {
       "--disable-background-timer-throttling",
       "--disable-renderer-backgrounding",
       "--disable-backgrounding-occluded-windows",
+      // Dedicated profile to avoid singleton conflicts
+      `--user-data-dir=${profileDir}`,
+      "--disable-session-crashed-bubble",
+      "--disable-infobars",
+      "--no-first-run",
+      "--disable-default-apps",
     ];
 
     switch (this.currentOS) {
-      case "darwin": // macOS
+      case "darwin": // macOS - Optimizado para evitar singleton errors
         return [
           ...baseArgs,
           "--disable-background-timer-throttling",
           "--disable-renderer-backgrounding",
           "--disable-backgrounding-occluded-windows",
-          "--no-zygote", // Remove this for macOS as it can cause issues
-        ].filter((arg) => arg !== "--no-zygote");
+          "--disable-ipc-flooding-protection", // Helps with macOS
+          "--disable-blink-features=AutomationControlled", // Avoid detection
+          "--disable-component-extensions-with-background-pages",
+          "--disable-sync", // Avoid sync conflicts
+          "--disable-login-animations",
+          "--disable-modal-animations",
+          "--disable-background-networking",
+          "--force-prefers-reduced-motion", // Better performance on macOS
+          "--disable-client-side-phishing-detection",
+          "--disable-popup-blocking",
+          "--disable-prompt-on-repost",
+          "--disable-hang-monitor",
+          "--disable-domain-reliability",
+          "--disable-breakpad", // Crash reporting can cause issues
+        ];
 
       case "linux":
         return [
@@ -314,7 +354,7 @@ export class PuppeteerConfigManager {
             const defaultLockPath = `${sessionPath}/${sessionDir}/Default/${lockFile}`;
             if (fs.existsSync(defaultLockPath)) {
               fs.unlinkSync(defaultLockPath);
-              botLogger.info(`Removed lock file: ${defaultLockPath}`);
+              logger.info(`Removed lock file: ${defaultLockPath}`);
               cleaned = true;
             }
 
@@ -322,7 +362,7 @@ export class PuppeteerConfigManager {
             const rootLockPath = `${sessionPath}/${sessionDir}/${lockFile}`;
             if (fs.existsSync(rootLockPath)) {
               fs.unlinkSync(rootLockPath);
-              botLogger.info(`Removed root lock file: ${rootLockPath}`);
+              logger.info(`Removed root lock file: ${rootLockPath}`);
               cleaned = true;
             }
           }
@@ -331,7 +371,7 @@ export class PuppeteerConfigManager {
 
       return cleaned;
     } catch (error) {
-      botLogger.warn(`Failed to cleanup browser session: ${error}`);
+      logger.warn(`Failed to cleanup browser session: ${error}`);
       return false;
     }
   }
@@ -362,20 +402,20 @@ export class PuppeteerConfigManager {
     if (chromePath) {
       config.executablePath = chromePath;
     } else {
-      botLogger.warn(
+      logger.warn(
         "Using system default Chrome (may cause issues if not installed)"
       );
     }
 
     // Only log configuration details in development or when debugging
     if (process.env.NODE_ENV === "development" || process.env.DEBUG) {
-      botLogger.info(`Puppeteer config for ${this.currentOS}:`);
-      botLogger.info(`  - Chrome path: ${chromePath || "system default"}`);
-      botLogger.info(`  - Headless: ${headless}`);
-      botLogger.info(`  - Args count: ${config.args.length}`);
+      logger.info(`Puppeteer config for ${this.currentOS}:`);
+      logger.info(`  - Chrome path: ${chromePath || "system default"}`);
+      logger.info(`  - Headless: ${headless}`);
+      logger.info(`  - Args count: ${config.args.length}`);
 
       if (process.env.NODE_ENV === "development") {
-        botLogger.info(`  - Full args: ${config.args.join(" ")}`);
+        logger.info(`  - Full args: ${config.args.join(" ")}`);
       }
     }
 
@@ -441,7 +481,7 @@ export class PuppeteerConfigManager {
     try {
       fs.accessSync(tmpDir, fs.constants.F_OK | fs.constants.W_OK);
       // Temp directory is accessible and writable
-    } catch (error) {
+    } catch {
       issues.push("Cannot access temporary directory");
       recommendations.push("Ensure temp directory is accessible and writable");
     }

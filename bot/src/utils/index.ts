@@ -5,7 +5,6 @@
  */
 
 // Core utilities
-export { botLogger } from "./loggerWrapper";
 export { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 
 // Message handling utilities
@@ -42,7 +41,6 @@ export * from "./browserUtils";
 export * from "./shutdownUtils";
 
 // Other utilities
-export * from "./pm2Utils_unified";
-export * from "./unifiedLogger";
+// export * from "./pm2Utils_unified"; // REMOVED: Functionality migrated to LoggerService
 export * from "./groupUtils";
 export * from "./messageFormatter";

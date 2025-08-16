@@ -48,6 +48,15 @@ export interface BotStatus {
     heapUsage?: number;
     errorCount?: number;
     httpRequests?: number;
+    // Bot-specific custom metrics
+    botStatus?: string;
+    browserCpuUsage?: number;
+    browserMemoryUsage?: number;
+    messageProcessingTime?: number;
+    qrCodeStatus?: string;
+    qrCodesGenerated?: number;
+    apiServerStatus?: number;
+    whatsappStatus?: string;
   };
   // API connectivity
   apiResponsive?: boolean;

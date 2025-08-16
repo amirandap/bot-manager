@@ -83,22 +83,31 @@ async function startServer() {
       process.exit(1);
     });
 
-    // Graceful shutdown handling
-    process.on("SIGTERM", () => {
-      console.log("🛑 SIGTERM received, shutting down gracefully");
-      server.close(() => {
-        console.log("✅ Server closed");
-        process.exit(0);
-      });
-    });
+    // Increase max listeners to prevent warnings
+    process.setMaxListeners(15);
 
-    process.on("SIGINT", () => {
-      console.log("🛑 SIGINT received, shutting down gracefully");
+    // Graceful shutdown function
+    const gracefulShutdown = (signal: string) => {
+      console.log(`🛑 ${signal} received, shutting down gracefully`);
       server.close(() => {
         console.log("✅ Server closed");
         process.exit(0);
       });
-    });
+
+      // Force exit after 5 seconds if graceful shutdown fails
+      setTimeout(() => {
+        console.log("❌ Forcing shutdown after timeout");
+        process.exit(1);
+      }, 5000);
+    };
+
+    // Remove any existing listeners to prevent duplicates
+    process.removeAllListeners("SIGTERM");
+    process.removeAllListeners("SIGINT");
+
+    // Add shutdown handlers (only once)
+    process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.once("SIGINT", () => gracefulShutdown("SIGINT"));
   } catch (error) {
     console.error(`❌ Failed to start server:`, error);
     process.exit(1);

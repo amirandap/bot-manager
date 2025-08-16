@@ -72,6 +72,7 @@
         "@types/qrcode": "^1.5.5",
         "@types/qrcode-terminal": "^0.12.2",
         "@types/supertest": "^6.0.2",
+        "@types/tx2": "^1.0.3",
         "@typescript-eslint/eslint-plugin": "^8.39.1",
         "@typescript-eslint/parser": "^8.39.1",
         "eslint": "^9.33.0",

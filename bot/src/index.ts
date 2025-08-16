@@ -1,17 +1,12 @@
-// Simplified WhatsApp Bot Starter - Refactored with unified logging system
+// Simplified WhatsApp Bot Starter - Direct startup implementation
 import { logger } from './services/LoggerService';
-import { ENV_CONFIG as config } from "./config/EnvironmentManager";
+import { EnvironmentManager } from "./config/EnvironmentManager";
+import { puppeteerConfig } from "./config/PuppeteerConfig";
+import { DirectoryManagerService } from "./services/DirectoryManagerService";
 
-// Import startup utilities instead of StartupManager service
-import {
-  initializeStartup,
-  getStartupConfig
-} from "./utils/startupUtils";
-
-// Import other utility functions instead of service classes
+// Import utility functions instead of service classes
 import {
   initializeWhatsAppClient,
-  getWhatsAppStatus,
   cleanupQRCodeAfterConnection
 } from "./utils/whatsAppUtils";
 
@@ -29,12 +24,122 @@ import {
   getSystemInfo
 } from "./utils/browserUtils";
 
+/**
+ * Print environment variables during startup
+ */
+function printEnvironmentVariables(): void {
+  logger.info("🔍 ENVIRONMENT VARIABLES VERIFICATION", "🔍");
+
+  const envManager = EnvironmentManager.getInstance();
+  const config = envManager.getConfig();
+  const processInfo = envManager.getProcessInfo();
+
+  // Print main configuration
+  logger.info(`BOT_ID: ${config.BOT_ID} (EnvironmentManager)`);
+  logger.info(`BOT_NAME: ${config.BOT_NAME} (${envManager.getEnvSource("BOT_NAME")})`);
+  logger.info(`BOT_PORT: ${config.BOT_PORT} (${envManager.getEnvSource("BOT_PORT")})`);
+  logger.info(`BOT_TYPE: ${config.BOT_TYPE} (${envManager.getEnvSource("BOT_TYPE")})`);
+  logger.info(`NODE_ENV: ${config.NODE_ENV} (${envManager.getEnvSource("NODE_ENV")})`);
+  logger.info(`CHROME_PATH: ${config.CHROME_PATH} (${envManager.getEnvSource("CHROME_PATH")})`);
+
+  // Print process info
+  logger.info(`PWD: ${processInfo.PWD as string} (system)`);
+  logger.info(`PID: ${processInfo.PID} (system)`);
+
+  // Print PM2 variables if running under PM2
+  if (envManager.isPM2()) {
+    logger.info("📊 PM2 Environment Variables:", "📊");
+    const pm2Vars = envManager.getPM2Variables();
+    Object.entries(pm2Vars).forEach(([key, value]) => {
+      logger.info(`   ${key}: ${value}`);
+    });
+  }
+
+  // Print file paths
+  logger.info("📁 File Paths:", "📁");
+  logger.info(`   DATA_ROOT: ${config.DATA_ROOT}`);
+  logger.info(`   SESSION_PATH: ${config.SESSION_PATH}`);
+  logger.info(`   QR_PATH: ${config.QR_PATH}`);
+  logger.info(`   LOGS_PATH: ${config.LOGS_PATH}`);
+}
+
+/**
+ * Validate Chrome executable
+ */
+function validateChrome(): boolean {
+  logger.info("🔍 CHROME EXECUTABLE VALIDATION", "🔍");
+
+  const envManager = EnvironmentManager.getInstance();
+  const config = envManager.getConfig();
+  const result = puppeteerConfig.validate(config.CHROME_PATH);
+
+  if (!result.isValid) {
+    logger.error("Chrome validation failed. Cannot proceed.");
+    
+    // Log all validation details
+    result.logs.forEach(log => {
+      logger.info(log);
+    });
+    
+    if (result.error) {
+      logger.error(result.error);
+    }
+    
+    if (result.alternativePaths && result.alternativePaths.length > 0) {
+      logger.info("💡 Alternative Chrome paths found:");
+      result.alternativePaths.forEach(path => {
+        logger.info(`   ✅ ${path}`);
+      });
+    }
+    
+    return false;
+  }
+
+  // Log success details
+  result.logs.forEach(log => {
+    logger.info(log);
+  });
+
+  return true;
+}
+
+/**
+ * Create required directories
+ */
+function createStartupDirectories(): void {
+  logger.info("📁 DIRECTORY CREATION", "📁");
+  
+  const directoryManager = new DirectoryManagerService();
+  directoryManager.ensureDirectoriesExist();
+}
+
+/**
+ * Perform startup initialization
+ */
+async function initializeStartup(): Promise<boolean> {
+  try {
+    // Step 1: Print environment variables
+    printEnvironmentVariables();
+
+    // Step 2: Validate Chrome
+    if (!validateChrome()) {
+      return false;
+    }
+
+    // Step 3: Create directories
+    createStartupDirectories();
+
+    logger.info("All pre-flight checks passed. Ready to start bot.");
+    return true;
+  } catch (error) {
+    logger.error(`Startup failed: ${error}`);
+    return false;
+  }
+}
+
 async function startBot(): Promise<void> {
   try {
-    // Step 1: Startup validation (Environment, Chrome, Directories) - CONSOLIDATED
-    logger.startupHeader("🔍 STARTUP VALIDATION");
-    
-    // Single comprehensive startup validation (includes Chrome, directories, env vars)
+    // Step 1: Startup validation (Environment, Chrome, Directories)
     const startupSuccess = await initializeStartup();
     if (!startupSuccess) {
       const error = new Error("Startup validation failed - check Chrome installation and environment variables");
@@ -42,91 +147,29 @@ async function startBot(): Promise<void> {
       throw error;
     }
 
-    logger.log('info', "✅ Validación de entorno completada exitosamente", { component: 'startup' });
-
-    const config = getStartupConfig();
+    const envManager = EnvironmentManager.getInstance();
+    const config = envManager.getConfig();
     
-    // Step 2: Initialize WhatsApp client (includes QR code management)
-    logger.log('info', "Inicializando cliente WhatsApp y sistema QR", { component: 'whatsapp' });
-    
-    // Show system information
-    getSystemInfo();
-    
-    // Initialize WhatsApp client with QR callback (QR is now handled internally)
+    // Step 2: Initialize WhatsApp client and wait for it to be ready
+    getSystemInfo(); // Show system information
+    logger.info("🚀 Initializing WhatsApp client - this will wait for QR code scanning...");
     await initializeWhatsAppClient(config);
-    
-    logger.log('info', "✅ Cliente WhatsApp inicializado exitosamente", { component: 'whatsapp' });
-    
-    // Step 3: Check for critical initialization errors
-    logger.log('info', "Validando estado de inicialización de WhatsApp", { component: 'validation' });
-    
-    const whatsappStatus = getWhatsAppStatus();
-    
-    // Determine if startup should be considered successful based on state
-    if (!whatsappStatus.isReady && !whatsappStatus.hasClient) {
-      // Critical errors prevent successful startup
-      const error = new Error(`Critical WhatsApp initialization failed: State ${whatsappStatus.state}`);
-      logger.error(error, { 
-        component: 'whatsapp', 
-        context: 'initialization',
-        state: whatsappStatus.state,
-        critical: true 
-      });
-      throw error;
-    } else if (whatsappStatus.hasClient && !whatsappStatus.isReady) {
-      // Recoverable errors - log warning but allow startup to continue
-      logger.log('warn', `WhatsApp iniciado con error recuperable: ${whatsappStatus.state}`, {
-        component: 'whatsapp',
-        lifecycle_state: whatsappStatus.state,
-        error_type: 'recoverable',
-        can_proceed: true 
-      });
-    } else if (whatsappStatus.isReady) {
-      // Fully operational
-      logger.log('info', "✅ Inicialización de WhatsApp completada exitosamente", { component: 'whatsapp' });
-    } else {
-      // WhatsApp is in progress, not yet ready
-      logger.log('info', "Inicialización de WhatsApp en progreso, sin errores críticos detectados", { component: 'whatsapp' });
-    }
+    logger.info("✅ WhatsApp client is now ready and authenticated!");
 
-    // Step 4: Setup and start API server
-    logger.log('info', "Configurando servidor API", { component: 'api' });
-    
-    // Setup Express API
+    // Step 3: Setup and start API server (only after WhatsApp is ready)
+    logger.info("🌐 Starting API server now that WhatsApp is ready...");
     await setupExpressAPI(config);
-    
-    // Start API server with retry logic
     await startAPIServer(config);
-    
-    logger.log('info', `✅ Servidor API ejecutándose en puerto ${config.BOT_PORT}`, { 
-      component: 'api', 
-      port: config.BOT_PORT,
-      endpoints: {
-        status: `http://localhost:${config.BOT_PORT}/status`,
-        health: `http://localhost:${config.BOT_PORT}/health`
-      }
-    });
 
-    // Step 5: Setup shutdown handlers
-    logger.log('info', "Configurando manejadores de shutdown", { component: 'system' });
-    
-    // Setup shutdown handlers using utility function
+    // Step 4: Setup shutdown handlers
     setupShutdownHandlers(async (signal: string) => {
       await performGracefulShutdown(signal);
     });
     
-    logger.log('info', "✅ Manejadores de shutdown configurados", { component: 'system' });
-    
-    // Final startup validation and status reporting
-    const finalWhatsAppStatus = getWhatsAppStatus();
-    
-    if (finalWhatsAppStatus.isReady) {
-      logger.success("🎉 Bot startup completed successfully! All systems operational.");
-      cleanupQRCodeAfterConnection(); // Clean QR code after successful connection
-    } else {
-      logger.warn(`⚠️ Bot startup completed but WhatsApp not ready. Current state: ${finalWhatsAppStatus.state}`);
-      logger.info("💡 Bot will attempt to recover when possible. Some features may be limited.");
-    }
+    // Startup completed - now everything is ready
+    logger.info("🎉 Bot startup completed successfully! All systems operational.");
+    logger.info("✅ WhatsApp client authenticated and API server running!");
+    cleanupQRCodeAfterConnection();
     
   } catch (error) {
     // Critical failure - ensure PM2 is notified and shutdown gracefully
@@ -141,6 +184,3 @@ async function startBot(): Promise<void> {
 startBot().catch(() => {
   process.exit(1);
 });
-
-// Export utilities for compatibility
-export { initializeStartup, getStartupConfig };

@@ -25,30 +25,21 @@ export class MessageRoutingService {
         console.log(`🖼️ [BACKEND] IMAGE attachment → /send-image`);
         return {
           endpoint: "/send-image",
-          bodyData: {
-            to: this.normalizeRecipients(data),
-            message: data.message || "", // Use as caption for images
-          },
+          bodyData: this.createMediaBodyData(data),
           messageType: "IMAGE_ATTACHMENT",
         };
       } else if (mimeType.startsWith("video/")) {
         console.log(`🎬 [BACKEND] VIDEO attachment → /send-video`);
         return {
           endpoint: "/send-video",
-          bodyData: {
-            to: this.normalizeRecipients(data),
-            message: data.message || "", // Use as caption for videos
-          },
+          bodyData: this.createMediaBodyData(data),
           messageType: "VIDEO_ATTACHMENT",
         };
       } else if (mimeType.startsWith("audio/")) {
         console.log(`🎵 [BACKEND] AUDIO attachment → /send-audio`);
         return {
           endpoint: "/send-audio",
-          bodyData: {
-            to: this.normalizeRecipients(data),
-            message: data.message || "",
-          },
+          bodyData: this.createMediaBodyData(data),
           messageType: "AUDIO_ATTACHMENT",
         };
       } else {
@@ -56,10 +47,7 @@ export class MessageRoutingService {
         console.log(`📄 [BACKEND] DOCUMENT attachment → /send-document`);
         return {
           endpoint: "/send-document",
-          bodyData: {
-            to: this.normalizeRecipients(data),
-            message: data.message || "",
-          },
+          bodyData: this.createMediaBodyData(data),
           messageType: "DOCUMENT_ATTACHMENT",
         };
       }
@@ -67,6 +55,29 @@ export class MessageRoutingService {
 
     // No file attachment - use existing logic
     return this.determineTextMessageEndpoint(data);
+  }
+
+  /**
+   * Create body data for media endpoints using correct bot field structure
+   */
+  private createMediaBodyData(data: any): any {
+    const allRecipients = this.normalizeRecipients(data);
+    const { groups, phones } = this.separateRecipients(allRecipients);
+
+    const bodyData: any = {
+      message: data.message || "", // Caption for media
+      discorduserid: data.discorduserid, // Pass through if exists
+    };
+
+    // Set appropriate recipient fields based on what we have
+    if (phones.length > 0) {
+      bodyData.phoneNumber = phones.length === 1 ? phones[0] : phones;
+    }
+    if (groups.length > 0) {
+      bodyData.group_id = groups.length === 1 ? groups[0] : groups;
+    }
+
+    return bodyData;
   }
 
   /**
@@ -142,6 +153,7 @@ export class MessageRoutingService {
         bodyData: {
           to: allRecipients,
           message: data.message,
+          discorduserid: data.discorduserid, // Pass through if exists
         },
         messageType: "HYBRID",
       };
@@ -153,8 +165,9 @@ export class MessageRoutingService {
       return {
         endpoint: "/send-to-group",
         bodyData: {
-          groupId: groups.length === 1 ? groups[0] : groups,
+          group_id: groups.length === 1 ? groups[0] : groups,
           message: data.message,
+          discorduserid: data.discorduserid, // Pass through if exists
         },
         messageType: "GROUP",
       };

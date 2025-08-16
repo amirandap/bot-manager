@@ -1,11 +1,11 @@
 
-import { botLogger } from "../utils";
+import { logger } from "../services/LoggerService";
 import { MessageErrorHandlerService } from "../services";
 import { validateErrorSeverity, isPostSendErrorType } from "../utils/errorHandlerUtils";
 import { sendTextMessage } from "../utils/textMessaging";
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from "whatsapp-web.js";
 import {
@@ -150,13 +150,13 @@ export class MessageHandlerController {
           await messageErrorHandler.handleBatchErrors(errorObjects);
           result.fallbackSent = true;
         } catch (errorHandlerError: any) {
-          botLogger.error(
+          logger.error(
             `Error handler failed: ${errorHandlerError}`
           );
         }
       }
     } catch (criticalError: any) {
-      botLogger.error(
+      logger.error(
         `Critical error in message handling: ${criticalError}`
       );
 
@@ -188,9 +188,9 @@ export class MessageHandlerController {
 
         await sendTextMessage(client, [DEFAULT_FALLBACK_PHONE_NUMBER], fallbackMessage);
         result.fallbackSent = true;
-        botLogger.success("Critical error sent to fallback");
+        logger.info("Critical error sent to fallback");
       } catch (fallbackError: any) {
-        botLogger.error(
+        logger.error(
           `Failed to send critical error to fallback: ${fallbackError}`
         );
       }
@@ -241,7 +241,7 @@ export class MessageHandlerController {
     isError: boolean = false
   ): Promise<void> {
     if (!client) {
-      botLogger.error("Client not initialized");
+      logger.error("Client not initialized");
       return;
     }
 
@@ -251,13 +251,13 @@ export class MessageHandlerController {
 
     try {
       await sendTextMessage(client, [fallbackNumber], fullMessage);
-      botLogger.success(
+      logger.info(
         `${
           isError ? "Error" : "Info"
         } notification sent to fallback`
       );
     } catch (error: any) {
-      botLogger.error(
+      logger.error(
         `Failed to send notification: ${error}`
       );
     }
@@ -294,13 +294,13 @@ export class MessageHandlerController {
     let totalErrors = 0;
     let successfulBatches = 0;
 
-    botLogger.info(
+    logger.info(
       `Starting batch send of ${batches.length} batches`
     );
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      botLogger.info(
+      logger.info(
         `Processing batch ${i + 1}/${batches.length}`
       );
 
@@ -325,7 +325,7 @@ export class MessageHandlerController {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       } catch (batchError: any) {
-        botLogger.error(`❌ [BATCH_HANDLER] Error in batch ${i + 1}:`);
+        logger.error(`❌ [BATCH_HANDLER] Error in batch ${i + 1}:`);
 
         const errorResult: MessageHandlerResult = {
           success: false,
@@ -347,7 +347,7 @@ export class MessageHandlerController {
 
     const overallSuccess = successfulBatches > 0 && totalErrors === 0;
 
-    botLogger.info(
+    logger.info(
       `Batch complete: ${successfulBatches}/${batches.length} successful, ${totalMessagesSent} messages sent, ${totalErrors} errors`
     );
 
@@ -401,13 +401,13 @@ export class MessageHandlerController {
 
     for (const groupId of groups) {
       try {
-        botLogger.info(`🏢 [BOT] Sending to group: ${groupId}`, '🏢');
-        botLogger.info(`🔍 [BOT] Message content: "${message}"`, '💬');
-        botLogger.environmentInfo(`📁 [BOT] Has file attachment: ${!!file}`);
+        logger.info(`🏢 [BOT] Sending to group: ${groupId}`, '🏢');
+        logger.info(`🔍 [BOT] Message content: "${message}"`, '💬');
+        logger.environmentInfo(`📁 [BOT] Has file attachment: ${!!file}`);
 
         let sendResult;
         if (file) {
-          botLogger.info(
+          logger.info(
             `Sending file to group: ${file.originalname} (${file.mimetype})`
           );
           sendResult = await client.sendMessage(
@@ -416,13 +416,13 @@ export class MessageHandlerController {
             { caption: message }
           );
         } else {
-          botLogger.info("Sending text message to group");
+          logger.info("Sending text message to group");
           sendResult = await client.sendMessage(groupId, message);
         }
 
-        botLogger.info(`Send result: ${JSON.stringify(sendResult)}`);
+        logger.info(`Send result: ${JSON.stringify(sendResult)}`);
         messagesSent.push(groupId);
-        botLogger.info(`✅ [BOT] Group message sent successfully to: ${groupId}`, '✅');
+        logger.info(`✅ [BOT] Group message sent successfully to: ${groupId}`, '✅');
       } catch (error: unknown) {
         const reason = error instanceof Error ? error.message : "Unknown error";
         const errorStack =
@@ -434,18 +434,18 @@ export class MessageHandlerController {
         if (!sendFallback) {
           // Post-send error - message was likely delivered successfully
           messagesSent.push(groupId);
-          botLogger.success(
+          logger.info(
             "Treating as successful send despite post-send error"
           );
         } else {
           // Critical error - actual delivery failure
-          botLogger.error(
+          logger.error(
             `Critical error sending message to group ${groupId}:`
           );
-          botLogger.error(`   Error Type: ${typeof error}`);
-          botLogger.error(`   Error Message: ${reason}`);
-          botLogger.error(`   Error Stack: ${errorStack}`);
-          botLogger.error(`   Full Error Object: ${JSON.stringify(error)}`);
+          logger.error(`   Error Type: ${typeof error}`);
+          logger.error(`   Error Message: ${reason}`);
+          logger.error(`   Error Stack: ${errorStack}`);
+          logger.error(`   Full Error Object: ${JSON.stringify(error)}`);
 
           errors.push({
             recipient: groupId,

@@ -10,6 +10,7 @@ import {
   Settings,
   Trash2,
   QrCode,
+  PlayCircle,
 } from "lucide-react";
 import StatusIndicator from "./status-indicator";
 import PM2StatusIndicator from "./pm2-status-indicator";
@@ -23,8 +24,17 @@ interface BotCardProps {
   onDelete?: (botId: string) => void;
 }
 
+interface QRStatus {
+  available: boolean;
+  filePath?: string;
+  createdAt?: string;
+  ageMinutes?: number;
+  expired?: boolean;
+}
+
 export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const [status, setStatus] = useState<BotStatus | null>(null);
+  const [qrStatus, setQrStatus] = useState<QRStatus | null>(null);
   const [loading, setLoading] = useState(false);
 
   const getBotIcon = (type?: string) => {
@@ -39,10 +49,36 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
     }
   };
 
+  // Fetch QR code status for WhatsApp bots
+  const fetchQRStatus = useCallback(async () => {
+    if (bot.type !== "whatsapp") return;
+
+    try {
+      const response = await fetch(api.proxy.getQRCodeStatus(bot.id), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const qrData = await response.json();
+        console.log("🔍 QR status received:", qrData);
+        setQrStatus(qrData.qrCode || qrData);
+      } else {
+        console.log("⚠️ QR status request failed:", response.status);
+        setQrStatus({ available: false });
+      }
+    } catch (error) {
+      console.error("❌ Error fetching QR status:", error);
+      setQrStatus({ available: false });
+    }
+  }, [bot.id, bot.type]);
+
   const fetchBotStatus = useCallback(async () => {
     setLoading(true);
     try {
-      // 🚀 PRIMARY: Use PM2 metrics-based status (recommended)
+      // 🚀 Use the PM2 metrics endpoint for complete custom metrics
       const response = await fetch(api.getBotStatusMetrics(bot.id), {
         method: "GET",
         headers: {
@@ -52,71 +88,49 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
       if (response.ok) {
         const result = await response.json();
-        const statusData: BotStatus = result.status || result;
-
-        // If we have lifecycle data in the response, use it for status
-        // This prioritizes the bot's own lifecycle state over PM2 status
-        if (statusData.lifecycle && statusData.lifecycle.currentState) {
-          // Override the status with lifecycle state for more detailed status
-          statusData.status = statusData.lifecycle
-            .currentState as BotStatus["status"];
-        }
-
+        const statusData = result.status || result;
+        console.log("✅ Bot status received:", statusData);
         setStatus(statusData);
-      } else {
-        // PM2 metrics failed, fallback to proxy (legacy API)
-        console.warn("PM2 metrics failed, falling back to proxy API");
-        throw new Error("PM2 metrics not available");
-      }
-    } catch (error) {
-      console.error("PM2 metrics failed, trying proxy fallback:", error);
 
-      // 📦 FALLBACK: Use legacy proxy API if PM2 metrics fail
-      try {
-        const fallbackResponse = await fetch(api.proxy.getBotStatus(bot.id), {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (fallbackResponse.ok) {
-          const statusData: BotStatus = await fallbackResponse.json();
-
-          // If we have lifecycle data in the response, use it for status
-          if (statusData.lifecycle && statusData.lifecycle.currentState) {
-            statusData.status = statusData.lifecycle
-              .currentState as BotStatus["status"];
-          }
-
-          setStatus(statusData);
-          console.log("✅ Proxy fallback successful");
-        } else {
-          console.error("Both PM2 and proxy APIs failed");
-          // Set a default offline status based on bot config
-          setStatus({
-            id: bot.id,
-            name: bot.name,
-            type: bot.type,
-            status: "offline",
-            apiResponsive: false,
-          });
+        // Also fetch QR status for WhatsApp bots
+        if (bot.type === "whatsapp") {
+          fetchQRStatus();
         }
-      } catch (fallbackError) {
-        console.error("Proxy fallback also failed:", fallbackError);
-        // Set a default offline status based on bot config
+      } else {
+        console.warn("PM2 metrics not available for bot:", bot.id);
+
+        // Set status to indicate bot is not running (but don't error)
         setStatus({
           id: bot.id,
           name: bot.name,
           type: bot.type,
           status: "offline",
           apiResponsive: false,
+          pm2: {
+            pid: undefined,
+            cpu: 0,
+            memory: 0,
+            restarts: 0,
+            uptime: 0,
+            lastRestart: undefined,
+          },
         });
       }
+    } catch (error) {
+      console.error("PM2 metrics failed:", error);
+
+      // No fallback - PM2 metrics only
+      setStatus({
+        id: bot.id,
+        name: bot.name,
+        type: bot.type,
+        status: "offline",
+        apiResponsive: false,
+      });
     } finally {
       setLoading(false);
     }
-  }, [bot.id, bot.name, bot.type]);
+  }, [bot.id, bot.name, bot.type, fetchQRStatus]);
 
   const handleViewQR = async () => {
     const safeType = typeof bot.type === "string" ? bot.type.toLowerCase() : "";
@@ -269,7 +283,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               <div class="container">
                 <div class="header">
                   <h2 style="margin: 0;">📱 WhatsApp QR Code</h2>
-                  <p style="margin: 5px 0 0 0; opacity: 0.9;">Bot: ${bot.name}</p>
+                  <p style="margin: 5px 0 0 0; opacity: 0.9;">Bot: ${
+                    bot.name
+                  }</p>
                 </div>
                 <div class="content">
                   <div id="status" class="status loading">
@@ -300,10 +316,16 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
                 let isAutoRefreshing = true;
                 let timeRemaining = 0;
                 let timerInterval;
+                
+                const API_BASE_URL = "${
+                  process.env.NEXT_PUBLIC_API_BASE_URL || ""
+                }";
 
                 async function fetchQRStatus() {
                   try {
-                    const response = await fetch('/api/bots/${bot.id}/qr-code/status');
+                    const response = await fetch(API_BASE_URL + '/api/bots/${
+                      bot.id
+                    }/qr-code/status');
                     return response.ok ? await response.json() : null;
                   } catch (error) {
                     console.error('Error fetching QR status:', error);
@@ -313,7 +335,9 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
 
                 async function fetchQRImage() {
                   try {
-                    const response = await fetch('/api/bots/${bot.id}/qr-code/image');
+                    const response = await fetch(API_BASE_URL + '/api/bots/${
+                      bot.id
+                    }/qr-code/image');
                     return response.ok ? await response.blob() : null;
                   } catch (error) {
                     console.error('Error fetching QR image:', error);
@@ -436,16 +460,39 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
     }
   };
 
+  const handleSpawnBot = async () => {
+    setLoading(true);
+    try {
+      // Call the PM2 spawn endpoint
+      const response = await fetch(api.base + `/api/bots/${bot.id}/spawn`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        console.log("Bot spawned successfully");
+        // Refresh status after spawning
+        setTimeout(() => {
+          fetchBotStatus();
+        }, 2000);
+      } else {
+        console.error("Failed to spawn bot");
+      }
+    } catch (error) {
+      console.error("Error spawning bot:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchBotStatus();
     // Poll for status updates every 30 seconds
     const interval = setInterval(fetchBotStatus, 30000);
     return () => clearInterval(interval);
   }, [fetchBotStatus]);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
 
   return (
     <Card>
@@ -481,7 +528,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
       </CardHeader>
 
       <CardContent className="pb-2">
-        <div className="flex items-center justify-between mb-4 flex-col space-y-2">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <StatusIndicator
               status={status?.status || "unknown"}
@@ -491,117 +538,102 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             <span className="text-sm font-medium capitalize">
               {status?.status || "Loading..."}
             </span>
-            {status?.apiResponsive === false && (
-              <span className="text-xs text-red-500">(API Down)</span>
+            {/* Real PM2 Metrics in parentheses */}
+            {!bot.isExternal && status?.pm2 && (
+              <span className="text-xs text-gray-500">
+                (CPU: {status.pm2.cpu}%, MEM: {status.pm2.memory}MB, ↻
+                {status.pm2.restarts}, ⏱
+                {Math.floor((status.pm2.uptime || 0) / 60000)}m
+                {/* Custom PM2 Metrics */}
+                {status.pm2.activeHandles &&
+                  `, AH: ${status.pm2.activeHandles}`}
+                {status.pm2.eventLoopLatency &&
+                  `, EL: ${Math.round(status.pm2.eventLoopLatency)}ms`}
+                {status.pm2.errorCount && `, ERR: ${status.pm2.errorCount}`})
+              </span>
             )}
           </div>
+        </div>
 
-          <div className="text-xs text-muted-foreground space-y-1 w-full">
-            <div>API Host: {bot.apiHost}</div>
-            <div>Port: {bot.apiPort}</div>
-            {!bot.isExternal && bot.pm2ServiceId && (
-              <div>PM2 Service: {bot.pm2ServiceId}</div>
-            )}
-            {bot.phoneNumber && <div>Phone: {bot.phoneNumber}</div>}
-            {bot.pushName && <div>Push Name: {bot.pushName}</div>}
-            <div>Created: {formatDate(bot.createdAt)}</div>
-            {status?.lastSeen && (
-              <div>Last Seen: {new Date(status.lastSeen).toLocaleString()}</div>
-            )}
+        {/* Essential bot info only */}
+        <div className="text-sm space-y-1 mb-4">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Port:</span>
+            <span>{bot.apiPort}</span>
+          </div>
 
-            {/* Enhanced PM2 Information - only for internal bots */}
-            {!bot.isExternal && status?.pm2 && (
-              <div className="pt-2 border-t border-gray-200">
-                <div className="font-medium text-gray-700">Process Info:</div>
-                {status.pm2.pid && <div>PID: {status.pm2.pid}</div>}
-                {status.pm2.cpu !== undefined && (
-                  <div>CPU: {status.pm2.cpu}%</div>
-                )}
-                {status.pm2.memory !== undefined && (
-                  <div>Memory: {status.pm2.memory}MB</div>
-                )}
-                {status.pm2.restarts !== undefined && (
-                  <div>Restarts: {status.pm2.restarts}</div>
-                )}
-                {status.pm2.uptime !== undefined && (
-                  <div>
-                    Uptime: {Math.floor(status.pm2.uptime / 1000 / 60)}m
-                  </div>
-                )}
-                {status.apiResponseTime && (
-                  <div>API Response: {status.apiResponseTime}ms</div>
-                )}
-              </div>
-            )}
+          {/* WhatsApp specific info */}
+          {bot.type === "whatsapp" && (
+            <>
+              {bot.phoneNumber && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Phone:</span>
+                  <span>{bot.phoneNumber}</span>
+                </div>
+              )}
 
-            {/* Bot Lifecycle information */}
-            {status?.lifecycle && (
-              <div className="pt-2 border-t border-gray-200 mt-2">
-                <div className="font-medium text-gray-700">Lifecycle:</div>
-                <div>
-                  State:{" "}
-                  <span className="font-medium">
-                    {status.lifecycle.currentState}
+              {status?.status === "online" && status?.pushName && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">WhatsApp Name:</span>
+                  <span>{status.pushName}</span>
+                </div>
+              )}
+
+              {/* QR Status - only show if relevant */}
+              {qrStatus?.available && !qrStatus?.expired && (
+                <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
+                  <span className="text-green-600 font-medium">
+                    🔥 QR Ready to scan ({Math.round(qrStatus.ageMinutes || 0)}m
+                    old)
                   </span>
                 </div>
+              )}
 
-                {status.lifecycle.lastStateChange && (
-                  <div className="mt-1">
-                    <div>
-                      Changed:{" "}
-                      {new Date(
-                        status.lifecycle.lastStateChange.timestamp
-                      ).toLocaleTimeString()}
-                    </div>
-                    {status.lifecycle.lastStateChange.details && (
-                      <div className="text-gray-500 italic">
-                        {status.lifecycle.lastStateChange.details}
-                      </div>
-                    )}
-                    {status.lifecycle.lastStateChange.error && (
-                      <div className="text-red-500 font-medium">
-                        {status.lifecycle.lastStateChange.error}
-                      </div>
-                    )}
-                  </div>
-                )}
+              {qrStatus?.expired && (
+                <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm">
+                  <span className="text-orange-600 font-medium">
+                    ⏰ QR Code expired - refresh needed
+                  </span>
+                </div>
+              )}
+            </>
+          )}
 
-                {status.lifecycle.stateHistory &&
-                  status.lifecycle.stateHistory.length > 0 && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer text-blue-500 hover:text-blue-700">
-                        State History
-                      </summary>
-                      <div className="mt-1 pl-2 border-l-2 border-gray-200 max-h-32 overflow-y-auto">
-                        {status.lifecycle.stateHistory.map((event, idx) => (
-                          <div
-                            key={idx}
-                            className="mb-1 pb-1 border-b border-gray-100"
-                          >
-                            <div className="flex justify-between">
-                              <span className="font-medium">{event.state}</span>
-                              <span className="text-gray-400">
-                                {new Date(event.timestamp).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            {event.details && (
-                              <div className="text-gray-500 text-xs">
-                                {event.details}
-                              </div>
-                            )}
-                            {event.error && (
-                              <div className="text-red-500 text-xs">
-                                {event.error}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
+          {/* Advanced PM2 Metrics Section - only show if available */}
+          {!bot.isExternal &&
+            status?.pm2 &&
+            (status.pm2.activeHandles ||
+              status.pm2.eventLoopLatency ||
+              status.pm2.heapUsage ||
+              status.pm2.httpRequests) && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                <div className="font-medium text-blue-700 mb-1">
+                  📊 PM2 Advanced Metrics:
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-blue-600">
+                  {status.pm2.activeHandles && (
+                    <div>Active Handles: {status.pm2.activeHandles}</div>
                   )}
+                  {status.pm2.activeRequests && (
+                    <div>Active Requests: {status.pm2.activeRequests}</div>
+                  )}
+                  {status.pm2.eventLoopLatency && (
+                    <div>
+                      Event Loop: {Math.round(status.pm2.eventLoopLatency)}ms
+                    </div>
+                  )}
+                  {status.pm2.httpRequests && (
+                    <div>HTTP Requests: {status.pm2.httpRequests}</div>
+                  )}
+                  {status.pm2.heapUsage && (
+                    <div>Heap: {Math.round(status.pm2.heapUsage.percent)}%</div>
+                  )}
+                  {status.pm2.errorCount !== undefined && (
+                    <div>Errors: {status.pm2.errorCount}</div>
+                  )}
+                </div>
               </div>
             )}
-          </div>
         </div>
 
         {/* PM2 Status Indicator - separate detailed PM2 management */}
@@ -623,16 +655,18 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
             Refresh Status
           </Button>
 
-          {typeof bot.type === "string" &&
-            bot.type.toLowerCase() === "whatsapp" && (
+          {/* QR Code button - only show when QR is available and not expired */}
+          {bot.type === "whatsapp" &&
+            qrStatus?.available &&
+            !qrStatus?.expired && (
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full cursor-pointer"
+                className="w-full cursor-pointer bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
                 onClick={handleViewQR}
               >
                 <QrCode className="h-4 w-4 mr-1" />
-                View QR Code
+                🔥 View QR Code
               </Button>
             )}
 
@@ -641,10 +675,24 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               variant="outline"
               size="sm"
               className="w-full cursor-pointer"
-              onClick={() => onUpdate(bot)}
+              onClick={() => onUpdate && onUpdate(bot)}
             >
               <Settings className="h-4 w-4 mr-1" />
               Edit
+            </Button>
+          )}
+
+          {/* Show spawn button only when bot is offline */}
+          {!bot.isExternal && status?.status === "offline" && (
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full cursor-pointer bg-green-600 hover:bg-green-700"
+              onClick={handleSpawnBot}
+              disabled={loading}
+            >
+              <PlayCircle className="h-4 w-4 mr-1" />
+              Create Bot Process
             </Button>
           )}
 
@@ -653,7 +701,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               variant="destructive"
               size="sm"
               className="w-full cursor-pointer"
-              onClick={() => onDelete(bot.id)}
+              onClick={() => onDelete && onDelete(bot.id)}
             >
               <Trash2 className="h-4 w-4 mr-1" />
               Delete

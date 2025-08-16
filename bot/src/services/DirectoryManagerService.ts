@@ -1,10 +1,10 @@
 /**
- * Directory Manager Service
- * Handles file system operations and directory management
- * CONSOLIDATED - uses unified botLogger directly
+ * Directory management service
+ * CONSOLIDATED - uses unified logger directly
  */
-import * as fs from "fs";
-import { botLogger } from "../utils";
+
+import fs from "fs";
+import { logger } from "./LoggerService";
 import { SESSION_PATH, QR_PATH, LOGS_PATH } from "../config/EnvironmentManager";
 export class DirectoryManagerService {
   public ensureDirectoriesExist(): void {
@@ -14,12 +14,12 @@ export class DirectoryManagerService {
       try {
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
-          botLogger.logDirectory('created', dir);
+          logger.info(`Directory 'created': dir`);
         } else {
-          botLogger.logDirectory('exists', dir);
+          logger.info(`Directory 'exists': dir`);
         }
       } catch (error) {
-        botLogger.errorWithContext(`Failed to create directory ${dir}`, error);
+        logger.error(`Failed to create directory ${dir}`, error);
         throw new Error(`Directory creation failed for ${dir}: ${error}`);
       }
     });
@@ -29,12 +29,12 @@ export class DirectoryManagerService {
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        botLogger.info(`File cleaned up: ${filePath}`, "🧹");
+        logger.info(`File cleaned up: ${filePath}`, "🧹");
         return true;
       }
       return false;
     } catch (error) {
-      botLogger.warn(`Could not clean up file ${filePath}: ${error}`);
+      logger.warn(`Could not clean up file ${filePath}: ${error}`);
       return false;
     }
   }
@@ -43,7 +43,7 @@ export class DirectoryManagerService {
     try {
       return fs.existsSync(filePath);
     } catch (error) {
-      botLogger.warn(`Error checking file existence ${filePath}: ${error}`);
+      logger.warn(`Error checking file existence ${filePath}: ${error}`);
       return false;
     }
   }
@@ -52,10 +52,10 @@ export class DirectoryManagerService {
     try {
       if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
-        botLogger.logDirectory('created', dirPath);
+        logger.info(`Directory 'created': dirPath`);
       }
     } catch (error) {
-      botLogger.errorWithContext(`Failed to create directory ${dirPath}`, error);
+      logger.error(`Failed to create directory ${dirPath}`, error);
       throw new Error(`Directory creation failed for ${dirPath}: ${error}`);
     }
   }
@@ -65,9 +65,9 @@ export class DirectoryManagerService {
     directories.forEach((dir) => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        botLogger.logDirectory('created', dir);
+        logger.info(`Directory 'created': dir`);
       } else {
-        botLogger.logDirectory('exists', dir);
+        logger.info(`Directory 'exists': dir`);
       }
     });
   }
@@ -76,14 +76,14 @@ export class DirectoryManagerService {
     try {
       if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory, { recursive: true });
-        botLogger.logDirectory('created', directory);
+        logger.info(`Directory 'created': directory`);
         return true;
       } else {
-        botLogger.logDirectory('exists', directory);
+        logger.info(`Directory 'exists': directory`);
         return true;
       }
     } catch (error) {
-      botLogger.errorWithContext(`Failed to create directory ${directory}`, error);
+      logger.error(`Failed to create directory ${directory}`, error);
       return false;
     }
   }

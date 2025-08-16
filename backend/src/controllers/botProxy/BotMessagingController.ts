@@ -26,30 +26,34 @@ export class BotMessagingController {
   // POST /api/bots/send-message - Send WhatsApp message (with automatic endpoint routing)
   public async sendMessage(req: Request, res: Response): Promise<void> {
     const requestId = Date.now();
-    
+
     try {
       console.log(`📨 [BACKEND] Message request ${requestId} received`);
-      
+
       const { botId, ...rawBodyData } = req.body;
       if (!botId) {
         this.errorHandlingService.handleValidationError(
-          "Bot ID is required in request body", 
-          requestId, 
+          "Bot ID is required in request body",
+          requestId,
           res
         );
         return;
       }
 
       // Normalize message data and determine optimal endpoint
-      const { endpoint, bodyData, messageType } = this.messageRoutingService.determineOptimalEndpoint(rawBodyData, req.file);
-      
+      const { endpoint, bodyData, messageType } =
+        this.messageRoutingService.determineOptimalEndpoint(
+          rawBodyData,
+          req.file
+        );
+
       console.log(`📋 [BACKEND] Request ${requestId} details:`, {
         botId,
         messageType,
         endpoint,
         originalData: rawBodyData,
         normalizedData: bodyData,
-        hasFile: !!req.file
+        hasFile: !!req.file,
       });
 
       const result = await this.botCommunicationService.forwardRequest({
@@ -57,104 +61,271 @@ export class BotMessagingController {
         endpoint,
         method: "POST",
         requestData: bodyData,
-        file: req.file
+        file: req.file,
       });
-      
+
       console.log(`✅ [BACKEND] Request ${requestId} completed successfully`);
-      
+
       const response: MessageResponse = {
         success: true,
         result,
         messageType,
         endpoint,
         requestId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       res.json(response);
-      
     } catch (error) {
       this.errorHandlingService.handleError(error, requestId, res);
     }
   }
 
-  // POST /api/bots/pending - Send pending message
+  // POST /api/bots/pending - Send pending message (redirected to unified system)
   public async sendPendingMessage(req: Request, res: Response): Promise<void> {
+    const requestId = Date.now();
+
     try {
-      const { botId, ...bodyData } = req.body;
+      console.log(
+        `📨 [BACKEND] Legacy pending request ${requestId} - redirecting to unified system`
+      );
+
+      const { botId, ...rawBodyData } = req.body;
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        this.errorHandlingService.handleValidationError(
+          "Bot ID is required in request body",
+          requestId,
+          res
+        );
         return;
       }
+
+      // Add a default message if none provided
+      if (!rawBodyData.message) {
+        rawBodyData.message = "Your request is being processed. Please wait...";
+      }
+
+      // Use unified routing system
+      const { endpoint, bodyData, messageType } =
+        this.messageRoutingService.determineOptimalEndpoint(
+          rawBodyData,
+          req.file
+        );
+
+      console.log(
+        `📋 [BACKEND] Pending request ${requestId} redirected to: ${endpoint}`
+      );
+
       const result = await this.botCommunicationService.forwardRequest({
         botId,
-        endpoint: "/pending",
+        endpoint,
         method: "POST",
-        requestData: bodyData
+        requestData: bodyData,
+        file: req.file,
       });
-      res.json(result);
+
+      const response: MessageResponse = {
+        success: true,
+        result,
+        messageType: "PENDING_" + messageType,
+        endpoint,
+        requestId,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("send pending message", error, res);
+      this.errorHandlingService.handleError(error, requestId, res);
     }
   }
 
-  // POST /api/bots/followup - Send followup message
+  // POST /api/bots/followup - Send followup message (redirected to unified system)
   public async sendFollowupMessage(req: Request, res: Response): Promise<void> {
+    const requestId = Date.now();
+
     try {
-      const { botId, ...bodyData } = req.body;
+      console.log(
+        `📨 [BACKEND] Legacy followup request ${requestId} - redirecting to unified system`
+      );
+
+      const { botId, ...rawBodyData } = req.body;
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        this.errorHandlingService.handleValidationError(
+          "Bot ID is required in request body",
+          requestId,
+          res
+        );
         return;
       }
+
+      // Add a default followup message if none provided
+      if (!rawBodyData.message) {
+        rawBodyData.message = "Following up on your previous request...";
+      }
+
+      // Use unified routing system
+      const { endpoint, bodyData, messageType } =
+        this.messageRoutingService.determineOptimalEndpoint(
+          rawBodyData,
+          req.file
+        );
+
+      console.log(
+        `📋 [BACKEND] Followup request ${requestId} redirected to: ${endpoint}`
+      );
+
       const result = await this.botCommunicationService.forwardRequest({
         botId,
-        endpoint: "/followup",
+        endpoint,
         method: "POST",
-        requestData: bodyData
+        requestData: bodyData,
+        file: req.file,
       });
-      res.json(result);
+
+      const response: MessageResponse = {
+        success: true,
+        result,
+        messageType: "FOLLOWUP_" + messageType,
+        endpoint,
+        requestId,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("send followup message", error, res);
+      this.errorHandlingService.handleError(error, requestId, res);
     }
   }
 
-  // POST /api/bots/receive-image-and-json - Send image with JSON data
+  // POST /api/bots/receive-image-and-json - Send image with JSON data (redirected to unified system)
   public async receiveImageAndJson(req: Request, res: Response): Promise<void> {
+    const requestId = Date.now();
+
     try {
-      const { botId, ...bodyData } = req.body;
+      console.log(
+        `📨 [BACKEND] Legacy image+JSON request ${requestId} - redirecting to unified system`
+      );
+
+      const { botId, imageUrl, data, ...rawBodyData } = req.body;
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        this.errorHandlingService.handleValidationError(
+          "Bot ID is required in request body",
+          requestId,
+          res
+        );
         return;
       }
+
+      // Handle image URL or attachment
+      let processedData = { ...rawBodyData };
+
+      if (imageUrl) {
+        // If imageUrl is provided, add it to the message
+        processedData.message = `Image: ${imageUrl}${
+          data ? `\nData: ${JSON.stringify(data)}` : ""
+        }`;
+      } else if (data) {
+        // If only JSON data is provided
+        processedData.message = `Data: ${JSON.stringify(data)}`;
+      }
+
+      // Use unified routing system - this will handle file attachments automatically
+      const { endpoint, bodyData, messageType } =
+        this.messageRoutingService.determineOptimalEndpoint(
+          processedData,
+          req.file
+        );
+
+      console.log(
+        `📋 [BACKEND] Image+JSON request ${requestId} redirected to: ${endpoint}`
+      );
+
       const result = await this.botCommunicationService.forwardRequest({
         botId,
-        endpoint: "/receive-image-and-json",
+        endpoint,
         method: "POST",
-        requestData: bodyData
+        requestData: bodyData,
+        file: req.file,
       });
-      res.json(result);
+
+      const response: MessageResponse = {
+        success: true,
+        result,
+        messageType: "IMAGE_JSON_" + messageType,
+        endpoint,
+        requestId,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("process image and JSON", error, res);
+      this.errorHandlingService.handleError(error, requestId, res);
     }
   }
 
-  // POST /api/bots/confirmation - Send confirmation message
-  public async sendConfirmationMessage(req: Request, res: Response): Promise<void> {
+  // POST /api/bots/confirmation - Send confirmation message (redirected to unified system)
+  public async sendConfirmationMessage(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    const requestId = Date.now();
+
     try {
-      const { botId, ...bodyData } = req.body;
+      console.log(
+        `📨 [BACKEND] Legacy confirmation request ${requestId} - redirecting to unified system`
+      );
+
+      const { botId, ...rawBodyData } = req.body;
       if (!botId) {
-        res.status(400).json({ error: "Bot ID is required in request body" });
+        this.errorHandlingService.handleValidationError(
+          "Bot ID is required in request body",
+          requestId,
+          res
+        );
         return;
       }
+
+      // Confirmation messages should have explicit content
+      if (!rawBodyData.message) {
+        this.errorHandlingService.handleValidationError(
+          "Message is required for confirmation",
+          requestId,
+          res
+        );
+        return;
+      }
+
+      // Use unified routing system
+      const { endpoint, bodyData, messageType } =
+        this.messageRoutingService.determineOptimalEndpoint(
+          rawBodyData,
+          req.file
+        );
+
+      console.log(
+        `📋 [BACKEND] Confirmation request ${requestId} redirected to: ${endpoint}`
+      );
+
       const result = await this.botCommunicationService.forwardRequest({
         botId,
-        endpoint: "/confirmation",
+        endpoint,
         method: "POST",
-        requestData: bodyData
+        requestData: bodyData,
+        file: req.file,
       });
-      res.json(result);
+
+      const response: MessageResponse = {
+        success: true,
+        result,
+        messageType: "CONFIRMATION_" + messageType,
+        endpoint,
+        requestId,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
     } catch (error) {
-      this.errorHandlingService.handleControllerError("send confirmation message", error, res);
+      this.errorHandlingService.handleError(error, requestId, res);
     }
   }
 }

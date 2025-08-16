@@ -50,6 +50,7 @@ export interface EnvironmentConfig {
   BOT_TYPE: string;
   NODE_ENV: string;
   CHROME_PATH: string;
+  SILENT_METRICS: boolean;
   DEFAULT_FALLBACK_PHONE_NUMBER: string;
   DATA_ROOT: string;
   SESSION_PATH: string;
@@ -58,45 +59,10 @@ export interface EnvironmentConfig {
 }
 
 // =================
-// BOT LIFECYCLE
+// BOT LIFECYCLE - DEPRECATED
 // =================
-
-export enum BotLifecycleState {
-  // Startup phases
-  INITIALIZING = "initializing",
-  BROWSER_LAUNCHING = "browser_launching",
-  WAITING_FOR_QR = "waiting_for_qr",
-  QR_READY = "qr_ready",
-  QR_SCANNED = "qr_scanned",
-  QR_ERROR = "qr_error",
-  AUTHENTICATING = "authenticating",
-
-  // Runtime states
-  READY = "ready",
-  CONNECTED = "connected",
-  DISCONNECTED = "disconnected",
-  RECONNECTING = "reconnecting",
-  LOADING = "loading",
-
-  // Error states
-  ERROR_VALIDATION = "error_validation",
-  ERROR_CHROME = "error_chrome",
-  ERROR_BROWSER = "error_browser",
-  ERROR_CONNECTION = "error_connection",
-  ERROR_AUTHENTICATION = "error_authentication",
-  ERROR_UNKNOWN = "error_unknown",
-
-  // Shutdown states
-  STOPPING = "stopping",
-  STOPPED = "stopped",
-}
-
-export interface LifecycleEvent {
-  timestamp: string;
-  state: BotLifecycleState;
-  details?: string;
-  error?: string;
-}
+// Bot lifecycle management now handled through direct logging with metrics
+// No need for complex state management - LoggerService handles all state tracking
 
 // =================
 // ERROR HANDLING

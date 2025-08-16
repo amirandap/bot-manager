@@ -7,7 +7,6 @@
 import {
   ErrorSeverity,
   ErrorCategory,
-  WhatsAppError,
   ErrorValidationResult,
 } from "../types";
 
@@ -278,8 +277,7 @@ function getBaseRetryDelay(category: string): number {
  */
 export function formatErrorForLogging(
   error: Error,
-  context?: string,
-  metadata?: Record<string, unknown>
+  context?: string
 ): string {
   const category = categorizeErrorMessage(error.message);
   const severity = getErrorSeverity(error);
@@ -337,36 +335,26 @@ export function createErrorSummary(
 }
 
 // ============================================================================
-// LEGACY COMPATIBILITY FUNCTIONS
+// COMPATIBILITY FUNCTIONS
 // ============================================================================
 
 /**
  * Log WhatsApp error and return validation result
- * Provides compatibility with older code
+ * Simplified - caller should handle logging with LoggerService
  */
 export function logWhatsAppError(
-  error: any,
-  context: string,
-  recipient?: string
+  error: Error
 ): ErrorValidationResult {
-  const validation = validateErrorSeverity(error);
-  
-  // For now, just return the validation result
-  // The actual logging should be handled by the caller using LoggerService
-  return validation;
+  return validateErrorSeverity(error);
 }
 
 /**
- * Determines if fallback should be sent (legacy interface)
- * Simplified to use our validation logic
+ * Determines if fallback should be sent
+ * Simplified to use validation logic
  */
 export function shouldSendFallback(
-  error: any,
-  context: string,
-  recipient?: string,
+  error: Error
 ): boolean {
   const validation = validateErrorSeverity(error);
-  
-  // Return true if it's not a post-send error (meaning fallback should be sent)
   return !validation.isPostSendError;
 }
