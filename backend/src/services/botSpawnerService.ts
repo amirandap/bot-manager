@@ -132,6 +132,142 @@ export class BotSpawnerService {
     return botEnvDefaults;
   }
 
+  /**
+   * Creates a bot record in the JSON configuration without spawning the process.
+   * This allows for immediate response to the frontend while spawning happens asynchronously.
+   */
+  async createBotRecord(
+    botConfig: Omit<Bot, "id" | "createdAt" | "updatedAt" | "status" | "statusMessage">
+  ): Promise<Bot> {
+    const botId = `whatsapp-bot-${Date.now()}`;
+    const pm2ServiceId = `wabot-${botConfig.apiPort}`;
+
+    console.log(`📝 Creating bot record for: ${botConfig.name} (${botId})`);
+
+    const newBot: Bot = {
+      ...botConfig,
+      id: botId,
+      type: botConfig.type || "whatsapp",
+      pm2ServiceId: pm2ServiceId,
+      isExternal: false,
+      status: "spawning",
+      statusMessage: "Bot record created, spawning process...",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Add to configuration immediately
+    const addedBot = this.configService.addBot(newBot);
+    console.log(`✅ Bot record created: ${addedBot.id} - ${addedBot.name}`);
+
+    return addedBot;
+  }
+
+  /**
+   * Spawns the actual bot process asynchronously.
+   * Updates the bot status throughout the process.
+   */
+  async spawnBotProcess(botId: string): Promise<void> {
+    console.log(`🚀 Starting spawn process for bot: ${botId}`);
+
+    try {
+      // Get bot configuration
+      const bot = this.configService.getBotById(botId);
+      if (!bot) {
+        throw new Error(`Bot not found: ${botId}`);
+      }
+
+      // Update status to indicate spawning started
+      this.updateBotStatus(botId, "spawning", "Validating bot directory...");
+
+      // 1. Validate bot directory
+      await this.validateBotDirectory();
+
+      // Update status
+      this.updateBotStatus(botId, "spawning", "Creating data directories...");
+
+      // 2. Create data directories
+      await this.createBotDataDirectories(botId);
+
+      // Update status
+      this.updateBotStatus(botId, "spawning", "Starting PM2 process...");
+
+      // 3. Start bot with PM2
+      await this.startBotWithPM2(botId, bot);
+
+      // Update status to online
+      this.updateBotStatus(botId, "online", "Bot spawned successfully");
+
+      console.log(`✅ Bot ${botId} spawned successfully`);
+
+    } catch (error) {
+      console.error(`❌ Failed to spawn bot ${botId}:`, error);
+      
+      // Update status to error
+      const errorMessage = error instanceof Error ? error.message : "Unknown spawn error";
+      this.updateBotStatus(botId, "error", errorMessage);
+
+      // Attempt cleanup
+      try {
+        await this.cleanupFailedBot(botId);
+      } catch (cleanupError) {
+        console.error(`❌ Cleanup failed for bot ${botId}:`, cleanupError);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Updates the bot status and status message in the configuration.
+   */
+  updateBotStatus(botId: string, status: "spawning" | "online" | "error" | "stopped" | "unknown", statusMessage?: string): void {
+    const updates: Partial<Bot> = {
+      status: status,
+      statusMessage: statusMessage,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedBot = this.configService.updateBot(botId, updates);
+    if (updatedBot) {
+      console.log(`📊 Bot ${botId} status updated: ${status}${statusMessage ? ` - ${statusMessage}` : ''}`);
+    } else {
+      console.warn(`⚠️ Cannot update status for non-existent bot: ${botId}`);
+    }
+  }
+
+  /**
+   * Cleans up a failed bot creation attempt.
+   */
+  private async cleanupFailedBot(botId: string): Promise<void> {
+    console.log(`🧹 Cleaning up failed bot: ${botId}`);
+
+    try {
+      const bot = this.configService.getBotById(botId);
+      if (!bot) return;
+
+      // Try to stop and delete PM2 service
+      if (bot.pm2ServiceId) {
+        try {
+          await this.stopPM2Service(bot.pm2ServiceId);
+          await this.deletePM2Service(bot.pm2ServiceId);
+        } catch (pm2Error) {
+          console.warn(`⚠️ PM2 cleanup warning:`, pm2Error);
+        }
+      }
+
+      // Kill any processes on the port
+      await this.killProcessOnPort(bot.apiPort);
+
+      // Keep the bot record but update status to error
+      // Don't delete the record so user can see what failed
+      console.log(`✅ Cleanup completed for failed bot: ${botId}`);
+
+    } catch (error) {
+      console.error(`❌ Cleanup failed:`, error);
+    }
+  }
+
   async createNewWhatsAppBot(
     botConfig: Omit<Bot, "id" | "createdAt" | "updatedAt">
   ): Promise<Bot> {
@@ -379,8 +515,8 @@ export class BotSpawnerService {
     const pm2Config = {
       name: pm2ServiceId,
       script: path.join(this.botDirectory, "src/index.ts"),
-      interpreter: "ts-node",
-      interpreter_args: "--files --transpile-only",
+      interpreter: "npx",
+      interpreter_args: "ts-node --files --transpile-only",
       cwd: this.botDirectory,
       env: botEnv, // Now properly typed
       error_file: path.join(this.dataDirectory, "logs", botId, "error.log"),

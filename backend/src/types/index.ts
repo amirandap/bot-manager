@@ -4,6 +4,8 @@ export interface Bot {
   type: "whatsapp" | "discord";
   pm2ServiceId?: string; // Optional - only for PM2-managed bots
   isExternal?: boolean; // Flag to indicate if bot is external (not managed by our PM2)
+  status?: "spawning" | "online" | "error" | "stopped" | "unknown"; // Bot lifecycle status
+  statusMessage?: string; // Additional status information
   apiHost: string;
   apiPort: number;
   phoneNumber: string | null;
