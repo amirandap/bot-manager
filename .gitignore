@@ -122,3 +122,5 @@ backend/backups/
 # Lock files (optional - some teams prefer to commit these)
 # package-lock.json
 # yarn.lock
+backend/ecosystem.config.js
+frontend/ecosystem.config.cjs
