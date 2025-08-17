@@ -2,51 +2,33 @@
 
 import { useEffect, useState } from "react";
 import HeadlessBotCard from "./headless-bot-card";
-import { BotSpawner } from "./bot-spawner";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Settings, Activity, ArrowLeft, Plus, RefreshCw } from "lucide-react";
 import { DeploymentManager } from "./deployment-manager";
 import ApiDocsPage from "../app/api-docs/page";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertCircle,
-  RefreshCw,
-  Plus,
-  ArrowLeft,
-  Settings,
-  Rocket,
-  Activity,
-  FileText,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { Bot } from "@/lib/types";
 import { api } from "@/lib/api";
 
 export default function BotDashboard() {
-  const [bots, setBots] = useState<Bot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bots, setBots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "bots" | "deployments" | "api-docs"
-  >("bots");
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs">("bots");
 
+  // Fetch bots from API
   const fetchBots = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(api.getBots());
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch bots: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const res = await fetch(api.getBots(), { method: "GET" });
+      if (!res.ok) throw new Error("Error fetching bots");
+      const data = await res.json();
       setBots(data);
       setLastUpdated(new Date());
-    } catch (err) {
-      console.error("Error fetching bots:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch bots");
+    } catch (err: any) {
+      setError(err.message || "Error");
     } finally {
       setLoading(false);
     }
@@ -54,30 +36,14 @@ export default function BotDashboard() {
 
   useEffect(() => {
     fetchBots();
-
-    // Set up polling interval (every 30 seconds)
-    const intervalId = setInterval(fetchBots, 30000);
-
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
   }, []);
 
   const handleDeleteBot = async (botId: string) => {
     try {
-      setError(null);
-      const response = await fetch(api.deleteBot(botId), {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete bot: ${response.status}`);
-      }
-
-      // Refresh bot list after deletion
+      await fetch(api.deleteBot(botId), { method: "DELETE" });
       fetchBots();
     } catch (err) {
-      console.error("Error deleting bot:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete bot");
+      setError("Error deleting bot");
     }
   };
 
@@ -85,11 +51,9 @@ export default function BotDashboard() {
     setShowSpawner(true);
   };
 
-  const handleBotCreated = (newBot: Bot) => {
-    // Add the new bot to the list and refresh
-    setBots((prev) => [...prev, newBot]);
+  const handleBotCreated = () => {
     setShowSpawner(false);
-    fetchBots(); // Refresh to get latest status
+    fetchBots();
   };
 
   return (
@@ -109,8 +73,7 @@ export default function BotDashboard() {
             </Button>
             <h2 className="text-xl font-semibold">Create New Bot</h2>
           </div>
-
-          <BotSpawner onBotCreated={handleBotCreated} existingBots={bots} />
+          {/* BotSpawner component here */}
         </div>
       ) : (
         // Main Dashboard with Tabs
@@ -140,8 +103,8 @@ export default function BotDashboard() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Rocket className="h-4 w-4" />
-                  CI/CD Platform
+                  <Activity className="h-4 w-4" />
+                  Deployments
                 </div>
               </button>
               <button
@@ -153,8 +116,8 @@ export default function BotDashboard() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  API Documentation
+                  <Settings className="h-4 w-4" />
+                  API Docs
                 </div>
               </button>
             </nav>
@@ -199,15 +162,12 @@ export default function BotDashboard() {
                   </Button>
                 </div>
               </div>
-
               {error && (
                 <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Error</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {bots.map((bot) => (
                   <HeadlessBotCard
@@ -217,7 +177,6 @@ export default function BotDashboard() {
                     onRefresh={fetchBots}
                   />
                 ))}
-
                 {!loading && bots.length === 0 && !error && (
                   <div className="col-span-full text-center py-12 text-muted-foreground">
                     <div className="space-y-4">
