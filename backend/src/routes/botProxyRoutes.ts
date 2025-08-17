@@ -1,6 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
 import { BotProxyController } from "../controllers/botProxyController";
+import { validateSendMessagePayload } from "../middleware/validation";
+import { 
+  validateJsonPayload, 
+  validateSendMessageFields, 
+  sanitizeAndNormalizeRequest 
+} from "../middleware/jsonValidation";
 
 const router = Router();
 const botProxyController = new BotProxyController();
@@ -424,6 +430,9 @@ export function setBotProxyRoutes(app: Router) {
   app.post(
     "/api/bots/send-message",
     upload.single("file"),
+    validateJsonPayload,
+    sanitizeAndNormalizeRequest,
+    validateSendMessageFields,
     botProxyController.sendMessage.bind(botProxyController)
   );
 
