@@ -8,6 +8,13 @@ import cors from "cors";
 import morgan from "morgan";
 import { ConfigService } from "./services/configService";
 import { killProcessOnPort } from "./utils/portKiller";
+import { logger } from "./services/LoggerService";
+import { textToJsonMiddleware, enhancedJsonErrorHandler } from "./middleware/textProcessing";
+import { 
+  handleMulterErrors, 
+  globalErrorHandler 
+} from "./middleware/validation";
+import { validateJsonPayload } from "./middleware/jsonValidation";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -27,7 +34,30 @@ if (defaultBotHost) {
 
 app.use(express.json());
 app.use(cors());
-app.use(morgan("short"));
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  logger.logRequest(req);
+  next();
+});
+
+// Use morgan with custom format that works with Pino
+app.use(morgan("combined", {
+  stream: {
+    write: (message: string) => {
+      logger.getPinoLogger().info(`🌐 ${message.trim()}`);
+    }
+  }
+}));
+
+// Apply text-to-JSON middleware globally
+app.use(textToJsonMiddleware);
+
+// Apply enhanced JSON error handler
+app.use(enhancedJsonErrorHandler);
+
+// Apply global JSON validation
+app.use(validateJsonPayload);
 
 setBotProxyRoutes(app);
 setBotsRoutes(app);
@@ -41,6 +71,10 @@ setupSwagger(app);
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Add global error handlers at the end
+app.use(handleMulterErrors);
+app.use(globalErrorHandler);
 
 // 🚀 Start server with auto port cleanup
 async function startServer() {
