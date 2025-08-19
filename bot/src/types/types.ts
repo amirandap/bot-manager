@@ -49,7 +49,7 @@ export interface EnvironmentConfig {
   BOT_PORT: number;
   BOT_TYPE: string;
   NODE_ENV: string;
-  CHROME_PATH: string;
+  CHROMIUM_PATH?: string; // Optional - uses bundled Chromium if not specified
   SILENT_METRICS: boolean;
   DEFAULT_FALLBACK_PHONE_NUMBER: string;
   DATA_ROOT: string;

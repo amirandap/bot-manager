@@ -42,7 +42,7 @@ function printEnvironmentVariables(): void {
   logger.info(`BOT_PORT: ${config.BOT_PORT} (${envManager.getEnvSource("BOT_PORT")})`);
   logger.info(`BOT_TYPE: ${config.BOT_TYPE} (${envManager.getEnvSource("BOT_TYPE")})`);
   logger.info(`NODE_ENV: ${config.NODE_ENV} (${envManager.getEnvSource("NODE_ENV")})`);
-  logger.info(`CHROME_PATH: ${config.CHROME_PATH} (${envManager.getEnvSource("CHROME_PATH")})`);
+  logger.info(`CHROMIUM_PATH: ${config.CHROMIUM_PATH || 'bundled'} (${envManager.getEnvSource("CHROMIUM_PATH") || 'bundled'})`);
 
   // Print process info
   logger.info(`PWD: ${processInfo.PWD as string} (system)`);
@@ -66,43 +66,39 @@ function printEnvironmentVariables(): void {
 }
 
 /**
- * Validate Chrome executable
+ * Validate Chromium configuration
  */
-function validateChrome(): boolean {
-  logger.info("🔍 CHROME EXECUTABLE VALIDATION", "🔍");
+function validateChromium(): boolean {
+  logger.info("🔍 CHROMIUM CONFIGURATION VALIDATION", "🔍");
 
   const envManager = EnvironmentManager.getInstance();
   const config = envManager.getConfig();
-  const result = puppeteerConfig.validate(config.CHROME_PATH);
+  const result = puppeteerConfig.validateChromium(config.CHROMIUM_PATH);
 
-  if (!result.isValid) {
-    logger.error("Chrome validation failed. Cannot proceed.");
+  if (!result.isValid && !result.usingBundled) {
+    logger.error("Chromium validation failed. Cannot proceed.");
     
     // Log all validation details
     result.logs.forEach(log => {
       logger.info(log);
     });
     
-    if (result.error) {
-      logger.error(result.error);
-    }
-    
-    if (result.alternativePaths && result.alternativePaths.length > 0) {
-      logger.info("💡 Alternative Chrome paths found:");
-      result.alternativePaths.forEach(path => {
-        logger.info(`   ✅ ${path}`);
-      });
-    }
-    
     return false;
+  } else {
+    // Success - log validation details
+    result.logs.forEach(log => {
+      logger.info(log);
+    });
+    
+    if (result.usingBundled) {
+      logger.info("✅ Using Puppeteer's bundled Chromium (recommended for stability)");
+    } else {
+      const chromiumPath = puppeteerConfig.findChromiumPath(config.CHROMIUM_PATH);
+      logger.info(`✅ Using system Chromium: ${chromiumPath}`);
+    }
+    
+    return true;
   }
-
-  // Log success details
-  result.logs.forEach(log => {
-    logger.info(log);
-  });
-
-  return true;
 }
 
 /**
@@ -123,8 +119,8 @@ async function initializeStartup(): Promise<boolean> {
     // Step 1: Print environment variables
     printEnvironmentVariables();
 
-    // Step 2: Validate Chrome
-    if (!validateChrome()) {
+    // Step 2: Validate Chromium
+    if (!validateChromium()) {
       return false;
     }
 
@@ -141,10 +137,10 @@ async function initializeStartup(): Promise<boolean> {
 
 async function startBot(): Promise<void> {
   try {
-    // Step 1: Startup validation (Environment, Chrome, Directories)
+    // Step 1: Startup validation (Environment, Chromium, Directories)
     const startupSuccess = await initializeStartup();
     if (!startupSuccess) {
-      const error = new Error("Startup validation failed - check Chrome installation and environment variables");
+      const error = new Error("Startup validation failed - check Chromium configuration and environment variables");
       logger.error(error, { component: 'startup', critical: true });
       throw error;
     }

@@ -6,7 +6,7 @@
 import { logger } from './LoggerService';
 import { getWhatsAppClient, initializeWhatsAppClient, shutdownWhatsAppClient } from '../utils/whatsAppUtils';
 import { EnvironmentManager } from '../config/EnvironmentManager';
-import { cleanChromeSession } from '../utils/browserUtils';
+import { cleanChromiumSession } from '../utils/browserUtils';
 import { Client } from 'whatsapp-web.js';
 
 export class SessionMonitorService {
@@ -160,13 +160,13 @@ export class SessionMonitorService {
       logger.info(`Client shutdown error (expected): ${error}`);
     }
 
-    logger.info("🔄 Step 2: Cleaning Chrome session data");
+    logger.info("🔄 Step 2: Cleaning Chromium session data");
     
     try {
       const sessionPath = config.SESSION_PATH;
-      await cleanChromeSession(sessionPath);
+      await cleanChromiumSession(sessionPath);
     } catch (error) {
-      logger.error(`Chrome session cleanup failed: ${error}`);
+      logger.error(`Chromium session cleanup failed: ${error}`);
       // Continue anyway
     }
 
@@ -185,7 +185,7 @@ export class SessionMonitorService {
   }
 
   /**
-   * Check if session error indicates a recoverable Chrome crash
+   * Check if session error indicates a recoverable Chromium crash
    */
   public isRecoverableSessionError(error: Error): boolean {
     const message = error.message.toLowerCase();

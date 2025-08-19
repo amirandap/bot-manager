@@ -1,0 +1,84 @@
+{
+  "general": {
+    "headless": true,
+    "defaultViewport": null,
+    "ignoreHTTPSErrors": true,
+    "devtools": false
+  },
+  "browser": {
+    "forceSystemChromium": false,
+    "comment": "Always use bundled Chromium for maximum compatibility with whatsapp-web.js"
+  },
+  "args": {
+    "base": [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-web-security",
+      "--disable-features=VizDisplayCompositor"
+    ],
+    "performance": [
+      "--aggressive-cache-discard",
+      "--disable-background-timer-throttling",
+      "--disable-renderer-backgrounding",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-client-side-phishing-detection",
+      "--disable-default-apps",
+      "--disable-extensions",
+      "--disable-sync",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--enable-tcp-fast-open"
+    ],
+    "stability": [
+      "--disable-breakpad",
+      "--disable-component-update",
+      "--disable-domain-reliability",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-prompt-on-repost",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--disable-crash-reporter"
+    ],
+    "privacy": [
+      "--disable-background-networking",
+      "--disable-notifications",
+      "--disable-offer-store-unmasked-wallet-cards",
+      "--disable-popup-blocking",
+      "--disable-speech-api",
+      "--mute-audio",
+      "--no-pings",
+      "--disable-logging",
+      "--silent"
+    ],
+    "automation": [
+      "--disable-blink-features=AutomationControlled",
+      "--autoplay-policy=user-gesture-required",
+      "--disable-print-preview",
+      "--hide-scrollbars"
+    ],
+    "linux": [
+      "--disable-software-rasterizer",
+      "--disable-accelerated-2d-canvas",
+      "--use-gl=swiftshader",
+      "--ignore-gpu-blacklist",
+      "--no-zygote"
+    ],
+    "whatsapp_optimized": [
+      "--disable-features=AudioServiceOutOfProcess,TranslateUI"
+    ]
+  },
+  "environments": {
+    "development": {
+      "additionalArgs": [],
+      "enableLogging": true
+    },
+    "production": {
+      "additionalArgs": [],
+      "enableLogging": false
+    }
+  }
+}

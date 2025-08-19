@@ -123,10 +123,10 @@ export async function initializeWhatsAppClient(
     // Initialize QR code path internally
     initializeQRCodePath(config.BOT_ID);
 
-    // Get pre-validated Puppeteer configuration (Chrome already validated in startup)
+    // Get pre-validated Puppeteer configuration (Chromium already validated in startup)
     const puppeteerOptions = puppeteerConfig.getConfiguration();
 
-    // Log Puppeteer configuration details (Chrome path already shown in startup)
+    // Log Puppeteer configuration details (Chromium path already shown in startup)
     logger.info(`Puppeteer config for ${process.platform}`, "⚙️");
 
     whatsappClient = new Client({
