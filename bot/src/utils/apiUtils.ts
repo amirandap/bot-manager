@@ -7,6 +7,7 @@ import * as multer from "multer";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "../config/swagger";
 import { getQRStatus, isWhatsAppClientReady, getWhatsAppClient } from "./whatsAppUtils";
+import { getClient } from "../config/clientExporter";
 import { logger } from "../services/LoggerService";
 import { MessageController } from "../controllers/MessageController";
 interface BotConfig {

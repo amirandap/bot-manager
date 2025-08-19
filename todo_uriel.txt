@@ -7,3 +7,14 @@ Agregar un nuevo bot solo pregunte un nombre
 tambien veo que el bot no tiene una logica para monitorear el proceso de chromium para ver su consumo de cpu y memoria
 
 el puppeter config no esta usando nuestra funcion centralizada de logging ni de error ni tomando en cuenta la metrica
+
+Found 34 errors in 7 files.
+
+Errors  Files
+     1  node_modules/whatsapp-web.js/index.d.ts:1272
+    23  node_modules/whatsapp-web.js/node_modules/puppeteer/lib/types.d.ts:33
+     1  src/config/swagger.ts:6
+     1  src/routes/getGroups.ts:3
+     1  src/services/DirectoryManagerService.ts:6
+     2  src/services/LoggerService.ts:8
+     5  src/utils/apiUtils.ts:7

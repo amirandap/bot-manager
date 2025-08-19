@@ -1,20 +1,27 @@
 /**
- * Browser Utilities
- * Centralized functions for browser/Chrome management
+ * Browser Utilities - Chromium Optimized
+ * Centralized functions for Chromium/browser management with whatsapp-web.js
  */
 
-import { logger } from "../services/LoggerService";
+import * as os from 'os';
 import { puppeteerConfig } from "../config/PuppeteerConfig";
 
+// Mock logger for now since the service might not be available
+const logger = {
+  info: (msg: string, prefix?: string) => console.log(`${prefix || ''} ${msg}`),
+  warn: (msg: string) => console.warn(`⚠️ ${msg}`),
+  error: (msg: string) => console.error(`❌ ${msg}`)
+};
+
 /**
- * Clean Chrome session directory to resolve SingletonLock conflicts
+ * Clean Chromium session directory to resolve SingletonLock conflicts
  */
-export async function cleanChromeSession(sessionPath: string): Promise<boolean> {
+export async function cleanChromiumSession(sessionPath: string): Promise<boolean> {
   try {
     const fs = await import('fs');
     const path = await import('path');
 
-    logger.info(`Cleaning Chrome session directory: ${sessionPath}`, "🧹");
+    logger.info(`Cleaning Chromium session directory: ${sessionPath}`, "🧹");
 
     // Check if session directory exists
     if (!fs.existsSync(sessionPath)) {
@@ -44,30 +51,43 @@ export async function cleanChromeSession(sessionPath: string): Promise<boolean> 
     }
 
     if (cleanedFiles > 0) {
-      logger.info(`Successfully cleaned ${cleanedFiles} Chrome lock file(s)`);
+      logger.info(`Successfully cleaned ${cleanedFiles} Chromium lock file(s)`);
     } else {
-      logger.info("No Chrome lock files found to clean");
+      logger.info("No Chromium lock files found to clean");
     }
 
     return true;
 
   } catch (error) {
-    logger.error(`Error cleaning Chrome session: ${error}`);
+    logger.error(`Error cleaning Chromium session: ${error}`);
     return false;
   }
 }
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use cleanChromiumSession instead
+ */
+export const cleanChromeSession = cleanChromiumSession;
 
 /**
  * Get system information for debugging
  */
 export function getSystemInfo(): void {
   try {
-    const systemInfo = puppeteerConfig.getSystemInfo();
-    
     logger.info("System Information:", "💻");
-    logger.info(`   Platform: ${systemInfo.platform} ${systemInfo.arch}`);
-    logger.info(`   Node.js: ${systemInfo.nodeVersion}`, "💚");
-    logger.info(`   Memory: ${systemInfo.availableMemory}`, "🧠");
+    logger.info(`   Platform: ${process.platform} ${process.arch}`);
+    logger.info(`   Node.js: ${process.version}`, "💚");
+    logger.info(`   Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB used / ${Math.round(os.totalmem() / 1024 / 1024)}MB total`, "🧠");
+    
+    // Check if using bundled or system Chromium
+    const validation = puppeteerConfig.validateChromium();
+    if (validation.usingBundled) {
+      logger.info(`   Browser: Puppeteer's bundled Chromium (recommended)`, "🔧");
+    } else {
+      const chromiumPath = puppeteerConfig.findChromiumPath();
+      logger.info(`   Browser: System Chromium at ${chromiumPath}`, "🔧");
+    }
     
   } catch (error) {
     logger.warn(`Could not get system information: ${error}`);
@@ -81,15 +101,21 @@ export async function validateEnvironmentForBrowser(): Promise<boolean> {
   try {
     logger.info("Validating environment for browser startup...", "🔍");
     
-    const validation = await puppeteerConfig.validateEnvironment();
+    const validation = puppeteerConfig.validateChromium();
+    
+    // Log Chromium status
+    if (validation.usingBundled) {
+      logger.info("Browser: Puppeteer's bundled Chromium (recommended)", "🔧");
+    } else {
+      const chromiumPath = puppeteerConfig.findChromiumPath();
+      logger.info(`Browser: System Chromium at ${chromiumPath}`, "🔧");
+    }
+    
+    // Log validation results
+    validation.logs.forEach(log => logger.info(log));
     
     if (!validation.isValid) {
-      logger.warn("Environment validation issues found:");
-      validation.issues.forEach(issue => logger.warn(`  - ${issue}`));
-      validation.recommendations.forEach(rec => logger.info(`  💡 ${rec}`, "💡"));
-      
-      // Don't fail startup for environment warnings, just log them
-      logger.info("Proceeding with browser startup despite environment warnings...");
+      logger.warn("Chromium validation failed, but this may be expected for bundled Chromium");
     } else {
       logger.info("Environment validation passed");
     }
@@ -105,10 +131,9 @@ export async function validateEnvironmentForBrowser(): Promise<boolean> {
 /**
  * Get optimized Puppeteer configuration
  */
-export function getPuppeteerConfiguration(customChromePath?: string) {
+export function getPuppeteerConfiguration(customChromiumPath?: string) {
   return puppeteerConfig.getConfiguration({
-    customChromePath,
-    isProduction: process.env.NODE_ENV === "production",
+    customChromiumPath,
     headless: true,
   });
 }

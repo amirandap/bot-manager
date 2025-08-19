@@ -1,557 +1,326 @@
 /**
- * Puppeteer Configuration Manager
+ * Puppeteer Configuration Manager - JSON Based
  *
- * Handles OS-specific Chrome paths, Chrome validation, and Puppeteer arguments for optimal
- * browser initialization across different operating systems (macOS, Linux, Windows).
- * Consolidated Chrome validation - single source of truth for all Chrome-related operations.
+ * Loads configuration from external JSON file for easy modification without rebuilds.
+ * Optimized for whatsapp-web.js with Chromium support.
  */
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { logger } from "../services/LoggerService";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+interface PuppeteerJsonConfig {
+  general: {
+    headless: boolean;
+    defaultViewport: null;
+    ignoreHTTPSErrors: boolean;
+    devtools: boolean;
+  };
+  browser: {
+    forceSystemChromium: boolean;
+    comment: string;
+  };
+  args: {
+    base: string[];
+    performance: string[];
+    stability: string[];
+    privacy: string[];
+    automation: string[];
+    linux: string[];
+    whatsapp_optimized: string[];
+  };
+  environments: {
+    development: {
+      additionalArgs: string[];
+      enableLogging: boolean;
+    };
+    production: {
+      additionalArgs: string[];
+      enableLogging: boolean;
+    };
+  };
+}
+
 export interface PuppeteerConfiguration {
   executablePath?: string;
-  args: string[];
   headless: boolean;
-  defaultViewport?: {
-    width: number;
-    height: number;
-  } | null;
-  ignoreDefaultArgs?: string[];
+  args: string[];
+  defaultViewport: null;
+  ignoreHTTPSErrors?: boolean;
+  devtools?: boolean;
 }
 
-export interface ChromeValidationResult {
+export interface ChromiumValidationResult {
   isValid: boolean;
-  path?: string;
-  error?: string;
-  alternativePaths?: string[];
   logs: string[];
+  usingBundled: boolean;
 }
 
-export class PuppeteerConfigManager {
-  private static instance: PuppeteerConfigManager;
-  private currentOS: string;
-  private validatedChromePath: string | null = null; // Cache validated Chrome path
-  // Remove logger dependency - use logger directly
+export interface ConfigurationOptions {
+  customChromiumPath?: string;
+  headless?: boolean;
+}
+
+export class PuppeteerConfig {
+  private static instance: PuppeteerConfig;
+  private config: PuppeteerJsonConfig;
+  private configPath: string;
+  private validatedChromiumPath?: string;
+  private readonly currentOS: string;
 
   private constructor() {
     this.currentOS = os.platform();
+    this.configPath = path.join(__dirname, '..', '..', 'config', 'puppeteer.json');
+    this.loadConfig();
   }
 
-  public static getInstance(): PuppeteerConfigManager {
-    if (!PuppeteerConfigManager.instance) {
-      PuppeteerConfigManager.instance = new PuppeteerConfigManager();
+  public static getInstance(): PuppeteerConfig {
+    if (!PuppeteerConfig.instance) {
+      PuppeteerConfig.instance = new PuppeteerConfig();
     }
-    return PuppeteerConfigManager.instance;
+    return PuppeteerConfig.instance;
   }
 
   /**
-   * Get the comprehensive Chrome installation paths for each OS
-   * Includes all known Chrome/Chromium installation locations
+   * Load configuration from JSON file
    */
-  private getDefaultChromePaths(): string[] {
-    switch (this.currentOS) {
-      case "darwin": // macOS
-        return [
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-          "/opt/homebrew/bin/google-chrome",
-          "/usr/local/bin/google-chrome",
-          "/Applications/Chromium.app/Contents/MacOS/Chromium",
-          "/opt/homebrew/bin/chromium",
-          "/usr/local/bin/chromium",
-        ];
+  private loadConfig(): void {
+    try {
+      if (!fs.existsSync(this.configPath)) {
+        throw new Error(`Puppeteer config file not found: ${this.configPath}`);
+      }
 
-      case "linux":
-        return [
-          // Chromium paths (preferred for bots - more stable)
-          "/snap/bin/chromium",
-          "/usr/bin/chromium-browser", 
-          "/usr/bin/chromium",
-          // Chrome paths (fallback)
-          "/usr/bin/google-chrome-stable",
-          "/usr/bin/google-chrome",
-          "/opt/google/chrome/google-chrome",
-          "/opt/google/chrome/chrome",
-          "/usr/local/bin/google-chrome",
-          "/usr/local/bin/chromium",
-        ];
-
-      case "win32": // Windows
-        return [
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-          "C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe",
-          process.env.LOCALAPPDATA +
-            "\\Google\\Chrome\\Application\\chrome.exe",
-          process.env.PROGRAMFILES +
-            "\\Google\\Chrome\\Application\\chrome.exe",
-          process.env["PROGRAMFILES(X86)"] +
-            "\\Google\\Chrome\\Application\\chrome.exe",
-        ].filter(Boolean);
-
-      default:
-        logger.warn(`Unsupported OS detected: ${this.currentOS}`);
-        return [];
+      const configData = fs.readFileSync(this.configPath, 'utf8');
+      this.config = JSON.parse(configData);
+      console.log('✅ Puppeteer configuration loaded from JSON');
+    } catch (error) {
+      console.error('❌ Failed to load Puppeteer config:', error);
+      // Fallback to basic config
+      this.config = this.getDefaultConfig();
     }
   }
 
   /**
-   * Comprehensive Chrome validation with detailed logging and alternative suggestions
+   * Get default configuration if JSON file fails to load
    */
-  public validateChrome(chromePath?: string): ChromeValidationResult {
-    const logs: string[] = [];
-    const result: ChromeValidationResult = {
-      isValid: false,
-      logs,
+  private getDefaultConfig(): PuppeteerJsonConfig {
+    return {
+      general: {
+        headless: true,
+        defaultViewport: null,
+        ignoreHTTPSErrors: true,
+        devtools: false
+      },
+      browser: {
+        forceSystemChromium: false,
+        comment: "Fallback configuration"
+      },
+      args: {
+        base: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+        performance: ["--aggressive-cache-discard"],
+        stability: ["--disable-crash-reporter"],
+        privacy: ["--mute-audio"],
+        automation: ["--disable-blink-features=AutomationControlled"],
+        linux: ["--disable-gpu"],
+        whatsapp_optimized: ["--silent"]
+      },
+      environments: {
+        development: { additionalArgs: [], enableLogging: true },
+        production: { additionalArgs: [], enableLogging: false }
+      }
+    };
+  }
+
+  /**
+   * Build args array from JSON configuration
+   */
+  private buildArgsFromConfig(): string[] {
+    const args: string[] = [];
+    const argsConfig = this.config.args;
+
+    // Add base args
+    args.push(...argsConfig.base);
+    args.push(...argsConfig.performance);
+    args.push(...argsConfig.stability);
+    args.push(...argsConfig.privacy);
+    args.push(...argsConfig.automation);
+    args.push(...argsConfig.whatsapp_optimized);
+
+    // Add OS-specific args
+    if (this.currentOS === 'linux') {
+      args.push(...argsConfig.linux);
+    }
+
+    // Add environment-specific args
+    const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+    args.push(...this.config.environments[env].additionalArgs);
+
+    return args;
+  }
+
+  /**
+   * Find system Chromium paths
+   */
+  private getChromiumPaths(): string[] {
+    const chromiumPaths: { [key: string]: string[] } = {
+      linux: [
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/snap/bin/chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable'
+      ],
+      darwin: [
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      ],
+      win32: [
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+      ]
     };
 
-    // If no path provided, try to find one
-    if (!chromePath) {
-      logs.push(
-        "No Chrome path provided, attempting to find Chrome installation..."
-      );
-      const foundPath = this.findChromePath();
-      if (!foundPath) {
-        result.error = "No Chrome installation found in default locations";
-        result.alternativePaths = this.getDefaultChromePaths();
-        logs.push("❌ No valid Chrome installation found");
-        logs.push(
-          "💡 Please install Google Chrome or set CHROME_PATH environment variable"
-        );
-        return result;
-      }
-      chromePath = foundPath;
-    }
-
-    try {
-      // Check if file exists
-      if (!fs.existsSync(chromePath)) {
-        result.error = `Chrome executable not found at: ${chromePath}`;
-        result.alternativePaths = this.getDefaultChromePaths().filter((path) =>
-          fs.existsSync(path)
-        );
-        logs.push(`❌ File not found: ${chromePath}`);
-
-        if (result.alternativePaths.length > 0) {
-          logs.push("💡 Found alternative Chrome installations:");
-          result.alternativePaths.forEach((altPath) => {
-            logs.push(`   ✅ ${altPath}`);
-          });
-        }
-        return result;
-      }
-
-      // Check if file is executable
-      try {
-        fs.accessSync(chromePath, fs.constants.F_OK | fs.constants.X_OK);
-        result.isValid = true;
-        result.path = chromePath;
-        logs.push(`✅ Chrome validation successful: ${chromePath}`);
-
-        // Log additional info about the Chrome installation
-        const stats = fs.statSync(chromePath);
-        logs.push(`📄 File size: ${Math.round(stats.size / 1024 / 1024)}MB`);
-        logs.push(`📅 Modified: ${stats.mtime.toISOString()}`);
-
-        return result;
-      } catch {
-        result.error = `Chrome executable is not accessible or not executable: ${chromePath}`;
-        logs.push(`❌ Access denied or not executable: ${chromePath}`);
-        logs.push(`💡 Try: chmod +x "${chromePath}"`);
-        return result;
-      }
-    } catch (error) {
-      result.error = `Unexpected error during Chrome validation: ${error}`;
-      logs.push(`❌ Validation error: ${error}`);
-      return result;
-    }
+    return chromiumPaths[this.currentOS] || [];
   }
 
   /**
-   * Find a valid Chrome executable path with comprehensive validation
-   * Now uses cached result to avoid re-validation
+   * Validate Chromium installation
    */
-  public findChromePath(customPath?: string): string | undefined {
-    // Return cached path if available and no custom path requested
-    if (!customPath && this.validatedChromePath) {
-      return this.validatedChromePath;
+  public validateChromium(chromiumPath?: string): ChromiumValidationResult {
+    const logs: string[] = [];
+    const result: ChromiumValidationResult = {
+      isValid: false,
+      logs,
+      usingBundled: false,
+    };
+
+    // If no path provided and not forcing system Chromium, use bundled
+    if (!chromiumPath && !this.config.browser.forceSystemChromium) {
+      result.isValid = true;
+      result.usingBundled = true;
+      logs.push("✅ Using Puppeteer's bundled Chromium (recommended)");
+      return result;
     }
 
-    // If custom path is provided, validate it first
-    if (customPath) {
-      const result = this.validateChrome(customPath);
-      if (result.isValid) {
-        this.validatedChromePath = customPath; // Cache the result
-        return customPath;
+    // Try to find system Chromium if path not provided
+    if (!chromiumPath) {
+      logs.push("Searching for system Chromium installation...");
+      const foundPath = this.findChromiumPath();
+      if (!foundPath) {
+        result.isValid = true;
+        result.usingBundled = true;
+        logs.push("⚠️ No system Chromium found, using bundled Chromium");
+        return result;
+      }
+      chromiumPath = foundPath;
+    }
+
+    // Validate the specific path
+    try {
+      if (fs.existsSync(chromiumPath) && fs.statSync(chromiumPath).isFile()) {
+        const stats = fs.statSync(chromiumPath);
+        result.isValid = true;
+        result.usingBundled = false;
+        logs.push(`✅ System Chromium validation successful: ${chromiumPath}`);
+        logs.push(`📄 File size: ${Math.round(stats.size / (1024 * 1024))}MB`);
+        logs.push(`📅 Modified: ${stats.mtime.toISOString()}`);
       } else {
-        logger.warn(`Custom Chrome path invalid: ${customPath}`);
-        // If custom path failed but alternatives were found, use the first one
-        if (result.alternativePaths && result.alternativePaths.length > 0) {
-          const altPath = result.alternativePaths[0];
-          const altResult = this.validateChrome(altPath);
-          if (altResult.isValid) {
-            logger.info(`Using alternative Chrome path: ${altPath}`);
-            this.validatedChromePath = altPath; // Cache the result
-            return altPath;
-          }
-        }
+        logs.push(`❌ Chromium path not found: ${chromiumPath}`);
+      }
+    } catch (error) {
+      logs.push(`❌ Chromium validation error: ${error}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Find valid Chromium executable path
+   */
+  public findChromiumPath(customPath?: string): string | undefined {
+    if (!customPath && this.validatedChromiumPath) {
+      return this.validatedChromiumPath;
+    }
+
+    if (customPath) {
+      const result = this.validateChromium(customPath);
+      if (result.isValid && !result.usingBundled) {
+        this.validatedChromiumPath = customPath;
+        return customPath;
       }
     }
 
-    // Try default paths for the current OS
-    const defaultPaths = this.getDefaultChromePaths();
-
-    for (const chromePath of defaultPaths) {
-      const result = this.validateChrome(chromePath);
-      if (result.isValid) {
-        this.validatedChromePath = chromePath; // Cache the result
-        return chromePath;
+    const chromiumPaths = this.getChromiumPaths();
+    for (const chromiumPath of chromiumPaths) {
+      const result = this.validateChromium(chromiumPath);
+      if (result.isValid && !result.usingBundled) {
+        this.validatedChromiumPath = chromiumPath;
+        return chromiumPath;
       }
     }
 
-    logger.warn("No valid Chrome installation found in default locations");
     return undefined;
   }
 
   /**
-   * Chrome validation method with the same interface as ChromeValidator
-   * This provides compatibility for existing code that expects ChromeValidator interface
+   * Get the complete Puppeteer configuration
    */
-  public validate(chromePath?: string): ChromeValidationResult {
-    return this.validateChrome(chromePath);
-  }
+  public getConfiguration(options?: ConfigurationOptions): PuppeteerConfiguration {
+    const { customChromiumPath, headless } = options || {};
 
-  /**
-   * Get dedicated user profile directory for the bot
-   */
-  private getBotProfileDir(): string {
-    const botId = process.env.BOT_ID || 'whatsapp-bot-default';
+    // Determine if we should use system Chromium
+    const shouldUseSystemChromium = this.config.browser.forceSystemChromium || 
+                                   process.env.FORCE_SYSTEM_CHROMIUM === 'true';
     
-    // Create a dedicated profile directory for this bot instance
-    const profileDir = path.join(os.homedir(), '.whatsapp-bot-profiles', botId);
-    
-    // Ensure directory exists
-    if (!fs.existsSync(profileDir)) {
-      fs.mkdirSync(profileDir, { recursive: true });
-      logger.info(`Created dedicated Chrome profile: ${profileDir}`);
-    }
-    
-    return profileDir;
-  }
+    const chromiumPath = shouldUseSystemChromium 
+      ? this.findChromiumPath(customChromiumPath)
+      : undefined;
 
-  /**
-   * Get OS-specific Puppeteer arguments with dedicated profile
-   */
-  private getOSSpecificArgs(): string[] {
-    const profileDir = this.getBotProfileDir();
-    
-    const baseArgs = [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--disable-gpu",
-      "--disable-web-security",
-      "--disable-features=VizDisplayCompositor",
-      "--no-default-browser-check",
-      "--disable-background-timer-throttling",
-      "--disable-renderer-backgrounding",
-      "--disable-backgrounding-occluded-windows",
-      // Dedicated profile to avoid singleton conflicts
-      `--user-data-dir=${profileDir}`,
-      "--disable-session-crashed-bubble",
-      "--disable-infobars",
-      "--no-first-run",
-      "--disable-default-apps",
-    ];
-
-    switch (this.currentOS) {
-      case "darwin": // macOS - Optimizado para evitar singleton errors
-        return [
-          ...baseArgs,
-          "--disable-background-timer-throttling",
-          "--disable-renderer-backgrounding",
-          "--disable-backgrounding-occluded-windows",
-          "--disable-ipc-flooding-protection", // Helps with macOS
-          "--disable-blink-features=AutomationControlled", // Avoid detection
-          "--disable-component-extensions-with-background-pages",
-          "--disable-sync", // Avoid sync conflicts
-          "--disable-login-animations",
-          "--disable-modal-animations",
-          "--disable-background-networking",
-          "--force-prefers-reduced-motion", // Better performance on macOS
-          "--disable-client-side-phishing-detection",
-          "--disable-popup-blocking",
-          "--disable-prompt-on-repost",
-          "--disable-hang-monitor",
-          "--disable-domain-reliability",
-          "--disable-breakpad", // Crash reporting can cause issues
-        ];
-
-      case "linux":
-        return [
-          ...baseArgs,
-          "--no-zygote",
-          // Enhanced memory and performance optimization for Chromium
-          "--memory-pressure-off",
-          "--max_old_space_size=512",
-          "--optimize-for-size",
-          "--enable-precise-memory-info",
-          // Disable resource-intensive features for better stability
-          "--disable-software-rasterizer",
-          "--disable-threaded-animation",
-          "--disable-threaded-scrolling",
-          "--disable-in-process-stack-traces", 
-          "--disable-histogram-customizer",
-          "--disable-gl-extensions",
-          "--disable-d3d11",
-          "--disable-accelerated-mjpeg-decode",
-          "--disable-accelerated-video-decode",
-          "--disable-accelerated-video-encode",
-          "--disable-gpu-memory-buffer-video-frames",
-          "--disable-rtc-smoothness-algorithm",
-          "--disable-2d-canvas-clip-aa",
-          "--disable-3d-apis",
-          "--disable-accelerated-2d-canvas",
-          "--disable-accelerated-jpeg-decoding",
-          "--disable-app-list-dismiss-on-blur",
-          // Chromium-specific optimizations
-          "--disable-extensions-http-throttling",
-          "--disable-component-extensions-with-background-pages",
-          "--disable-ipc-flooding-protection",
-          "--disable-dev-tools",
-          "--disable-plugins",
-          "--disable-features=TranslateUI,VizDisplayCompositor",
-          "--disable-blink-features=AutomationControlled",
-          // Stability improvements for long-running sessions
-          "--disable-hang-monitor",
-          "--disable-domain-reliability",
-          "--disable-client-side-phishing-detection",
-          "--disable-sync",
-          "--disable-background-networking",
-          "--disable-default-apps",
-          "--disable-component-update",
-          // Process management
-          "--disable-renderer-backgrounding",
-          "--disable-background-timer-throttling",
-          "--disable-backgrounding-occluded-windows",
-          // Session and crash prevention
-          "--disable-breakpad",
-          "--disable-crash-reporter",
-          "--disable-logging",
-          "--silent",
-          // Network optimizations
-          "--aggressive-cache-discard",
-          "--enable-tcp-fast-open",
-        ];
-
-      case "win32": // Windows
-        return [
-          ...baseArgs,
-          "--disable-background-timer-throttling",
-          "--disable-renderer-backgrounding",
-          "--disable-backgrounding-occluded-windows",
-        ];
-
-      default:
-        return baseArgs;
-    }
-  }
-
-  /**
-   * Get environment-specific arguments (development vs production)
-   */
-  private getEnvironmentArgs(isProduction: boolean = false): string[] {
-    const productionArgs = [
-      "--disable-logging",
-      "--disable-extensions",
-      "--mute-audio",
-      "--disable-default-apps",
-    ];
-
-    const developmentArgs = [
-      "--enable-logging",
-      "--log-level=0", // INFO level
-    ];
-
-    return isProduction ? productionArgs : developmentArgs;
-  }
-
-  /**
-   * Clean up browser session files and locks
-   */
-  public cleanupBrowserSession(sessionPath: string): boolean {
-    try {
-      const lockFiles = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
-
-      let cleaned = false;
-
-      // Check session directories
-      if (fs.existsSync(sessionPath)) {
-        const sessionDirs = fs
-          .readdirSync(sessionPath)
-          .filter(
-            (dir) =>
-              dir.startsWith("session-") &&
-              fs.statSync(`${sessionPath}/${dir}`).isDirectory()
-          );
-
-        for (const sessionDir of sessionDirs) {
-          for (const lockFile of lockFiles) {
-            // Check in Default directory
-            const defaultLockPath = `${sessionPath}/${sessionDir}/Default/${lockFile}`;
-            if (fs.existsSync(defaultLockPath)) {
-              fs.unlinkSync(defaultLockPath);
-              logger.info(`Removed lock file: ${defaultLockPath}`);
-              cleaned = true;
-            }
-
-            // Check in session root
-            const rootLockPath = `${sessionPath}/${sessionDir}/${lockFile}`;
-            if (fs.existsSync(rootLockPath)) {
-              fs.unlinkSync(rootLockPath);
-              logger.info(`Removed root lock file: ${rootLockPath}`);
-              cleaned = true;
-            }
-          }
-        }
-      }
-
-      return cleaned;
-    } catch (error) {
-      logger.warn(`Failed to cleanup browser session: ${error}`);
-      return false;
-    }
-  }
-
-  public getConfiguration(options?: {
-    customChromePath?: string;
-    isProduction?: boolean;
-    headless?: boolean;
-  }): PuppeteerConfiguration {
-    const {
-      customChromePath,
-      isProduction = process.env.NODE_ENV === "production",
-      headless = true,
-    } = options || {};
-
-    // Use cached Chrome path or find/validate new one
-    const chromePath = this.findChromePath(customChromePath);
-    const osArgs = this.getOSSpecificArgs();
-    const envArgs = this.getEnvironmentArgs(isProduction);
+    const args = this.buildArgsFromConfig();
 
     const config: PuppeteerConfiguration = {
-      headless,
-      args: [...osArgs, ...envArgs],
-      defaultViewport: null, // Use default browser size
+      headless: headless !== undefined ? headless : this.config.general.headless,
+      args,
+      defaultViewport: this.config.general.defaultViewport,
+      ignoreHTTPSErrors: this.config.general.ignoreHTTPSErrors,
+      devtools: this.config.general.devtools,
     };
 
-    // Only set executablePath if we found a valid Chrome installation
-    if (chromePath) {
-      config.executablePath = chromePath;
+    // Set executable path only if using system Chromium
+    if (chromiumPath) {
+      config.executablePath = chromiumPath;
+      console.log(`🔧 Using system Chromium: ${chromiumPath}`);
     } else {
-      logger.warn(
-        "Using system default Chrome (may cause issues if not installed)"
-      );
+      console.log("🔧 Using Puppeteer's bundled Chromium (recommended)");
     }
 
-    // Only log configuration details in development or when debugging
-    if (process.env.NODE_ENV === "development" || process.env.DEBUG) {
-      logger.info(`Puppeteer config for ${this.currentOS}:`);
-      logger.info(`  - Chrome path: ${chromePath || "system default"}`);
-      logger.info(`  - Headless: ${headless}`);
-      logger.info(`  - Args count: ${config.args.length}`);
-
-      if (process.env.NODE_ENV === "development") {
-        logger.info(`  - Full args: ${config.args.join(" ")}`);
-      }
+    // Log configuration in development
+    if (this.config.environments.development.enableLogging && 
+        process.env.NODE_ENV !== 'production') {
+      console.log(`⚙️ Puppeteer config for ${this.currentOS}:`);
+      console.log(`  - Chromium: ${chromiumPath || 'bundled'}`);
+      console.log(`  - Headless: ${config.headless}`);
+      console.log(`  - Args count: ${config.args.length}`);
+      console.log(`  - Args: ${config.args.join(' ')}`);
     }
 
     return config;
   }
 
   /**
-   * Get system information for debugging
+   * Reload configuration from JSON file
    */
-  public getSystemInfo(): {
-    platform: string;
-    arch: string;
-    nodeVersion: string;
-    availableMemory: string;
-    chromePath?: string;
-  } {
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-
-    return {
-      platform: this.currentOS,
-      arch: os.arch(),
-      nodeVersion: process.version,
-      availableMemory: `${Math.round(
-        freeMem / 1024 / 1024
-      )}MB free / ${Math.round(totalMem / 1024 / 1024)}MB total`,
-      chromePath: this.findChromePath(),
-    };
+  public reloadConfig(): void {
+    this.loadConfig();
+    console.log('🔄 Puppeteer configuration reloaded');
   }
 
   /**
-   * Validate the current environment for WhatsApp Web
+   * Get current configuration object (for debugging)
    */
-  public async validateEnvironment(): Promise<{
-    isValid: boolean;
-    issues: string[];
-    recommendations: string[];
-  }> {
-    const issues: string[] = [];
-    const recommendations: string[] = [];
-
-    // Check Chrome availability
-    const chromePath = this.findChromePath();
-    if (!chromePath) {
-      issues.push("No valid Chrome installation found");
-      recommendations.push(
-        "Install Google Chrome or set CHROME_PATH environment variable"
-      );
-    }
-
-    // Check memory
-    const freeMem = os.freemem();
-    const freeMemMB = Math.round(freeMem / 1024 / 1024);
-    if (freeMemMB < 512) {
-      issues.push(`Low available memory: ${freeMemMB}MB`);
-      recommendations.push(
-        "Ensure at least 512MB of free memory for stable operation"
-      );
-    }
-
-    // Check disk space (where temp files are stored)
-    const tmpDir = os.tmpdir();
-    try {
-      fs.accessSync(tmpDir, fs.constants.F_OK | fs.constants.W_OK);
-      // Temp directory is accessible and writable
-    } catch {
-      issues.push("Cannot access temporary directory");
-      recommendations.push("Ensure temp directory is accessible and writable");
-    }
-
-    // OS-specific checks
-    if (this.currentOS === "linux") {
-      // Check for display server (important for Linux servers)
-      if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
-        recommendations.push(
-          "Consider setting up a virtual display for headless operation"
-        );
-      }
-    }
-
-    return {
-      isValid: issues.length === 0,
-      issues,
-      recommendations,
-    };
+  public getCurrentConfig(): PuppeteerJsonConfig {
+    return this.config;
   }
 }
 
 // Export singleton instance
-export const puppeteerConfig = PuppeteerConfigManager.getInstance();
+export const puppeteerConfig = PuppeteerConfig.getInstance();

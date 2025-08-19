@@ -72,9 +72,8 @@ export class EnvironmentManager {
      
     const NODE_ENV = process.env.NODE_ENV || "development";
      
-    const CHROME_PATH =
-       
-      process.env.CHROME_PATH || "/usr/bin/google-chrome-stable";
+    const CHROMIUM_PATH =
+      process.env.CHROMIUM_PATH || undefined; // Let Puppeteer use bundled Chromium if not specified
 
     // Logging configuration
      
@@ -96,7 +95,7 @@ export class EnvironmentManager {
       BOT_PORT,
       BOT_TYPE,
       NODE_ENV,
-      CHROME_PATH,
+      CHROMIUM_PATH,
       SILENT_METRICS,
       DEFAULT_FALLBACK_PHONE_NUMBER,
       DATA_ROOT,
@@ -190,7 +189,7 @@ export const {
 // Environment and runtime configuration
 export const {
   NODE_ENV,                  // Environment (development, production, test)
-  CHROME_PATH,               // Path to Chrome executable
+  CHROMIUM_PATH,             // Path to Chromium executable (optional - uses bundled if not set)
   SILENT_METRICS,            // Silenciar logs automáticos de métricas
 } = config;
 
