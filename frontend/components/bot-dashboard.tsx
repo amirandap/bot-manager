@@ -1,50 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import HeadlessBotCard from "./headless-bot-card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Settings, Activity, ArrowLeft, Plus, RefreshCw } from "lucide-react";
+import { Settings, Activity, ArrowLeft, Plus, RefreshCw, Database } from "lucide-react";
 import { DeploymentManager } from "./deployment-manager";
 import ApiDocsPage from "../app/api-docs/page";
-import { api } from "@/lib/api";
+import { AllBotsDataInspector } from "./bot-data-inspector";
+import { useBotsStatus } from "@/lib/contexts/BotsStatusContext";
 
 export default function BotDashboard() {
-  const [bots, setBots] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { bots, isLoading, error, lastUpdated, refreshBots } = useBotsStatus();
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs">("bots");
-
-  // Fetch bots from API
-  const fetchBots = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(api.getBots(), { method: "GET" });
-      if (!res.ok) throw new Error("Error fetching bots");
-      const data = await res.json();
-      setBots(data);
-      setLastUpdated(new Date());
-    } catch (err: any) {
-      setError(err.message || "Error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBots();
-  }, []);
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs" | "debug">("bots");
 
   const handleDeleteBot = async (botId: string) => {
-    try {
-      await fetch(api.deleteBot(botId), { method: "DELETE" });
-      fetchBots();
-    } catch (err) {
-      setError("Error deleting bot");
-    }
+    // TODO: Implement delete functionality through context
+    // For now, refresh after delete action
+    await refreshBots();
   };
 
   const handleAddBot = () => {
@@ -53,7 +27,7 @@ export default function BotDashboard() {
 
   const handleBotCreated = () => {
     setShowSpawner(false);
-    fetchBots();
+    refreshBots();
   };
 
   return (
@@ -120,6 +94,19 @@ export default function BotDashboard() {
                   API Docs
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab("debug")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "debug"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Debug Data
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -151,12 +138,12 @@ export default function BotDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchBots}
-                    disabled={loading}
+                    onClick={refreshBots}
+                    disabled={isLoading}
                     className="flex items-center gap-1"
                   >
                     <RefreshCw
-                      className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                      className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
                     />
                     Refresh
                   </Button>
@@ -169,15 +156,31 @@ export default function BotDashboard() {
                 </Alert>
               )}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {bots.map((bot) => (
-                  <HeadlessBotCard
-                    key={bot.id}
-                    bot={bot}
-                    onDelete={handleDeleteBot}
-                    onRefresh={fetchBots}
-                  />
-                ))}
-                {!loading && bots.length === 0 && !error && (
+                {bots.map((bot) => {
+                  // Convert UnifiedBotStatus to Bot format
+                  const adaptedBot = {
+                    id: bot.id,
+                    name: bot.name,
+                    type: bot.type,
+                    apiHost: 'localhost', // Default values since not in UnifiedBotStatus
+                    apiPort: 7200, // Default port
+                    phoneNumber: bot.pm2?.clientPhoneNumber || null,
+                    pushName: bot.pushName || null,
+                    enabled: bot.status === 'online',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+
+                  return (
+                    <HeadlessBotCard
+                      key={bot.id}
+                      bot={adaptedBot}
+                      onDelete={handleDeleteBot}
+                      onRefresh={refreshBots}
+                    />
+                  );
+                })}
+                {!isLoading && bots.length === 0 && !error && (
                   <div className="col-span-full text-center py-12 text-muted-foreground">
                     <div className="space-y-4">
                       <p>No bots configured yet.</p>
@@ -201,6 +204,15 @@ export default function BotDashboard() {
                 <h2 className="text-xl font-semibold">CI/CD Platform</h2>
               </div>
               <DeploymentManager />
+            </div>
+          ) : activeTab === "debug" ? (
+            // Debug Data Tab
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-blue-600" />
+                <h2 className="text-xl font-semibold">Debug Data Inspector</h2>
+              </div>
+              <AllBotsDataInspector />
             </div>
           ) : (
             // API Documentation Tab

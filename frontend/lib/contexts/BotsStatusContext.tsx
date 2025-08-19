@@ -2,26 +2,27 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-// Types for the unified bot status
+// Types for the unified bot status - COMPREHENSIVE VERSION
 export interface BotPM2Metrics {
-  name: string;
-  status: 'online' | 'stopped' | 'errored' | 'launching' | 'unknown';
-  pid: number;
-  uptime: number;
-  restarts: number;
-  cpu: number;
-  memory: number;
-  activeHandles: number;
-  activeRequests: number;
-  eventLoopLatency: string;
-  heapUsage: number;
-  heapSize: string;
-  usedHeapSize: string;
+  // Core PM2 metrics
+  name?: string;
+  status?: 'online' | 'stopped' | 'errored' | 'launching' | 'unknown';
+  pid?: number;
+  uptime?: number;
+  restarts?: number;
+  cpu?: number;
+  memory?: number; // in MB
+  activeHandles?: number;
+  activeRequests?: number;
+  eventLoopLatency?: string | number;
+  heapUsage?: number; // percentage
+  heapSize?: string;
+  usedHeapSize?: string;
   
-  // Custom bot metrics
+  // Bot-specific custom metrics (from PM2 axm_monitor)
   botStatus?: string;
-  clientPhoneNumber?: number;
-  clientPushName?: number;
+  clientPhoneNumber?: string;
+  clientPushName?: string;
   browserCpuUsage?: number;
   browserMemoryUsage?: number;
   messageProcessingTime?: number;
@@ -29,14 +30,27 @@ export interface BotPM2Metrics {
   messagesProcessed?: number;
   qrCodeStatus?: string;
   qrCodesGenerated?: number;
-  apiServerStatus?: number;
+  apiServerStatus?: string | number;
   whatsappStatus?: string;
   whatsappConnections?: number;
   eventLoopLatencyP95?: string;
+  
+  // HTTP metrics
+  http?: number;
+  httpP95Latency?: number;
+  httpMeanLatency?: number;
+  
+  // System metrics
   nodeVersion?: string;
   logPath?: string;
   errorLogPath?: string;
   outLogPath?: string;
+  
+  // Additional PM2 metrics that might be present
+  lastRestart?: string;
+  
+  // Dynamic field support - ANY additional field from backend
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface BotHealth {
@@ -46,15 +60,25 @@ export interface BotHealth {
 }
 
 export interface UnifiedBotStatus {
+  // Core required fields
   id: string;
   name: string;
-  type: 'whatsapp' | 'discord';
+  type?: 'whatsapp' | 'discord';
   status: 'online' | 'offline' | 'stopped' | 'stopping' | 'errored' | 'launching' | 'unknown';
+  
+  // Optional core fields that may come from backend
   pushName?: string;
-  apiResponsive: boolean;
-  lastSeen: string;
-  pm2: BotPM2Metrics;
-  health: BotHealth;
+  apiResponsive?: boolean;
+  lastSeen?: string;
+  
+  // PM2 metrics - comprehensive
+  pm2?: BotPM2Metrics;
+  
+  // Health metrics
+  health?: BotHealth;
+  
+  // Dynamic field support - ANY additional field from backend status
+  [key: string]: string | number | boolean | BotPM2Metrics | BotHealth | undefined;
 }
 
 interface BotsStatusContextType {
@@ -120,7 +144,7 @@ export function BotsStatusProvider({
   }, [bots]);
 
   const getBotByPM2Name = useCallback((pm2Name: string) => {
-    return bots.find(bot => bot.pm2.name === pm2Name);
+    return bots.find(bot => bot.pm2?.name === pm2Name);
   }, [bots]);
 
   // Initial fetch
@@ -178,6 +202,41 @@ export function useBotHealth(botId: string) {
   return bot?.health;
 }
 
+// NEW: Hook to get any dynamic field from bot status
+export function useBotField(botId: string, fieldName: string) {
+  const bot = useBotStatus(botId);
+  return bot?.[fieldName];
+}
+
+// NEW: Hook to get dynamic PM2 field
+export function useBotPM2Field(botId: string, fieldName: string) {
+  const bot = useBotStatus(botId);
+  return bot?.pm2?.[fieldName];
+}
+
+// NEW: Hook to get all available fields for a bot
+export function useBotAllFields(botId: string) {
+  const bot = useBotStatus(botId);
+  return bot ? Object.keys(bot) : [];
+}
+
+// NEW: Hook to get all available PM2 fields for a bot
+export function useBotPM2AllFields(botId: string) {
+  const bot = useBotStatus(botId);
+  return bot?.pm2 ? Object.keys(bot.pm2) : [];
+}
+
+// NEW: Debug hook to see all data for a bot (use in development)
+export function useBotDebugInfo(botId: string) {
+  const bot = useBotStatus(botId);
+  return {
+    bot,
+    availableFields: bot ? Object.keys(bot) : [],
+    pm2Fields: bot?.pm2 ? Object.keys(bot.pm2) : [],
+    rawData: bot ? JSON.stringify(bot, null, 2) : null
+  };
+}
+
 export function useBotsMetrics() {
   const { bots } = useBotsStatus();
   
@@ -186,14 +245,14 @@ export function useBotsMetrics() {
   const erroredBots = bots.filter(bot => bot.status === 'errored').length;
   const stoppedBots = bots.filter(bot => bot.status === 'stopped').length;
   
-  const totalMemory = bots.reduce((sum, bot) => sum + (bot.pm2.memory || 0), 0);
+  const totalMemory = bots.reduce((sum, bot) => sum + (bot.pm2?.memory || 0), 0);
   const averageCpu = bots.length > 0 
-    ? bots.reduce((sum, bot) => sum + (bot.pm2.cpu || 0), 0) / bots.length 
+    ? bots.reduce((sum, bot) => sum + (bot.pm2?.cpu || 0), 0) / bots.length 
     : 0;
   
-  const healthyBots = bots.filter(bot => bot.health.status === 'healthy').length;
-  const warningBots = bots.filter(bot => bot.health.status === 'warning').length;
-  const criticalBots = bots.filter(bot => bot.health.status === 'critical').length;
+  const healthyBots = bots.filter(bot => bot.health?.status === 'healthy').length;
+  const warningBots = bots.filter(bot => bot.health?.status === 'warning').length;
+  const criticalBots = bots.filter(bot => bot.health?.status === 'critical').length;
 
   return {
     totalBots,
@@ -206,7 +265,7 @@ export function useBotsMetrics() {
     warningBots,
     criticalBots,
     healthScore: bots.length > 0 
-      ? bots.reduce((sum, bot) => sum + bot.health.score, 0) / bots.length 
+      ? bots.reduce((sum, bot) => sum + (bot.health?.score || 0), 0) / bots.length 
       : 0,
   };
 }

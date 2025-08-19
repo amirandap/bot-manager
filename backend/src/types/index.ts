@@ -23,7 +23,7 @@ export interface BotStatus {
   id: string;
   name: string;
   type: "whatsapp" | "discord";
-  status:
+  status?:
     | "online"
     | "offline"
     | "stopped"

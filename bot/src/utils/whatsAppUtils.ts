@@ -144,6 +144,42 @@ export async function initializeWhatsAppClient(
 
     // Create a promise that resolves when the client is ready
     const clientReadyPromise = new Promise<Client>((resolve, reject) => {
+      // State change handler - captures all state transitions
+      whatsappClient!.on("change_state", (state) => {
+        try {
+          logger.info(`WhatsApp state change: ${state}`, "🔄", undefined, "WHATSAPP_STATUS", state);
+          
+          // Update specific metrics based on state
+          if (state === "PAIRING") {
+            logger.updateMetric("PAIRING_ATTEMPTS", 1);
+          } else if (state === "CONNECTED") {
+            logger.updateMetric("WHATSAPP_CONNECTIONS", 1);
+          }
+        } catch (error) {
+          logger.error(`Error handling state change: ${error}`, {}, "ERRORS", 1);
+        }
+      });
+
+      // Loading screen handler - shows authentication progress
+      whatsappClient!.on("loading_screen", (percent, message) => {
+        try {
+          logger.info(`WhatsApp loading: ${percent}% - ${message}`, "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
+          logger.updateMetric("LOADING_PROGRESS", percent);
+        } catch (error) {
+          logger.error(`Error handling loading screen: ${error}`, {}, "ERRORS", 1);
+        }
+      });
+
+      // Remote session saved handler
+      whatsappClient!.on("remote_session_saved", () => {
+        try {
+          logger.info("WhatsApp session saved to remote storage", "💾", undefined, "WHATSAPP_STATUS", "SESSION_SAVED");
+          logger.updateMetric("SESSION_SAVES", 1);
+        } catch (error) {
+          logger.error(`Error handling session save: ${error}`, {}, "ERRORS", 1);
+        }
+      });
+
       // QR Code generation handler
       whatsappClient!.on("qr", async (qr) => {
         try {
@@ -162,15 +198,33 @@ export async function initializeWhatsAppClient(
 
       // Authentication handlers
       whatsappClient!.on("authenticated", () => {
-        logger.info("QR Code scanned successfully!", "📱", undefined, "QR_STATUS", "SCANNED");
-        logger.info("Authenticating with WhatsApp servers", "🤖", undefined, "WHATSAPP_STATUS", "AUTHENTICATING");
-        logger.logLifecycleStep("AUTHENTICATING");
-        cleanupQRCode();
+        try {
+          logger.info("QR Code scanned successfully!", "📱", undefined, "QR_STATUS", "SCANNED");
+          logger.info("WhatsApp authentication successful", "🤖", undefined, "WHATSAPP_STATUS", "AUTHENTICATED");
+          logger.info("Processing session data and preparing connection", "🤖", undefined, "WHATSAPP_STATUS", "PROCESSING_SESSION");
+          logger.logLifecycleStep("AUTHENTICATING");
+          
+          // Update authentication metrics
+          logger.updateMetric("AUTH_SUCCESS", 1);
+          logger.updateMetric("QR_SCANS", 1);
+          
+          cleanupQRCode();
+        } catch (error) {
+          logger.error(`Error during authentication: ${error}`, {}, "ERRORS", 1);
+          logger.info("Authentication processing failed", "🤖", undefined, "WHATSAPP_STATUS", "ERROR_AUTHENTICATION");
+        }
       });
 
-      whatsappClient!.on("auth_failure", () => {
-        logger.info("WhatsApp state: error_authentication - WhatsApp authentication failed", "🤖", undefined, "WHATSAPP_STATUS", "ERROR_AUTHENTICATION");
-        reject(new Error("WhatsApp authentication failed"));
+      whatsappClient!.on("auth_failure", (message) => {
+        try {
+          logger.error(`WhatsApp authentication failed: ${message}`, {}, "ERRORS", 1);
+          logger.info("WhatsApp state: error_authentication - Authentication failed", "🤖", undefined, "WHATSAPP_STATUS", "ERROR_AUTHENTICATION");
+          logger.updateMetric("AUTH_FAILURES", 1);
+          reject(new Error(`WhatsApp authentication failed: ${message}`));
+        } catch (error) {
+          logger.error(`Error handling auth failure: ${error}`, {}, "ERRORS", 1);
+          reject(new Error("WhatsApp authentication failed"));
+        }
       });
 
       // Ready handler - this is where we resolve the promise
@@ -219,19 +273,48 @@ export async function initializeWhatsAppClient(
         resolve(whatsappClient!);
       });
 
+      // Battery info handler - shows phone battery status
+      whatsappClient!.on("change_battery", (batteryInfo) => {
+        try {
+          logger.info(`Phone battery: ${batteryInfo.battery}% (${batteryInfo.plugged ? 'charging' : 'not charging'})`, "🔋", undefined, "WHATSAPP_STATUS", "BATTERY_UPDATE");
+          logger.updateMetric("PHONE_BATTERY", batteryInfo.battery);
+        } catch (error) {
+          logger.error(`Error handling battery info: ${error}`, {}, "ERRORS", 1);
+        }
+      });
+
       // Disconnection handler
       whatsappClient!.on("disconnected", (reason) => {
-        logger.info(`WhatsApp state: disconnected - Disconnected from WhatsApp: ${reason}`, "🤖", undefined, "WHATSAPP_STATUS", "DISCONNECTED");
+        try {
+          logger.info(`WhatsApp disconnected: ${reason}`, "🔌", undefined, "WHATSAPP_STATUS", "DISCONNECTED");
+          logger.updateMetric("DISCONNECTIONS", 1);
 
-        if (reason === "LOGOUT") {
-          logger.info("WhatsApp state: reconnecting - Attempting to reconnect to WhatsApp", "🤖", undefined, "WHATSAPP_STATUS", "RECONNECTING");
+          // Handle specific disconnection reasons
+          if (reason === "LOGOUT") {
+            logger.info("User logged out from WhatsApp Web", "🤖", undefined, "WHATSAPP_STATUS", "LOGOUT");
+            logger.updateMetric("LOGOUTS", 1);
+          } else if (reason === "CONFLICT") {
+            logger.info("WhatsApp session conflict detected", "🤖", undefined, "WHATSAPP_STATUS", "CONFLICT");
+            logger.updateMetric("CONFLICTS", 1);
+          } else {
+            logger.info(`WhatsApp disconnected with reason: ${reason}`, "🤖", undefined, "WHATSAPP_STATUS", "DISCONNECTED");
+          }
+        } catch (error) {
+          logger.error(`Error handling disconnection: ${error}`, {}, "ERRORS", 1);
         }
       });
 
       // Error handlers
       whatsappClient!.on("error", (error) => {
-        logger.info(`WhatsApp state: error_connection - WhatsApp connection error: ${error}`, "🤖", undefined, "WHATSAPP_STATUS", "ERROR_CONNECTION");
-        reject(error);
+        try {
+          logger.error(`WhatsApp connection error: ${error}`, {}, "ERRORS", 1);
+          logger.info(`WhatsApp state: error_connection - Connection error occurred`, "🤖", undefined, "WHATSAPP_STATUS", "ERROR_CONNECTION");
+          logger.updateMetric("CONNECTION_ERRORS", 1);
+          reject(error);
+        } catch (handlingError) {
+          logger.error(`Error handling WhatsApp error: ${handlingError}`, {}, "ERRORS", 1);
+          reject(error);
+        }
       });
     });
 
