@@ -36,6 +36,25 @@ export type BotMetrics = BotStatus["pm2"] & {
   restarts?: number;
   uptime?: number;
   status?: string;
+  
+  // NEW: Client information from comprehensive metrics
+  clientPhoneNumber?: string;
+  clientPushName?: string;
+  whatsappConnections?: number;
+  
+  // NEW: HTTP metrics
+  http?: number;
+  httpP95Latency?: number;
+  httpMeanLatency?: number;
+  
+  // NEW: System info
+  nodeVersion?: string;
+  logPath?: string;
+  errorLogPath?: string;
+  outLogPath?: string;
+  
+  // Dynamic field support
+  [key: string]: string | number | boolean | undefined;
 };
 
 const fmt = {
@@ -330,7 +349,8 @@ export default function BotMonitorCard({
             </div>
             <div className="space-y-1">
               {metrics.clientPhoneNumber &&
-                metrics.clientPhoneNumber !== "0" && (
+                metrics.clientPhoneNumber !== "0" &&
+                metrics.clientPhoneNumber !== "" && (
                   <div className="flex items-center gap-1.5">
                     <Smartphone className="size-3 text-emerald-600" />
                     <span className="text-[11px] font-mono text-foreground">
@@ -338,14 +358,66 @@ export default function BotMonitorCard({
                     </span>
                   </div>
                 )}
-              {metrics.clientPushName && metrics.clientPushName !== "0" && (
+              {metrics.clientPushName && 
+                metrics.clientPushName !== "0" && 
+                metrics.clientPushName !== "" && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-emerald-600">👤</span>
+                    <span className="text-[11px] font-medium text-foreground">
+                      {metrics.clientPushName}
+                    </span>
+                  </div>
+                )}
+              {metrics.whatsappConnections && metrics.whatsappConnections > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-emerald-600">👤</span>
-                  <span className="text-[11px] font-medium text-foreground">
-                    {metrics.clientPushName}
+                  <Network className="size-3 text-blue-600" />
+                  <span className="text-[11px] text-foreground">
+                    {metrics.whatsappConnections} conexión{metrics.whatsappConnections !== 1 ? 'es' : ''}
                   </span>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* HTTP Metrics (if available) */}
+        {(metrics.httpP95Latency || metrics.httpMeanLatency) && (
+          <div className="mt-2 border-t border-muted pt-2">
+            <div className="text-[10px] text-muted-foreground mb-1">
+              HTTP Metrics:
+            </div>
+            <div className="space-y-1">
+              {metrics.httpMeanLatency && (
+                <div className="flex items-center gap-1.5">
+                  <Network className="size-3 text-blue-600" />
+                  <span className="text-[11px] text-foreground">
+                    Avg: {metrics.httpMeanLatency}ms
+                  </span>
+                </div>
+              )}
+              {metrics.httpP95Latency && (
+                <div className="flex items-center gap-1.5">
+                  <Network className="size-3 text-orange-600" />
+                  <span className="text-[11px] text-foreground">
+                    P95: {metrics.httpP95Latency}ms
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* System Information (if available) */}
+        {metrics.nodeVersion && (
+          <div className="mt-2 border-t border-muted pt-2">
+            <div className="text-[10px] text-muted-foreground mb-1">
+              Sistema:
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Server className="size-3 text-green-600" />
+              <span className="text-[11px] text-foreground">
+                Node.js {metrics.nodeVersion}
+              </span>
             </div>
           </div>
         )}

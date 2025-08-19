@@ -48,15 +48,11 @@ export class BotService {
       return null;
     }
 
-    // Initialize base status object
+    // Initialize base status object - only essential fields
     let botStatus: BotStatus = {
       id: bot.id,
       name: bot.name,
       type: bot.type,
-      status: "offline",
-      phoneNumber: bot.phoneNumber,
-      pushName: bot.pushName,
-      apiResponsive: false,
     };
 
     // Skip external bots - only support PM2-managed bots
@@ -123,12 +119,12 @@ export class BotService {
       }
 
       // Build comprehensive status object using only PM2 data
+      // Frontend will use pm2.status, pm2.botStatus, pm2.whatsappStatus, pm2.qrCodeStatus, pm2.apiServerStatus for logical decisions
       botStatus = {
-        ...botStatus,
-        status: computedStatus,
-        lastSeen: new Date().toISOString(),
+        id: bot.id,
+        name: bot.name,
+        type: bot.type,
         phoneNumber: clientPhone,
-        pushName: clientPushName,
         // Pass all PM2 metrics dynamically - let frontend decide what to use
         pm2: {
           ...metrics, // All metrics from PM2 including custom ones
@@ -141,12 +137,16 @@ export class BotService {
       };
 
       console.log(
-        `✅ Bot ${bot.id} status via PM2 metrics only: ${computedStatus} (health: ${healthEvaluation.status}, score: ${healthEvaluation.score})`
+        `✅ Bot ${bot.id} status via PM2 metrics only (health: ${healthEvaluation.status}, score: ${healthEvaluation.score})`
       );
       return botStatus;
     } catch (error) {
       console.error(`❌ Failed to get PM2 metrics for ${bot.id}:`, error);
-      return { ...botStatus, status: "offline" };
+      return { 
+        id: bot.id,
+        name: bot.name,
+        type: bot.type,
+      };
     }
   }
 

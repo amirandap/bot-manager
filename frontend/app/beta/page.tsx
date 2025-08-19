@@ -1,113 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import BotMonitorCard from "../../components/bot-monitor-card";
 import { BotMetrics } from "../../components/bot-monitor-card";
-
-interface Bot {
-  id: string;
-  name: string;
-  type: string;
-  apiPort: number;
-  apiHost: string;
-  pushName: string;
-  enabled: boolean;
-  pm2ServiceId: string;
-  isExternal: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BotStatus {
-  id: string;
-  name: string;
-  status: string;
-  health: string;
-  score: number;
-  pm2?: BotMetrics;
-  lastUpdated: string;
-}
+import { useBotsStatus } from "@/lib/contexts/BotsStatusContext";
 
 export default function BetaPage() {
-  const [bots, setBots] = useState<Bot[]>([]);
-  const [botStatuses, setBotStatuses] = useState<Record<string, BotStatus>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { bots, isLoading, error, lastUpdated, refreshBots } = useBotsStatus();
 
-  // Fetch bots list
-  const fetchBots = async () => {
-    try {
-      const response = await fetch("/api/bots");
-      if (!response.ok) throw new Error("Failed to fetch bots");
-      const data = await response.json();
-      setBots(data);
-    } catch (err) {
-      console.error("Error fetching bots:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    }
-  };
-
-  // Fetch individual bot status
-  const fetchBotStatus = async (botId: string) => {
-    try {
-      const response = await fetch(`/api/status/${botId}`);
-      if (!response.ok) throw new Error(`Failed to fetch status for ${botId}`);
-      const status = await response.json();
-
-      setBotStatuses((prev) => ({
-        ...prev,
-        [botId]: status,
-      }));
-    } catch (err) {
-      console.error(`Error fetching status for ${botId}:`, err);
-      setBotStatuses((prev) => ({
-        ...prev,
-        [botId]: {
-          id: botId,
-          name: "Unknown",
-          status: "error",
-          health: "critical",
-          score: 0,
-          lastUpdated: new Date().toISOString(),
-        },
-      }));
-    }
-  };
-
-  // Initial load
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await fetchBots();
-      setLoading(false);
-    };
-    loadData();
-  }, []);
-
-  // Fetch statuses for all bots when bots list changes
-  useEffect(() => {
-    if (bots.length > 0) {
-      bots.forEach((bot) => {
-        fetchBotStatus(bot.id);
-      });
-    }
-  }, [bots]);
-
-  // Auto-refresh statuses every 30 seconds
-  useEffect(() => {
-    if (bots.length === 0) return;
-
-    const interval = setInterval(() => {
-      bots.forEach((bot) => {
-        fetchBotStatus(bot.id);
-      });
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [bots]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -124,7 +26,7 @@ export default function BetaPage() {
         <div className="text-center">
           <p className="text-red-600 mb-4">Error: {error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={refreshBots}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Reintentar
@@ -145,13 +47,24 @@ export default function BetaPage() {
                 Beta - Monitor de Bots
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Versión experimental con nuevo diseño de tarjetas
+                Versión experimental con contexto global y métricas completas
               </p>
+              {lastUpdated && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Última actualización: {lastUpdated.toLocaleTimeString()}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-500">
                 {bots.length} bot{bots.length !== 1 ? "s" : ""}
               </div>
+              <button
+                onClick={refreshBots}
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                🔄 Actualizar
+              </button>
               <Link
                 href="/"
                 className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
@@ -177,60 +90,46 @@ export default function BetaPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {bots.map((bot) => {
-              const status = botStatuses[bot.id];
-              const metrics = status?.pm2;
+              // Convert UnifiedBotStatus to BotMetrics format for the card
+              const formattedMetrics: BotMetrics = {
+                // Core PM2 metrics
+                pid: bot.pm2.pid || 0,
+                cpu: bot.pm2.cpu || 0,
+                memory: bot.pm2.memory || 0,
+                restarts: bot.pm2.restarts || 0,
+                uptime: bot.pm2.uptime || 0,
+                status: bot.pm2.status || "unknown",
 
-              // Convert our data to the expected BotMetrics format
-              const formattedMetrics: BotMetrics = metrics
-                ? {
-                    pid: metrics.pid || 0,
-                    cpu: metrics.cpu || 0,
-                    memory: metrics.memory || 0,
-                    restarts: metrics.restarts || 0,
-                    uptime: metrics.uptime || 0,
-                    status: metrics.status || "unknown",
-                    activeHandles: metrics.activeHandles || 0,
-                    activeRequests: metrics.activeRequests || 0,
-                    eventLoopLatency: String(metrics.eventLoopLatency || "0ms"),
-                    heapUsage: metrics.heapUsage || 0,
-                    errorCount: metrics.errorCount || 0,
-                    httpRequests: metrics.httpRequests || 0,
-                    botStatus: metrics.botStatus || status?.status || "unknown",
-                    browserCpuUsage: metrics.browserCpuUsage || 0,
-                    browserMemoryUsage: metrics.browserMemoryUsage || 0,
-                    messageProcessingTime: metrics.messageProcessingTime || 0,
-                    qrCodeStatus: metrics.qrCodeStatus || "unknown",
-                    qrCodesGenerated: metrics.qrCodesGenerated || 0,
-                    apiServerStatus: metrics.apiServerStatus || 0,
-                    whatsappStatus: metrics.whatsappStatus || "unknown",
-                  }
-                : {
-                    // Default empty metrics when no data is available
-                    pid: 0,
-                    cpu: 0,
-                    memory: 0,
-                    restarts: 0,
-                    uptime: 0,
-                    status: "unknown",
-                    activeHandles: 0,
-                    activeRequests: 0,
-                    eventLoopLatency: "0ms",
-                    heapUsage: 0,
-                    errorCount: 0,
-                    httpRequests: 0,
-                    botStatus: "loading",
-                    browserCpuUsage: 0,
-                    browserMemoryUsage: 0,
-                    messageProcessingTime: 0,
-                    qrCodeStatus: "unknown",
-                    qrCodesGenerated: 0,
-                    apiServerStatus: 0,
-                    whatsappStatus: "loading",
-                  };
+                // Advanced metrics
+                activeHandles: bot.pm2.activeHandles || 0,
+                activeRequests: bot.pm2.activeRequests || 0,
+                eventLoopLatency: bot.pm2.eventLoopLatency || "0ms",
+                heapUsage: bot.pm2.heapUsage || 0,
+                errorCount: bot.pm2.errorCount || 0,
+                httpRequests: 0, // Not available in current PM2 metrics
+
+                // Bot-specific metrics
+                botStatus: bot.pm2.botStatus || bot.status,
+                browserCpuUsage: bot.pm2.browserCpuUsage || 0,
+                browserMemoryUsage: bot.pm2.browserMemoryUsage || 0,
+                messageProcessingTime: bot.pm2.messageProcessingTime || 0,
+                qrCodeStatus: bot.pm2.qrCodeStatus || "unknown",
+                qrCodesGenerated: bot.pm2.qrCodesGenerated || 0,
+                apiServerStatus: bot.pm2.apiServerStatus || 0,
+                whatsappStatus: bot.pm2.whatsappStatus || "unknown",
+
+                // NEW: Client information from comprehensive metrics
+                clientPhoneNumber: String(bot.pm2.clientPhoneNumber || ""),
+                clientPushName: String(bot.pm2.clientPushName || ""),
+                whatsappConnections: bot.pm2.whatsappConnections || 0,
+              };
 
               return (
                 <div key={bot.id} className="flex justify-center">
-                  <BotMonitorCard title={bot.name} metrics={formattedMetrics} />
+                  <BotMonitorCard 
+                    title={bot.name} 
+                    metrics={formattedMetrics} 
+                  />
                 </div>
               );
             })}
@@ -242,8 +141,8 @@ export default function BetaPage() {
       <div className="bg-white border-t mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <p>Actualización automática cada 30 segundos</p>
-            <p>Beta v1.0</p>
+            <p>Actualización automática cada 5 segundos via contexto global</p>
+            <p>Beta v2.0 - Contexto Global</p>
           </div>
         </div>
       </div>

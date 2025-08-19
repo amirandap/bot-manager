@@ -9,10 +9,10 @@ export default function Home() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Bot Management Dashboard</h1>
         <Link
-          href="/beta"
+          href="/api-docs"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
         >
-          🧪 Ver Beta (Nuevas Tarjetas)
+          📚 Ver Documentación API
         </Link>
       </div>
       <Suspense fallback={<DashboardSkeleton />}>

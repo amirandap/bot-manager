@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   RotateCcw,
   Trash2,
@@ -12,14 +12,13 @@ import {
   Clock,
   AlertTriangle,
   QrCode,
-  Copy,
   Maximize2,
-  MoreHorizontal,
 } from "lucide-react"
-import type { Bot, BotStatus } from "@/lib/types"
-import { useState, useEffect, useCallback } from "react"
+import type { Bot } from "@/lib/types"
+import { useState, useCallback } from "react"
 import { api } from "@/lib/api"
 import QRCodeDisplay from "@/components/qr-code-display"
+import { useBotStatus } from "@/lib/contexts/BotsStatusContext"
 
 interface HeadlessBotCardProps {
   bot: Bot
@@ -28,75 +27,98 @@ interface HeadlessBotCardProps {
   onRefresh?: () => void
 }
 
-interface BotMetrics extends BotStatus {
-  pm2?: BotStatus["pm2"]
-}
-
-type ProcessState = "offline" | "not_found" | "running"
-
 type StatusType = "online" | "offline" | "starting" | "error" | "idle" | "qr_required" | "degraded"
 
 export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBotCardProps) {
-  const [status, setStatus] = useState<BotMetrics | null>(null)
+  const botStatus = useBotStatus(bot.id); // Use context instead of local state
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showQrModal, setShowQrModal] = useState(false)
 
   const getDisplayStatus = (): { type: StatusType; label: string; color: string } => {
-    if (!status || !status.pm2) {
+    if (!botStatus || !botStatus.pm2) {
       return { type: "offline", label: "Offline", color: "bg-red-500" }
     }
 
-    const whatsappStatus = status.pm2.whatsappStatus
-    const processState = getProcessState()
+    const pm2Status = botStatus.pm2.status
+    const whatsappStatus = botStatus.pm2.whatsappStatus
+    const qrCodeStatus = botStatus.pm2.qrCodeStatus
+    const apiServerStatus = botStatus.pm2.apiServerStatus
+    const botStatusText = botStatus.pm2.botStatus
+    const errorCount = botStatus.pm2.errorCount || 0
 
-    if (whatsappStatus === "QR_READY") {
-      return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
+    // Logical status determination based on real metrics
+    
+    // 1. If process is not running, it's offline
+    if (pm2Status !== "online") {
+      return { type: "offline", label: "Offline", color: "bg-red-500" }
     }
 
-    if (processState === "running") {
-      if (whatsappStatus === "AUTHENTICATED") {
-        const cpuUsage = status.pm2.cpu || 0
-        const memoryUsage = status.pm2.memory || 0
-        const errorCount = status.pm2.errorCount || 0
+    // 2. If there are active errors, show error status
+    if (errorCount > 0) {
+      return { type: "error", label: "Error", color: "bg-red-500" }
+    }
 
-        if (errorCount > 0) {
-          return { type: "error", label: "Error", color: "bg-red-500" }
-        }
-        if (cpuUsage > 80 || memoryUsage > 800) {
+    // 3. For WhatsApp bots, check WhatsApp-specific states
+    if (bot.type === "whatsapp") {
+      // QR code needs to be scanned
+      if (qrCodeStatus === "QR_READY" || whatsappStatus === "QR_READY") {
+        return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
+      }
+
+      // WhatsApp is connected and working
+      if (whatsappStatus === "CONNECTED" || whatsappStatus === "READY") {
+        // Check for performance issues
+        const cpuUsage = botStatus.pm2.cpu || 0
+        const heapUsage = botStatus.pm2.heapUsage || 0
+        
+        if (cpuUsage > 80 || heapUsage > 90) {
           return { type: "degraded", label: "Degraded", color: "bg-orange-500" }
         }
-        if (cpuUsage < 5 && memoryUsage < 100) {
+        
+        // Check if bot is actively working vs idle
+        if (cpuUsage < 5 && heapUsage < 50) {
           return { type: "idle", label: "Idle", color: "bg-green-500" }
         }
+        
         return { type: "online", label: "Online", color: "bg-green-500" }
       }
-      return { type: "starting", label: "Starting", color: "bg-orange-500" }
+
+      // WhatsApp is connecting or starting
+      if (whatsappStatus === "CONNECTING" || botStatusText?.includes("Initializing")) {
+        return { type: "starting", label: "Starting", color: "bg-orange-500" }
+      }
     }
 
-    return { type: "offline", label: "Offline", color: "bg-red-500" }
+    // 4. For any bot type, if API server is up and process is online
+    if (apiServerStatus === "UP" || apiServerStatus === 1) {
+      return { type: "online", label: "Online", color: "bg-green-500" }
+    }
+
+    // 5. Default: if process is online but we don't have clear status
+    return { type: "starting", label: "Starting", color: "bg-orange-500" }
   }
 
   const getStatusMessage = (): string => {
     const displayStatus = getDisplayStatus()
-    const metrics = status?.pm2
+    const metrics = botStatus?.pm2
 
     switch (displayStatus.type) {
       case "offline":
         return "Servicio detenido"
       case "starting":
-        return "Iniciando Chrome..."
+        return metrics?.botStatus || "Iniciando servicio..."
       case "error":
-        return "Se requiere reautenticación"
+        return "Se requiere atención"
       case "idle":
         return "En espera..."
       case "qr_required":
         return "QR listo para escanear"
       case "degraded":
-        return metrics?.cpu && metrics.cpu > 80 ? "Latencia alta" : "Heap alto"
+        return metrics?.cpu && metrics.cpu > 80 ? "CPU alta" : "Memoria alta"
       case "online":
-        return "Launching Chrome"
+        return metrics?.botStatus || "Operativo"
       default:
-        return "Proceso detenido"
+        return "Estado desconocido"
     }
   }
 
@@ -108,63 +130,6 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
     return `${hours}h ${minutes.toString().padStart(2, "0")}m`
   }
 
-  const getProcessState = (): ProcessState => {
-    if (!status || !status.pm2) return "not_found"
-    if (status.pm2.pid && status.status === "online") return "running"
-    return "offline"
-  }
-
-  const processState = getProcessState()
-  const whatsappStatus = status?.pm2?.whatsappStatus
-
-  const fetchQRStatus = useCallback(async () => {
-    if (bot.type !== "whatsapp") return
-  }, [bot.type])
-
-  const fetchBotStatus = useCallback(async () => {
-    try {
-      const response = await fetch(api.getBotStatus(bot.id), {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setStatus(result)
-
-        if (bot.type === "whatsapp") {
-          fetchQRStatus()
-        }
-      } else {
-        setStatus({
-          id: bot.id,
-          name: bot.name,
-          type: bot.type,
-          status: "offline",
-          apiResponsive: false,
-          pm2: {
-            pid: undefined,
-            cpu: 0,
-            memory: 0,
-            restarts: 0,
-            uptime: 0,
-          },
-        })
-      }
-    } catch (error) {
-      console.error("PM2 metrics failed:", error)
-      setStatus({
-        id: bot.id,
-        name: bot.name,
-        type: bot.type,
-        status: "offline",
-        apiResponsive: false,
-      })
-    }
-  }, [bot.id, bot.name, bot.type, fetchQRStatus])
-
   const handleRestartProcess = async () => {
     setActionLoading("restart")
     try {
@@ -175,7 +140,6 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
 
       if (response.ok) {
         setTimeout(() => {
-          fetchBotStatus()
           onRefresh?.()
         }, 2000)
       }
@@ -196,9 +160,8 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
 
       if (response.ok) {
         setTimeout(() => {
-          fetchBotStatus()
           onRefresh?.()
-        }, 3000)
+        }, 2000)
       }
     } catch (error) {
       console.error("Error recreating bot:", error)
@@ -207,139 +170,104 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
     }
   }
 
-  const handleCreateBotProcess = async () => {
-    setActionLoading("create")
-    try {
-      const response = await fetch(api.base + `/api/bots/${bot.id}/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      })
+  const handleDeleteBot = async () => {
+    if (!confirm(`Are you sure you want to delete ${bot.name}?`)) return
 
-      if (response.ok) {
-        setTimeout(() => {
-          fetchBotStatus()
-          onRefresh?.()
-        }, 2000)
-      }
+    try {
+      setActionLoading("delete")
+      await onDelete?.(bot.id)
     } catch (error) {
-      console.error("Error creating bot process:", error)
+      console.error("Error deleting bot:", error)
     } finally {
       setActionLoading(null)
     }
   }
 
-  const handleScanQR = async () => {
-    setShowQrModal(true)
-  }
-
-  const handleRefreshStatus = async () => {
-    setActionLoading("refresh")
-    await fetchBotStatus()
-    onRefresh?.()
-    setActionLoading(null)
-  }
-
-  const handleDelete = async () => {
-    if (confirm(`Are you sure you want to delete bot "${bot.name}"?`)) {
-      onDelete?.(bot.id)
+  const handleScanQR = useCallback(async () => {
+    // QR scanning logic using context data
+    if (bot.type === "whatsapp" && botStatus?.pm2?.qrCodeStatus === "QR_READY") {
+      setShowQrModal(true)
     }
-  }
+  }, [bot.type, botStatus?.pm2?.qrCodeStatus])
 
-  useEffect(() => {
-    fetchBotStatus()
-    const interval = setInterval(fetchBotStatus, 30000)
-    return () => clearInterval(interval)
-  }, [fetchBotStatus])
-
-  const metrics = status?.pm2
   const displayStatus = getDisplayStatus()
+  const metrics = botStatus?.pm2
 
   return (
-    <Card className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl shadow-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${displayStatus.color}`} />
-            <div>
-              <h3 className="font-semibold text-gray-900">{bot.name}</h3>
-              <p className="text-sm text-gray-500">{metrics?.clientPhoneNumber || bot.phoneNumber || "Bot Ventas"}</p>
+    <>
+      <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${displayStatus.color}`} />
+              <div>
+                <h3 className="font-semibold text-gray-900">{bot.name}</h3>
+                <p className="text-sm text-gray-500">{bot.type}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge className={`${displayStatus.color} text-white border-0 text-xs px-2 py-1`}>
+            <Badge variant={displayStatus.type === "online" ? "default" : "secondary"}>
               {displayStatus.label}
             </Badge>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <Copy className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <Maximize2 className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <MoreHorizontal className="h-3 w-3" />
-            </Button>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">CPU</span>
-            <span className="text-sm font-medium">{metrics?.cpu || 0}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(metrics?.cpu || 0, 100)}%` }}
-            />
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">{getStatusMessage()}</p>
+
+            {/* Phone Number Display */}
+            {botStatus?.pm2?.clientPhoneNumber && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500">📱</span>
+                <span className="font-mono text-gray-700">{botStatus.pm2.clientPhoneNumber}</span>
+              </div>
+            )}
+
+            {/* Push Name Display */}
+            {botStatus?.pm2?.clientPushName && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-500">👤</span>
+                <span className="text-gray-700">{botStatus.pm2.clientPushName}</span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Heap</span>
-            <span className="text-sm font-medium">{Math.round((metrics?.memory || 0) / 10)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-all duration-300 ${
-                (metrics?.memory || 0) > 800 ? "bg-red-500" : "bg-green-500"
-              }`}
-              style={{ width: `${Math.min((metrics?.memory || 0) / 10, 100)}%` }}
-            />
-          </div>
-        </div>
+          {/* PM2 Metrics */}
+          {metrics && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                  <span className="text-gray-600">CPU</span>
+                </div>
+                <span className="font-medium">{metrics.cpu?.toFixed(1) || 0}%</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  <span className="text-gray-600">RAM</span>
+                </div>
+                <span className="font-medium">{Math.round(metrics.memory || 0)}MB</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Clock className="h-3 w-3 text-gray-400" />
+                <span className="text-gray-600">Uptime</span>
+                <span className="font-medium">{formatUptime(metrics.uptime || 0)}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-3 w-3 text-gray-400" />
+                <span className="text-gray-600">Restarts</span>
+                <span className="font-medium">{metrics.restarts || 0}</span>
+              </div>
+            </div>
+          )}
 
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600">{metrics?.uptime ? formatUptime(metrics.uptime) : "0m"} uptime</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <RotateCcw className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600">{metrics?.restarts || 0} restarts</span>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">req 0</span>
-            <span className="text-gray-600">pid {metrics?.pid || "—"}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {displayStatus.type === "offline" && <span className="text-red-600">✕</span>}
-            {displayStatus.type === "starting" && <span className="text-orange-600">—</span>}
-            {displayStatus.type === "error" && <span className="text-red-600">✕</span>}
-            {displayStatus.type === "idle" && <span className="text-green-600">—</span>}
-            {displayStatus.type === "qr_required" && <QrCode className="h-4 w-4 text-orange-600" />}
-            {displayStatus.type === "online" && <span className="text-green-600">—</span>}
-            {displayStatus.type === "degraded" && <span className="text-orange-600">—</span>}
-            <span className="text-sm text-gray-700">{getStatusMessage()}</span>
-          </div>
-
-          {displayStatus.type === "qr_required" && (
-            <div className="text-center py-8">
-              <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+          {/* QR Code Section */}
+          {bot.type === "whatsapp" && displayStatus.type === "qr_required" && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
               <p className="text-lg font-medium text-gray-700 mb-2">Escanea el QR</p>
               <Button variant="outline" size="sm" onClick={handleScanQR} className="text-xs bg-transparent">
                 <QrCode className="h-3 w-3 mr-1" />
@@ -348,83 +276,106 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
               <p className="text-xs text-gray-500 mt-2">Esperando QR</p>
             </div>
           )}
-        </div>
 
-        <div className="space-y-2 pt-2 border-t border-gray-100">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <Monitor className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-600">Chrome CPU</span>
-            </div>
-            <span className="text-gray-600">{metrics?.browserCpuUsage || 0}%</span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <Monitor className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-600">Chrome Mem</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-16 bg-gray-200 rounded-full h-1">
-                <div
-                  className="bg-green-500 h-1 rounded-full"
-                  style={{ width: `${Math.min((metrics?.browserMemoryUsage || 0) / 10, 100)}%` }}
-                />
+          {/* Browser Metrics */}
+          {metrics && (metrics.browserCpuUsage || metrics.browserMemoryUsage) && (
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">Chrome CPU</span>
+                </div>
+                <span className="text-gray-600">{metrics.browserCpuUsage || 0}%</span>
               </div>
-              <span className="text-gray-600">{metrics?.browserMemoryUsage || 0}MB</span>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Monitor className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-600">Chrome Mem</span>
+                </div>
+                <span className="text-gray-600">{metrics.browserMemoryUsage || 0}MB</span>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {displayStatus.type === "error" && (
-          <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <span className="text-sm text-red-700">Se requiere reautenticación</span>
-          </div>
-        )}
-
-        {displayStatus.type === "degraded" && (
-          <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <span className="text-sm text-orange-700">{(metrics?.cpu || 0) > 80 ? "Latencia alta" : "Heap alto"}</span>
-          </div>
-        )}
-
-        <div className="flex gap-2 pt-2">
-          {processState === "offline" && (
-            <Button size="sm" onClick={handleRestartProcess} disabled={actionLoading === "restart"} className="flex-1">
-              {actionLoading === "restart" ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Reiniciar"}
-            </Button>
           )}
 
-          {processState === "not_found" && (
-            <Button size="sm" onClick={handleCreateBotProcess} disabled={actionLoading === "create"} className="flex-1">
-              {actionLoading === "create" ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Crear Proceso"}
-            </Button>
+          {/* Error States */}
+          {displayStatus.type === "error" && (
+            <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <span className="text-sm text-red-700">Se requiere reautenticación</span>
+            </div>
           )}
 
-          <Button variant="outline" size="sm" onClick={handleRefreshStatus} disabled={actionLoading === "refresh"}>
-            <RefreshCw className={`h-4 w-4 ${actionLoading === "refresh" ? "animate-spin" : ""}`} />
-          </Button>
+          {displayStatus.type === "degraded" && (
+            <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <span className="text-sm text-orange-700">{(metrics?.cpu || 0) > 80 ? "Latencia alta" : "Heap alto"}</span>
+            </div>
+          )}
 
-          <Button variant="outline" size="sm" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestartProcess}
+              disabled={actionLoading === "restart"}
+              className="flex-1"
+            >
+              {actionLoading === "restart" ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              <span className="ml-1">Restart</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRecreateProcess}
+              disabled={actionLoading === "recreate"}
+              className="flex-1"
+            >
+              {actionLoading === "recreate" ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              <span className="ml-1">Recreate</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteBot}
+              disabled={actionLoading === "delete"}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              {actionLoading === "delete" ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* QR Code Modal */}
-      <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
-        <DialogContent className="sm:max-w-md">
-          <QRCodeDisplay
-            bot={bot}
-            onClose={() => setShowQrModal(false)}
-            autoRefresh={true}
-            refreshInterval={3000}
-            autoCloseOnAuth={true}
-          />
-        </DialogContent>
-      </Dialog>
-    </Card>
+      {showQrModal && (
+        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+          <DialogContent className="sm:max-w-md">
+            <QRCodeDisplay 
+              bot={{ ...bot, id: bot.id }} 
+              onClose={() => {
+                setShowQrModal(false)
+                onRefresh?.()
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }
