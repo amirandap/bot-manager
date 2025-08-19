@@ -669,6 +669,130 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
     });
   });
 
+  // =================
+  // SESSION MONITORING & RECOVERY ROUTES
+  // =================
+  
+  /**
+   * @swagger
+   * /session/status:
+   *   get:
+   *     tags: [Session Management]
+   *     summary: Obtener estado de la sesión y recovery
+   *     description: Retorna información sobre el estado de la sesión de WhatsApp y el sistema de recovery automático
+   *     responses:
+   *       200:
+   *         description: Estado de la sesión obtenido exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 sessionHealth:
+   *                   type: string
+   *                   description: Estado de salud de la sesión
+   *                   enum: [healthy, unhealthy, recovering]
+   *                 recoveryStatus:
+   *                   type: object
+   *                   properties:
+   *                     isRecovering:
+   *                       type: boolean
+   *                     recoveryAttempts:
+   *                       type: number
+   *                     maxRecoveryAttempts:
+   *                       type: number
+   *                     lastHealthCheck:
+   *                       type: number
+   *                 whatsappStatus:
+   *                   type: string
+   *                   description: Estado del cliente de WhatsApp
+   */
+  expressApp.get("/session/status", (req, res) => {
+    try {
+      const { SessionMonitorService } = require("../services/SessionMonitorService");
+      const sessionMonitor = SessionMonitorService.getInstance();
+      const recoveryStatus = sessionMonitor.getRecoveryStatus();
+      
+      const client = getClient();
+      const isClientReady = client ? true : false;
+      
+      res.json({
+        success: true,
+        sessionHealth: recoveryStatus.isRecovering ? "recovering" : (isClientReady ? "healthy" : "unhealthy"),
+        recoveryStatus,
+        whatsappStatus: isClientReady ? "ready" : "not_ready",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "Failed to get session status",
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /session/recover:
+   *   post:
+   *     tags: [Session Management]
+   *     summary: Triggerar recovery manual de la sesión
+   *     description: Fuerza un reinicio de la sesión de WhatsApp para resolver problemas de conectividad
+   *     responses:
+   *       200:
+   *         description: Recovery iniciado exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *                 recovery_initiated:
+   *                   type: boolean
+   *       409:
+   *         description: Recovery ya en progreso
+   *       500:
+   *         description: Error interno del servidor
+   */
+  expressApp.post("/session/recover", async (req, res) => {
+    try {
+      const { SessionMonitorService } = require("../services/SessionMonitorService");
+      const sessionMonitor = SessionMonitorService.getInstance();
+      
+      await sessionMonitor.triggerManualRecovery();
+      
+      res.json({
+        success: true,
+        message: "Session recovery initiated successfully",
+        recovery_initiated: true,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("already in progress")) {
+        res.status(409).json({
+          success: false,
+          error: "Recovery already in progress",
+          details: errorMessage,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "Failed to trigger session recovery",
+          details: errorMessage,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  });
+
   logger.info("Express API configured successfully", "🌐");
   return expressApp;
 }
