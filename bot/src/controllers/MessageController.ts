@@ -3,6 +3,7 @@ import { logger } from "../services/LoggerService";
 import { MessageErrorHandlerService } from "../services";
 import { RequestValidationService } from "../services/RequestValidationService";
 import { RecipientProcessorService } from "../services/RecipientProcessorService";
+import { SessionMonitorService } from "../services/SessionMonitorService";
 import { Request, Response } from "express";
 import { getClient } from "../config/clientExporter";
 import {
@@ -87,7 +88,7 @@ export class MessageController {
   }
 
   /**
-   * Unified error handling - uses MessageErrorHandler
+   * Unified error handling - uses MessageErrorHandler + Session Recovery
    */
   private static async handleError(
     error: unknown,
@@ -98,8 +99,21 @@ export class MessageController {
   ): Promise<void> {
     logger.error(`❌ [BOT] Request ${requestId} failed:`);
 
+    const errorObj = error as Error;
+    
+    // Check if this is a recoverable session error
+    const sessionMonitor = SessionMonitorService.getInstance();
+    if (sessionMonitor.isRecoverableSessionError(errorObj)) {
+      logger.info(`🔄 Detected session error, triggering recovery: ${errorObj.message}`);
+      
+      // Trigger session recovery (async, don't wait)
+      sessionMonitor.handleSessionError(errorObj).catch(recoveryError => {
+        logger.error(`Session recovery failed: ${recoveryError}`);
+      });
+    }
+
     const errorResult = await messageErrorHandler.handleMessageError(
-      error as Error,
+      errorObj,
       endpoint,
       req.body.phoneNumber,
       "critical"
@@ -112,6 +126,7 @@ export class MessageController {
       details: errorResult.errorMessage,
       requestId,
       timestamp: new Date().toISOString(),
+      sessionRecovery: sessionMonitor.isRecoverableSessionError(errorObj) ? "recovery_triggered" : "not_applicable"
     });
   }
 

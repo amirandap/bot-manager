@@ -23,7 +23,7 @@ const envPath = path.join(__dirname, "../../.env");
 dotenv.config({ path: envPath });
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || process.env.PORT || 3001;
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 7299;
 
 // Initialize config service with fallback API host
 const configService = ConfigService.getInstance();

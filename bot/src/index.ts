@@ -24,6 +24,8 @@ import {
   getSystemInfo
 } from "./utils/browserUtils";
 
+import { SessionMonitorService } from "./services/SessionMonitorService";
+
 /**
  * Print environment variables during startup
  */
@@ -163,12 +165,21 @@ async function startBot(): Promise<void> {
 
     // Step 4: Setup shutdown handlers
     setupShutdownHandlers(async (signal: string) => {
+      // Stop session monitoring before shutdown
+      const sessionMonitor = SessionMonitorService.getInstance();
+      sessionMonitor.stopMonitoring();
+      
       await performGracefulShutdown(signal);
     });
+    
+    // Step 5: Start session monitoring
+    const sessionMonitor = SessionMonitorService.getInstance();
+    sessionMonitor.startMonitoring();
     
     // Startup completed - now everything is ready
     logger.info("🎉 Bot startup completed successfully! All systems operational.");
     logger.info("✅ WhatsApp client authenticated and API server running!");
+    logger.info("🔍 Session monitoring active - automatic recovery enabled!");
     cleanupQRCodeAfterConnection();
     
   } catch (error) {

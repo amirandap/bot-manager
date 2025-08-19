@@ -63,11 +63,13 @@ export class PuppeteerConfigManager {
 
       case "linux":
         return [
+          // Chromium paths (preferred for bots - more stable)
+          "/snap/bin/chromium",
+          "/usr/bin/chromium-browser", 
+          "/usr/bin/chromium",
+          // Chrome paths (fallback)
           "/usr/bin/google-chrome-stable",
           "/usr/bin/google-chrome",
-          "/usr/bin/chromium-browser",
-          "/usr/bin/chromium",
-          "/snap/bin/chromium",
           "/opt/google/chrome/google-chrome",
           "/opt/google/chrome/chrome",
           "/usr/local/bin/google-chrome",
@@ -291,19 +293,16 @@ export class PuppeteerConfigManager {
         return [
           ...baseArgs,
           "--no-zygote",
-          // Remove --single-process for better stability
-          "--disable-background-timer-throttling",
-          "--disable-renderer-backgrounding", 
-          "--disable-backgrounding-occluded-windows",
-          // Memory optimization for low-memory systems
+          // Enhanced memory and performance optimization for Chromium
           "--memory-pressure-off",
           "--max_old_space_size=512",
           "--optimize-for-size",
           "--enable-precise-memory-info",
+          // Disable resource-intensive features for better stability
           "--disable-software-rasterizer",
           "--disable-threaded-animation",
           "--disable-threaded-scrolling",
-          "--disable-in-process-stack-traces",
+          "--disable-in-process-stack-traces", 
           "--disable-histogram-customizer",
           "--disable-gl-extensions",
           "--disable-d3d11",
@@ -316,9 +315,35 @@ export class PuppeteerConfigManager {
           "--disable-3d-apis",
           "--disable-accelerated-2d-canvas",
           "--disable-accelerated-jpeg-decoding",
-          "--disable-accelerated-mjpeg-decode",
           "--disable-app-list-dismiss-on-blur",
-          "--disable-accelerated-video-decode",
+          // Chromium-specific optimizations
+          "--disable-extensions-http-throttling",
+          "--disable-component-extensions-with-background-pages",
+          "--disable-ipc-flooding-protection",
+          "--disable-dev-tools",
+          "--disable-plugins",
+          "--disable-features=TranslateUI,VizDisplayCompositor",
+          "--disable-blink-features=AutomationControlled",
+          // Stability improvements for long-running sessions
+          "--disable-hang-monitor",
+          "--disable-domain-reliability",
+          "--disable-client-side-phishing-detection",
+          "--disable-sync",
+          "--disable-background-networking",
+          "--disable-default-apps",
+          "--disable-component-update",
+          // Process management
+          "--disable-renderer-backgrounding",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows",
+          // Session and crash prevention
+          "--disable-breakpad",
+          "--disable-crash-reporter",
+          "--disable-logging",
+          "--silent",
+          // Network optimizations
+          "--aggressive-cache-discard",
+          "--enable-tcp-fast-open",
         ];
 
       case "win32": // Windows

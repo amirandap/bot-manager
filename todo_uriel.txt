@@ -2,3 +2,8 @@ Rehacer las tarjetas seguiendo el template html
 Agregar un nuevo bot solo pregunte un nombre
 1. Implementar metricas reales del navegador
 2. Implementar counters de mensajes enviados/mensajes fallados
+
+
+tambien veo que el bot no tiene una logica para monitorear el proceso de chromium para ver su consumo de cpu y memoria
+
+el puppeter config no esta usando nuestra funcion centralizada de logging ni de error ni tomando en cuenta la metrica
