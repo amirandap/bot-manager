@@ -477,7 +477,11 @@ export class BotSpawnerService {
   private async startBotWithPM2(botId: string, botConfig: any): Promise<void> {
     console.log(`🚀 Starting bot ${botId} with PM2...`);
 
-    // Step 1: Kill any process using the target port
+    // Step 1: Compile bot to JavaScript for better performance and memory usage
+    console.log(`🔨 Compiling bot TypeScript to JavaScript...`);
+    await this.compileBotProject();
+
+    // Step 2: Kill any process using the target port
     await this.killProcessOnPort(botConfig.apiPort);
 
     const pm2ServiceId = `wabot-${botConfig.apiPort}`;
@@ -514,9 +518,13 @@ export class BotSpawnerService {
 
     const pm2Config = {
       name: pm2ServiceId,
-      script: path.join(this.botDirectory, "src/index.ts"),
-      interpreter: "./node_modules/.bin/ts-node", // Use local ts-node
-      interpreter_args: "--files -r tsconfig-paths/register", // Same as dev
+      script: path.join(this.botDirectory, "dist/index.js"), // Use compiled JavaScript
+      args: [String(botConfig.apiPort)], // Pass port as argument
+      node_args: [
+        "--max-old-space-size=256", // Limit heap memory to 256MB
+        "--optimize-for-size", // Optimize for memory efficiency
+        "--gc-interval=100" // More frequent garbage collection
+      ],
       cwd: this.botDirectory,
       env: botEnv, // Now properly typed
       error_file: path.join(this.dataDirectory, "logs", botId, "error.log"),
@@ -525,7 +533,7 @@ export class BotSpawnerService {
       autorestart: true,
       max_restarts: 5, // Reduce restarts to avoid resource exhaustion
       min_uptime: 30000, // Increase minimum uptime
-      max_memory_restart: "400M", // Restart if memory exceeds 400MB
+      max_memory_restart: "256M", // Restart if memory exceeds 256MB (aligned with node args)
       watch: false,
       instances: 1,
       exec_mode: "fork",
@@ -1254,5 +1262,33 @@ export class BotSpawnerService {
         });
       });
     });
+  }
+
+  /**
+   * Compiles the bot TypeScript project to JavaScript for better performance
+   */
+  private async compileBotProject(): Promise<void> {
+    try {
+      console.log(`🔨 Running npm run build in bot directory...`);
+      
+      const { stdout, stderr } = await execAsync('npm run build', {
+        cwd: this.botDirectory,
+        timeout: 60000 // 60 second timeout
+      });
+
+      if (stderr && !stderr.includes('npm WARN')) {
+        console.warn(`⚠️  Build warnings: ${stderr}`);
+      }
+      
+      console.log(`✅ Bot project compiled successfully`);
+      if (stdout) {
+        console.log(`Build output: ${stdout.substring(0, 200)}...`);
+      }
+    } catch (error: any) {
+      console.error(`❌ Bot compilation failed:`, error.message);
+      if (error.stdout) console.error(`Stdout: ${error.stdout}`);
+      if (error.stderr) console.error(`Stderr: ${error.stderr}`);
+      throw new Error(`Bot compilation failed: ${error.message}`);
+    }
   }
 }

@@ -148,8 +148,10 @@ export function DeploymentManager() {
   };
 
   const formatUptime = (uptime: number) => {
-    const hours = Math.floor(uptime / 3600);
-    const minutes = Math.floor((uptime % 3600) / 60);
+    // Convert milliseconds to seconds first
+    const uptimeSeconds = Math.floor(uptime / 1000);
+    const hours = Math.floor(uptimeSeconds / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
 
