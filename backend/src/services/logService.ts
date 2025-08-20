@@ -179,20 +179,15 @@ export class LogService {
     try {
       // Read log file
       const logContent = fs.readFileSync(logFilePath, "utf8");
-      console.log(`📋 Log file size: ${logContent.length} characters`);
-      
       const logLines = logContent.split("\n").filter(line => line.trim() !== "");
-      console.log(`📋 Found ${logLines.length} non-empty lines`);
 
       const totalLines = logLines.length;
       
       // Apply pagination
       const startIndex = Math.max(0, totalLines - offset - lines);
       const endIndex = Math.max(0, totalLines - offset);
-      console.log(`📋 Pagination: start=${startIndex}, end=${endIndex}, total=${totalLines}`);
       
       const selectedLines = logLines.slice(startIndex, endIndex);
-      console.log(`📋 Selected ${selectedLines.length} lines`);
       
       // Parse log lines
       const logs: LogEntry[] = selectedLines.map(line => this.parseLogLine(line));

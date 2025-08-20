@@ -4,16 +4,17 @@ import { useState } from "react";
 import HeadlessBotCard from "./headless-bot-card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Settings, Activity, ArrowLeft, Plus, RefreshCw, Database } from "lucide-react";
+import { Settings, Activity, ArrowLeft, Plus, RefreshCw, Database, MonitorSpeaker } from "lucide-react";
 import { DeploymentManager } from "./deployment-manager";
 import ApiDocsPage from "../app/api-docs/page";
 import { AllBotsDataInspector } from "./bot-data-inspector";
+import { MessageMonitoringDashboard } from "./message-monitoring-dashboard";
 import { useBotsStatus } from "@/lib/contexts/BotsStatusContext";
 
 export default function BotDashboard() {
   const { bots, isLoading, error, lastUpdated, refreshBots } = useBotsStatus();
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "api-docs" | "debug">("bots");
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "monitoring" | "api-docs" | "debug">("bots");
 
   const handleDeleteBot = async (botId: string) => {
     // TODO: Implement delete functionality through context
@@ -79,6 +80,19 @@ export default function BotDashboard() {
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
                   Deployments
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("monitoring")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "monitoring"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <MonitorSpeaker className="h-4 w-4" />
+                  Message Monitoring
                 </div>
               </button>
               <button
@@ -204,6 +218,15 @@ export default function BotDashboard() {
                 <h2 className="text-xl font-semibold">CI/CD Platform</h2>
               </div>
               <DeploymentManager />
+            </div>
+          ) : activeTab === "monitoring" ? (
+            // Message Monitoring Tab
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <MonitorSpeaker className="h-5 w-5 text-blue-600" />
+                <h2 className="text-xl font-semibold">Message Monitoring</h2>
+              </div>
+              <MessageMonitoringDashboard />
             </div>
           ) : activeTab === "debug" ? (
             // Debug Data Tab
