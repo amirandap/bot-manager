@@ -72,4 +72,29 @@ export const api = {
       `${API_BASE_URL}/api/bots/receive-image-and-json`,
     sendConfirmation: () => `${API_BASE_URL}/api/bots/confirmation`,
   },
+
+  // Logs endpoints
+  logs: {
+    getBotLogs: (botId: string, params?: {lines?: number; offset?: number; type?: 'combined' | 'error' | 'out'}) => {
+      const queryParams = new URLSearchParams();
+      if (params?.lines) queryParams.append('lines', params.lines.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+      if (params?.type) queryParams.append('type', params.type);
+      const query = queryParams.toString();
+      return `${API_BASE_URL}/api/logs/${botId}${query ? `?${query}` : ''}`;
+    },
+    getTailLogs: (botId: string, params?: {lines?: number; type?: 'combined' | 'error' | 'out'}) => {
+      const queryParams = new URLSearchParams();
+      if (params?.lines) queryParams.append('lines', params.lines.toString());
+      if (params?.type) queryParams.append('type', params.type);
+      const query = queryParams.toString();
+      return `${API_BASE_URL}/api/logs/${botId}/tail${query ? `?${query}` : ''}`;
+    },
+    getLogFiles: (botId: string) => `${API_BASE_URL}/api/logs/${botId}/files`,
+    getLogStats: (botId: string) => `${API_BASE_URL}/api/logs/${botId}/stats`,
+    clearBotLogs: (botId: string, type?: 'combined' | 'error' | 'out') => {
+      const query = type ? `?type=${type}` : '';
+      return `${API_BASE_URL}/api/logs/${botId}/clear${query}`;
+    },
+  },
 };

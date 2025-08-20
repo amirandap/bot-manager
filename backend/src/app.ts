@@ -3,6 +3,7 @@ import { setBotsRoutes } from "./routes/botsRoutes";
 import { setBotProxyRoutes } from "./routes/botProxyRoutes";
 import { setStatusRoutes } from "./routes/statusRoutes";
 import { setDeployRoutes } from "./routes/deployRoutes";
+import { setLogRoutes } from "./routes/logRoutes";
 import { setupSwagger } from "./swagger";
 import cors from "cors";
 import morgan from "morgan";
@@ -63,6 +64,7 @@ setBotProxyRoutes(app);
 setBotsRoutes(app);
 setStatusRoutes(app);
 setDeployRoutes(app);
+setLogRoutes(app);
 
 // Setup Swagger documentation
 setupSwagger(app);

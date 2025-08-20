@@ -17,10 +17,12 @@ import {
   Settings,
   Trash2,
   QrCode,
+  Terminal,
 } from "lucide-react";
 import StatusIndicator from "./status-indicator";
 import PM2StatusIndicator from "./pm2-status-indicator";
 import QRCodeDisplay from "./qr-code-display";
+import LogViewerModal from "./log-viewer-modal";
 import type { Bot } from "@/lib/types";
 import { useState, useCallback } from "react";
 import { api } from "@/lib/api";
@@ -49,6 +51,7 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
   const [qrStatus, setQrStatus] = useState<QRStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   const getBotIcon = (type?: string) => {
     const safeType = typeof type === "string" ? type.toLowerCase() : "";
@@ -316,6 +319,16 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowLogsModal(true)}
+                className="flex items-center gap-1"
+              >
+                <Terminal className="h-3 w-3" />
+                Logs
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={loading}
                 className="flex items-center gap-1"
               >
@@ -355,6 +368,14 @@ export default function BotCard({ bot, onUpdate, onDelete }: BotCardProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Logs Modal */}
+      <LogViewerModal
+        botId={bot.id}
+        botName={bot.name}
+        isOpen={showLogsModal}
+        onClose={() => setShowLogsModal(false)}
+      />
     </>
   );
 }
