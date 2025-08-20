@@ -66,7 +66,7 @@ export class EnvironmentManager {
      
     const BOT_NAME = process.env.BOT_NAME || `WhatsApp Bot ${BOT_ID}`;
      
-    const BOT_PORT = parseInt(process.env.BOT_PORT || "3000");
+    const BOT_PORT = parseInt(process.env.API_PORT || process.env.BOT_PORT || "3000");
      
     const BOT_TYPE = process.env.BOT_TYPE || "whatsapp";
      

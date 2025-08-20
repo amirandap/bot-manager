@@ -162,10 +162,20 @@ export async function initializeWhatsAppClient(
         }
       });
 
+      // Track WhatsApp state to prevent loading events from overriding READY
+      let isWhatsAppReady = false;
+
       // Loading screen handler - shows authentication progress
       whatsappClient!.on("loading_screen", (percent, message) => {
         try {
-          logger.info(`WhatsApp loading: ${percent}% - ${message}`, "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
+          // Only update to LOADING if we're not already READY
+          // This prevents loading events from overriding the READY state
+          if (!isWhatsAppReady) {
+            logger.info(`WhatsApp loading: ${percent}% - ${message}`, "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
+          } else {
+            // Just log the progress without changing the status
+            logger.info(`WhatsApp loading: ${percent}% - ${message} (status already READY)`, "⏳");
+          }
           logger.updateMetric("LOADING_PROGRESS", percent);
         } catch (error) {
           logger.error(`Error handling loading screen: ${error}`, {}, "ERRORS", 1);
@@ -231,8 +241,12 @@ export async function initializeWhatsAppClient(
 
       // Ready handler - this is where we resolve the promise
       whatsappClient!.on("ready", async () => {
+        isWhatsAppReady = true; // Mark as ready to prevent loading events from overriding
         logger.info("WhatsApp state: ready - WhatsApp client is ready", "🤖", undefined, "WHATSAPP_STATUS", "READY");
         logger.logLifecycleStep("READY");
+
+        // Start monitoring browser metrics
+        startBrowserMetricsMonitoring();
 
         // Connect modern client to route exporter
         setClient(whatsappClient);
@@ -460,4 +474,47 @@ export function updateBrowserMemoryMetric(memoryMB: number): void {
  */
 export function updateBrowserCpuMetric(cpuPercent: number): void {
   logger.updateMetric("BROWSER_CPU", cpuPercent);
+}
+
+/**
+ * Start monitoring browser metrics (CPU and Memory)
+ */
+export function startBrowserMetricsMonitoring(): void {
+  // Monitor every 30 seconds
+  setInterval(async () => {
+    try {
+      const client = getWhatsAppClient();
+      if (!client || !client.pupPage) {
+        // No client or page available, set metrics to 0
+        updateBrowserMemoryMetric(0);
+        updateBrowserCpuMetric(0);
+        return;
+      }
+
+      // Get the browser and page from the WhatsApp client
+      const page = client.pupPage;
+      
+      // Get browser process metrics (this is approximate)
+      const metrics = await page.metrics();
+      
+      // Calculate memory usage in MB
+      const memoryMB = Math.round((metrics.JSHeapUsedSize || 0) / (1024 * 1024));
+      
+      // CPU usage is harder to get directly from Puppeteer
+      // We'll use ScriptDuration as a simple heuristic for CPU activity
+      const scriptDuration = metrics.ScriptDuration || 0;
+      
+      // Simple heuristic: if there's recent activity, show some CPU usage
+      const cpuPercent = Math.min(Math.round(scriptDuration * 100), 100);
+      
+      // Update metrics
+      updateBrowserMemoryMetric(memoryMB);
+      updateBrowserCpuMetric(cpuPercent);
+      
+    } catch {
+      // If we can't get metrics, set to 0
+      updateBrowserMemoryMetric(0);
+      updateBrowserCpuMetric(0);
+    }
+  }, 30000); // 30 seconds
 }
