@@ -2,6 +2,24 @@ export interface LogEntry {
   timestamp: string;
   level: string;
   message: string;
+  raw: string;
+}
+
+export interface LogsResponse {
+  botId: string;
+  botName: string;
+  logs: LogEntry[];
+  totalLines: number;
+  hasMore: boolean;
+}
+
+export interface LogStats {
+  totalLines: number;
+  errorCount: number;
+  warnCount: number;
+  infoCount: number;
+  lastUpdate: string;
+  fileSizes: Record<string, number>;
 }
 
 export interface Bot {
