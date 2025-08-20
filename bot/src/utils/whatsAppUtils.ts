@@ -136,10 +136,12 @@ export async function initializeWhatsAppClient(
       }),
       puppeteer: puppeteerOptions,
       webVersionCache: {
-        type: "remote",
-        remotePath:
-          "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+        type: "local",
+        path: path.join(config.SESSION_PATH, '.wwebjs_cache')
       },
+      // Memory optimization settings
+      qrMaxRetries: 3,
+      takeoverOnConflict: true,
     });
 
     // Create a promise that resolves when the client is ready

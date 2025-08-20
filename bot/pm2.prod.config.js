@@ -11,6 +11,14 @@ module.exports = {
       interpreter: "./node_modules/.bin/ts-node",
       interpreter_args: "--files --transpile-only",
       
+      // Node.js memory optimization
+      node_args: [
+        "--max-old-space-size=256",
+        "--optimize-for-size",
+        "--gc-interval=100",
+        "--max-semi-space-size=64"
+      ],
+      
       // Environment configuration
       env: {
         NODE_ENV: "production",

@@ -30,7 +30,11 @@
       "--metrics-recording-only",
       "--no-first-run",
       "--no-default-browser-check",
-      "--enable-tcp-fast-open"
+      "--enable-tcp-fast-open",
+      "--max-old-space-size=512",
+      "--memory-pressure-off",
+      "--disable-background-media-processing",
+      "--disable-features=VizDisplayCompositor,WebRtcHideLocalIpsWithMdns"
     ],
     "stability": [
       "--disable-breakpad",
@@ -68,7 +72,10 @@
       "--no-zygote"
     ],
     "whatsapp_optimized": [
-      "--disable-features=AudioServiceOutOfProcess,TranslateUI"
+      "--disable-features=AudioServiceOutOfProcess,TranslateUI",
+      "--js-flags=--max-old-space-size=256 --gc-interval=100",
+      "--enable-precise-memory-info",
+      "--force-fieldtrials=MemoryCoordinator/Enabled"
     ]
   },
   "environments": {

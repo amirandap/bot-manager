@@ -123,10 +123,13 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
   }
 
   const formatUptime = (uptime: number): string => {
-    if (uptime < 60) return "0m"
-    if (uptime < 3600) return `${Math.floor(uptime / 60)}m`
-    const hours = Math.floor(uptime / 3600)
-    const minutes = Math.floor((uptime % 3600) / 60)
+    // Backend sends uptime in milliseconds, convert to seconds first
+    const uptimeSeconds = Math.floor(uptime / 1000)
+    
+    if (uptimeSeconds < 60) return "0m"
+    if (uptimeSeconds < 3600) return `${Math.floor(uptimeSeconds / 60)}m`
+    const hours = Math.floor(uptimeSeconds / 3600)
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60)
     return `${hours}h ${minutes.toString().padStart(2, "0")}m`
   }
 
