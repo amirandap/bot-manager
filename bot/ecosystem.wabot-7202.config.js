@@ -7,7 +7,7 @@ module.exports = {
     env: {
       BOT_ID: 'whatsapp-bot-1755381969910',
       ENABLE_METRICS: 'true',
-      API_PORT: '7202',
+      BOT_PORT: '7202',
       NODE_ENV: 'production'
     },
     error_file: '/home/linuxuser/.pm2/logs/wabot-7202-error.log',

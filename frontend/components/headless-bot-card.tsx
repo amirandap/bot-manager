@@ -280,9 +280,83 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
             </div>
           )}
 
+          {/* Bot Custom Metrics */}
+          {metrics && bot.type === "whatsapp" && (
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Bot Metrics</h4>
+              
+              {/* Bot Status & WhatsApp Status */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {metrics.botStatus && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">Bot Status</span>
+                    <span className="font-medium text-gray-700">{metrics.botStatus}</span>
+                  </div>
+                )}
+                {metrics.whatsappStatus && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">WhatsApp</span>
+                    <span className="font-medium text-gray-700">{metrics.whatsappStatus}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* QR Code & API Status */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {metrics.qrCodeStatus && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">QR Status</span>
+                    <span className="font-medium text-gray-700">{metrics.qrCodeStatus}</span>
+                  </div>
+                )}
+                {metrics.apiServerStatus && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">API Server</span>
+                    <span className="font-medium text-gray-700">{metrics.apiServerStatus}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Message Processing */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {metrics.messagesProcessed !== undefined && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">Messages</span>
+                    <span className="font-medium text-gray-700">{metrics.messagesProcessed}</span>
+                  </div>
+                )}
+                {metrics.messageProcessingTime !== undefined && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">Proc. Time</span>
+                    <span className="font-medium text-gray-700">{metrics.messageProcessingTime}ms</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Error Count & QR Codes Generated */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {metrics.errorCount !== undefined && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">Errors</span>
+                    <span className={`font-medium ${metrics.errorCount > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      {metrics.errorCount}
+                    </span>
+                  </div>
+                )}
+                {metrics.qrCodesGenerated !== undefined && (
+                  <div className="flex flex-col">
+                    <span className="text-gray-500">QR Generated</span>
+                    <span className="font-medium text-gray-700">{metrics.qrCodesGenerated}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Browser Metrics */}
           {metrics && (metrics.browserCpuUsage || metrics.browserMemoryUsage) && (
             <div className="space-y-2 pt-2 border-t border-gray-100">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Browser Metrics</h4>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <Monitor className="h-4 w-4 text-gray-400" />
