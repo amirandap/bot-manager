@@ -4,6 +4,7 @@ import { setBotProxyRoutes } from "./routes/botProxyRoutes";
 import { setStatusRoutes } from "./routes/statusRoutes";
 import { setDeployRoutes } from "./routes/deployRoutes";
 import { setLogRoutes } from "./routes/logRoutes";
+import messageMonitoringRoutes from "./routes/messageMonitoringRoutes";
 import { setupSwagger } from "./swagger";
 import cors from "cors";
 import morgan from "morgan";
@@ -65,6 +66,9 @@ setBotsRoutes(app);
 setStatusRoutes(app);
 setDeployRoutes(app);
 setLogRoutes(app);
+
+// Set up message monitoring routes
+app.use('/api/monitoring', messageMonitoringRoutes);
 
 // Setup Swagger documentation
 setupSwagger(app);

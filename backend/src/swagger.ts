@@ -337,6 +337,181 @@ const options = {
             },
           },
         },
+        MessageLog: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "Unique log entry identifier",
+              example: "2025-08-20T15:30:00.000Z-1692541800123"
+            },
+            timestamp: {
+              type: "string",
+              format: "date-time",
+              description: "Log entry timestamp",
+              example: "2025-08-20T15:30:00.000Z"
+            },
+            type: {
+              type: "string",
+              enum: ["received", "sent", "failed", "processing", "error"],
+              description: "Message processing type",
+              example: "sent"
+            },
+            level: {
+              type: "string",
+              enum: ["info", "warn", "error"],
+              description: "Log severity level",
+              example: "info"
+            },
+            requestId: {
+              type: "string",
+              nullable: true,
+              description: "Backend request identifier",
+              example: "1692541800123"
+            },
+            botId: {
+              type: "string",
+              nullable: true,
+              description: "Bot identifier for this message",
+              example: "whatsapp-bot-1234567890"
+            },
+            recipient: {
+              type: "string",
+              nullable: true,
+              description: "Message recipient (phone number or group ID)",
+              example: "+1234567890"
+            },
+            message: {
+              type: "string",
+              nullable: true,
+              description: "Message content (if available)",
+              example: "Hello, this is a test message"
+            },
+            messageType: {
+              type: "string",
+              nullable: true,
+              description: "Type of message being processed",
+              example: "INDIVIDUAL"
+            },
+            endpoint: {
+              type: "string",
+              nullable: true,
+              description: "Bot endpoint used for the message",
+              example: "/send-to-phone"
+            },
+            success: {
+              type: "boolean",
+              nullable: true,
+              description: "Whether the message was successfully processed",
+              example: true
+            },
+            errorType: {
+              type: "string",
+              nullable: true,
+              description: "Error type (if failed)",
+              example: "BOT_ERROR"
+            },
+            errorDetails: {
+              type: "string",
+              nullable: true,
+              description: "Detailed error information",
+              example: "Bot API returned 500 - Internal Server Error"
+            },
+            troubleshooting: {
+              type: "string",
+              nullable: true,
+              description: "Troubleshooting guidance for errors",
+              example: "Check bot logs and WhatsApp session status"
+            },
+            raw: {
+              type: "string",
+              description: "Original raw log line",
+              example: "2025-08-20T15:30:00.000Z: ✅ [BACKEND] Request 1692541800123 completed successfully"
+            }
+          }
+        },
+        MessageStats: {
+          type: "object",
+          properties: {
+            totalMessages: {
+              type: "integer",
+              description: "Total number of message logs",
+              example: 156
+            },
+            successCount: {
+              type: "integer",
+              description: "Number of successfully sent messages",
+              example: 142
+            },
+            failureCount: {
+              type: "integer",
+              description: "Number of failed messages",
+              example: 8
+            },
+            errorCount: {
+              type: "integer",
+              description: "Number of error-level logs",
+              example: 6
+            },
+            processedCount: {
+              type: "integer",
+              description: "Number of messages currently being processed",
+              example: 2
+            },
+            receivedCount: {
+              type: "integer",
+              description: "Number of messages received by backend",
+              example: 152
+            },
+            byBot: {
+              type: "object",
+              additionalProperties: {
+                type: "integer"
+              },
+              description: "Message count grouped by bot ID",
+              example: {
+                "whatsapp-bot-1234567890": 89,
+                "whatsapp-bot-0987654321": 67
+              }
+            },
+            byType: {
+              type: "object",
+              additionalProperties: {
+                type: "integer"
+              },
+              description: "Message count grouped by type",
+              example: {
+                "sent": 142,
+                "failed": 8,
+                "received": 152,
+                "processing": 2,
+                "error": 6
+              }
+            },
+            byErrorType: {
+              type: "object",
+              additionalProperties: {
+                type: "integer"
+              },
+              description: "Error count grouped by error type",
+              example: {
+                "BOT_ERROR": 4,
+                "CONNECTION_ERROR": 2,
+                "VALIDATION_ERROR": 2
+              }
+            },
+            lastHour: {
+              type: "integer",
+              description: "Messages processed in the last hour",
+              example: 23
+            },
+            last24Hours: {
+              type: "integer",
+              description: "Messages processed in the last 24 hours",
+              example: 156
+            }
+          }
+        }
       },
       parameters: {
         BotId: {
