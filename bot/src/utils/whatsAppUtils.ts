@@ -480,6 +480,9 @@ export function updateBrowserCpuMetric(cpuPercent: number): void {
  * Start monitoring browser metrics (CPU and Memory)
  */
 export function startBrowserMetricsMonitoring(): void {
+  let lastScriptDuration = 0;
+  let lastMeasureTime = Date.now();
+  
   // Monitor every 30 seconds
   setInterval(async () => {
     try {
@@ -500,12 +503,30 @@ export function startBrowserMetricsMonitoring(): void {
       // Calculate memory usage in MB
       const memoryMB = Math.round((metrics.JSHeapUsedSize || 0) / (1024 * 1024));
       
-      // CPU usage is harder to get directly from Puppeteer
-      // We'll use ScriptDuration as a simple heuristic for CPU activity
-      const scriptDuration = metrics.ScriptDuration || 0;
+      // CPU calculation based on script duration change over time
+      const currentTime = Date.now();
+      const currentScriptDuration = metrics.ScriptDuration || 0;
       
-      // Simple heuristic: if there's recent activity, show some CPU usage
-      const cpuPercent = Math.min(Math.round(scriptDuration * 100), 100);
+      // Calculate the change in script duration over the time interval
+      const scriptDurationDelta = currentScriptDuration - lastScriptDuration;
+      const timeDelta = (currentTime - lastMeasureTime) / 1000; // Convert to seconds
+      
+      // Calculate CPU percentage: (script time / real time) * 100
+      // This gives us a more accurate representation of actual CPU usage
+      let cpuPercent = 0;
+      if (timeDelta > 0 && scriptDurationDelta >= 0) {
+        cpuPercent = Math.min(Math.round((scriptDurationDelta / timeDelta) * 100), 100);
+      }
+      
+      // If this is the first measurement, start with a reasonable baseline
+      if (lastScriptDuration === 0) {
+        // Use a small baseline based on whether there's any script activity
+        cpuPercent = currentScriptDuration > 0 ? Math.min(Math.round(currentScriptDuration * 10), 15) : 0;
+      }
+      
+      // Update for next iteration
+      lastScriptDuration = currentScriptDuration;
+      lastMeasureTime = currentTime;
       
       // Update metrics
       updateBrowserMemoryMetric(memoryMB);
