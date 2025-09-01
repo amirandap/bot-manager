@@ -5,102 +5,32 @@
  */
 
 import { Client, LocalAuth } from "whatsapp-web.js";
-import * as QRCode from "qrcode";
 import * as path from "path";
 import { cleanAndFormatPhoneNumber } from "./cleanAndFormatPhoneNumber";
 import { logger } from "../services/LoggerService";
 import { puppeteerConfig } from "../config/PuppeteerConfig";
-import { QR_PATH } from "../config/EnvironmentManager";
 import { EnvironmentConfig } from "../types/types";
 import { setClient } from "../config/clientExporter";
+import { 
+  validateAndCleanCache, 
+  cleanOldCacheOnNewSession, 
+  startCacheMaintenance,
+  cleanCache,
+  cleanBrowserCache
+} from "../services/CacheService";
+import { 
+  initializeQRCodePath,
+  handleQRGenerated,
+  cleanupQRCode
+} from "../services/QRCodeService";
+import { 
+  startHeapMonitoring,
+  startBrowserMetricsMonitoring,
+  startZombieDetection
+} from "../services/MonitoringService";
 
 // State management
 let whatsappClient: Client | null = null;
-
-// QR Code state (moved from qrUtils)
-let currentQRCode: string | null = null;
-let qrCodePath: string | null = null;
-
-/**
- * Initialize QR code system (internal function)
- */
-export async function initializeQRCodePath(botId: string): Promise<string> {
-  try {
-    qrCodePath = path.join(QR_PATH, `qr-code-${botId}.png`);
-    logger.info(`QR code path initialized: ${qrCodePath}`, "📂", undefined, "QR_STATUS", "INITIALIZING");
-    return qrCodePath;
-  } catch (error) {
-    logger.error(`Failed to initialize QR code path: ${error}`, {}, "ERRORS", 1);
-    throw error;
-  }
-}
-
-/**
- * Handle QR code generation (internal function)
- */
-async function handleQRGenerated(qr: string): Promise<void> {
-  if (!qrCodePath) {
-    throw new Error("QR code path not initialized");
-  }
-
-  try {
-    logger.info("Processing QR code generation...", "🔄", undefined, "QR_STATUS", "GENERATING");
-    currentQRCode = qr;
-
-    await saveQRCode(qr);
-
-    // Update PM2 with QR code ready status
-    logger.info("QR code generated and ready for scanning", "✅", undefined, "QR_STATUS", "SCANME");
-    
-    // Update QR Codes metric
-    logger.updateMetric("QR_CODES", 1);
-
-    logger.info(`QR Code saved to: ${qrCodePath}`, "💾");
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(`Error handling QR code: ${errorMessage}`);
-    
-    // Update errors metric
-    logger.updateMetric("ERRORS", 1);
-    
-    throw new Error(`QR code handling failed: ${errorMessage}`);
-  }
-}
-
-/**
- * Save QR code to file (internal function)
- */
-async function saveQRCode(qr: string): Promise<void> {
-  if (!qrCodePath) {
-    throw new Error("QR code path not initialized");
-  }
-
-  try {
-    await QRCode.toFile(qrCodePath, qr);
-    logger.info(`QR code saved to: ${qrCodePath}`, "💾", undefined, "QR_STATUS", "SAVED");
-  } catch (error) {
-    logger.error(`Failed to save QR code: ${error}`, {}, "ERRORS", 1);
-    throw error;
-  }
-}
-
-/**
- * Clean up QR code file (internal function)
- */
-function cleanupQRCode(): void {
-  if (qrCodePath) {
-    try {
-      const fs = require("fs");
-      if (fs.existsSync(qrCodePath)) {
-        fs.unlinkSync(qrCodePath);
-        logger.info("QR code file cleaned up", "🧹");
-      }
-    } catch (error) {
-      logger.error(`Failed to cleanup QR code: ${error}`);
-    }
-  }
-  currentQRCode = null;
-}
 
 /**
  * Initialize WhatsApp client with proper configuration
@@ -118,6 +48,12 @@ export async function initializeWhatsAppClient(
   try {
     logger.info("WHATSAPP CLIENT INITIALIZATION", "🚀");
     logger.info("WhatsApp state: browser_launching - Starting WhatsApp Web browser", "🤖", undefined, "WHATSAPP_STATUS", "BROWSER_LAUNCHING");
+    
+    // Clean old cache only if starting new session
+    await cleanOldCacheOnNewSession();
+    
+    // Validate current cache integrity (but don't clean unless corrupted)
+    await validateAndCleanCache();
     logger.logLifecycleStep("BROWSER_LAUNCHING");
 
     // Initialize QR code path internally
@@ -164,6 +100,10 @@ export async function initializeWhatsAppClient(
 
       // Track WhatsApp state to prevent loading events from overriding READY
       let isWhatsAppReady = false;
+      let loadingTimeout: NodeJS.Timeout | null = null;
+      let loadingStartTime = Date.now();
+      let lastLoadingProgress = 0;
+      let stuckProgressCount = 0;
 
       // Loading screen handler - shows authentication progress
       whatsappClient!.on("loading_screen", (percent, message) => {
@@ -172,6 +112,43 @@ export async function initializeWhatsAppClient(
           // This prevents loading events from overriding the READY state
           if (!isWhatsAppReady) {
             logger.info(`WhatsApp loading: ${percent}% - ${message}`, "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
+            
+            // Convert percent to number for comparison
+            const currentProgress = typeof percent === 'string' ? parseInt(percent) : percent;
+            
+            // Check if progress is stuck
+            if (currentProgress === lastLoadingProgress) {
+              stuckProgressCount++;
+              if (stuckProgressCount > 20) { // If stuck for 20 consecutive updates
+                logger.warn(`🚨 Loading appears stuck at ${currentProgress}% - May need restart`);
+              }
+            } else {
+              stuckProgressCount = 0;
+              lastLoadingProgress = currentProgress;
+            }
+            
+            // Set timeout for total loading time (10 minutes max)
+            if (!loadingTimeout) {
+              loadingTimeout = setTimeout(async () => {
+                const loadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
+                logger.warn(`⚠️ Loading taking too long (${loadingTime}s), attempting cache cleanup...`);
+                
+                // Try cache cleanup first
+                const client = getWhatsAppClient();
+                await cleanCache();
+                if (client) {
+                  await cleanBrowserCache(client);
+                }
+                
+                // Give it 2 more minutes after cleanup
+                setTimeout(() => {
+                  const finalLoadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
+                  logger.error(`🚨 Loading timeout after ${finalLoadingTime}s - Restarting bot to prevent zombie state`);
+                  process.exit(1); // PM2 will restart the process
+                }, 2 * 60 * 1000); // 2 more minutes
+                
+              }, 8 * 60 * 1000); // 8 minutes timeout (then try cleanup)
+            }
           } else {
             // Just log the progress without changing the status
             logger.info(`WhatsApp loading: ${percent}% - ${message} (status already READY)`, "⏳");
@@ -242,14 +219,29 @@ export async function initializeWhatsAppClient(
       // Ready handler - this is where we resolve the promise
       whatsappClient!.on("ready", async () => {
         isWhatsAppReady = true; // Mark as ready to prevent loading events from overriding
+        
+        // Clear loading timeout since we're now ready
+        if (loadingTimeout) {
+          clearTimeout(loadingTimeout);
+          loadingTimeout = null;
+          const totalLoadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
+          logger.info(`✅ Loading completed successfully in ${totalLoadingTime}s`);
+        }
+        
         logger.info("WhatsApp state: ready - WhatsApp client is ready", "🤖", undefined, "WHATSAPP_STATUS", "READY");
         logger.logLifecycleStep("READY");
 
         // Start monitoring browser metrics
-        startBrowserMetricsMonitoring();
+        startBrowserMetricsMonitoring(() => getWhatsAppClient());
         
         // Start heap monitoring to prevent memory issues
         startHeapMonitoring();
+        
+        // Start zombie detection system
+        startZombieDetection(() => getWhatsAppClient());
+        
+        // Start periodic cache maintenance
+        startCacheMaintenance();
 
         // Connect modern client to route exporter
         setClient(whatsappClient);
@@ -401,243 +393,4 @@ export function getWhatsAppClient(): Client | null {
  */
 export function isWhatsAppClientReady(): boolean {
   return whatsappClient !== null;
-}
-
-/**
- * QR Code API exports for compatibility
- */
-export function getQRCode(): string | null {
-  return currentQRCode;
-}
-
-export function hasQRCode(): boolean {
-  return currentQRCode !== null;
-}
-
-export function getQRCodePath(): string | null {
-  return qrCodePath;
-}
-
-export function getQRStatus() {
-  return {
-    hasCode: currentQRCode !== null,
-    path: qrCodePath,
-    code: currentQRCode,
-  };
-}
-
-/**
- * Clean up QR code (public export for shutdown procedures)
- * ULTRA-OPTIMIZED - Silent cleanup during shutdown
- */
-export function cleanupQRCodeAfterConnection(): void {
-  // Only cleanup if QR code was actually generated and saved
-  if (currentQRCode && qrCodePath) {
-    logger.info("QR authentication completed successfully", "✅", undefined, "QR_STATUS", "COMPLETED");
-    cleanupQRCode(); // Silent cleanup - no logging
-  }
-  // No logging during shutdown - orchestrator handles all logging
-}
-
-/**
- * Utility functions for updating WhatsApp metrics
- * These can be called from other parts of the application
- */
-
-/**
- * Update message processing metric
- */
-export function updateMessageMetric(): void {
-  logger.updateMetric("MESSAGES", 1);
-}
-
-/**
- * Update message processing time metric
- */
-export function updateMessageProcessingTime(timeMs: number): void {
-  logger.updateMetric("MESSAGE_PROCESSING_TIME", timeMs);
-}
-
-/**
- * Update error metric
- */
-export function updateErrorMetric(): void {
-  logger.updateMetric("ERRORS", 1);
-}
-
-/**
- * Update browser memory usage metric
- */
-export function updateBrowserMemoryMetric(memoryMB: number): void {
-  logger.updateMetric("BROWSER_MEMORY", memoryMB);
-}
-
-/**
- * Update browser CPU usage metric
- */
-export function updateBrowserCpuMetric(cpuPercent: number): void {
-  logger.updateMetric("BROWSER_CPU", cpuPercent);
-}
-
-/**
- * Force garbage collection and memory cleanup
- */
-export async function forceMemoryCleanup(client?: Client): Promise<void> {
-  try {
-    logger.info('🧹 Starting forced memory cleanup...');
-    
-    // Force garbage collection if available
-    if (global.gc) {
-      global.gc();
-      logger.info("🗑️ Forced garbage collection executed");
-    }
-    
-    // If client is provided, try to clean browser cache
-    if (client && client.pupPage) {
-      try {
-        // Clear browser cache
-        await client.pupPage.evaluateOnNewDocument(() => {
-          // Clear caches in the browser context
-          if ('caches' in window) {
-            caches.keys().then(names => {
-              names.forEach(name => caches.delete(name));
-            });
-          }
-        });
-        
-        // Force page garbage collection in browser context
-        await client.pupPage.evaluate(() => {
-          if (window.gc) {
-            window.gc();
-          }
-        });
-        
-        logger.info('🧹 Browser cache cleared');
-      } catch (browserError) {
-        logger.warn(`🧹 Browser cleanup error: ${browserError}`);
-      }
-    }
-    
-    // Log memory usage after cleanup
-    const memUsage = process.memoryUsage();
-    const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
-    const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
-    const heapPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
-    
-    logger.info(`💾 Memory after cleanup: ${heapUsedMB}MB/${heapTotalMB}MB (${heapPercent}%)`);
-    
-    // If heap usage is still above 85%, log a warning
-    if (heapPercent > 85) {
-      logger.warn(`⚠️ High heap usage detected: ${heapPercent}% - Consider restarting if this persists`);
-    }
-  } catch (error) {
-    logger.error(`Error during memory cleanup: ${error}`);
-  }
-}
-
-/**
- * Monitor heap usage and trigger cleanup if needed
- */
-export function startHeapMonitoring(): void {
-  // Monitor heap every 2 minutes
-  setInterval(async () => {
-    try {
-      const memUsage = process.memoryUsage();
-      const heapPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
-      
-      // Log heap usage every 10 minutes (every 5th check)
-      if (Date.now() % (10 * 60 * 1000) < 2 * 60 * 1000) {
-        const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
-        const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
-        logger.info(`💾 Heap usage: ${heapUsedMB}MB/${heapTotalMB}MB (${heapPercent}%)`);
-      }
-      
-      // If heap usage exceeds 90%, trigger cleanup
-      if (heapPercent > 90) {
-        logger.warn(`🚨 Critical heap usage: ${heapPercent}% - Triggering cleanup`);
-        await forceMemoryCleanup();
-      }
-      // If heap usage exceeds 85%, log warning
-      else if (heapPercent > 85) {
-        logger.warn(`⚠️ High heap usage: ${heapPercent}% - Monitoring closely`);
-      }
-      
-    } catch (error) {
-      logger.error(`Error monitoring heap: ${error}`);
-    }
-  }, 2 * 60 * 1000); // Every 2 minutes
-}
-
-/**
- * Start monitoring browser metrics (CPU and Memory)
- */
-export function startBrowserMetricsMonitoring(): void {
-  let lastScriptDuration = 0;
-  let lastMeasureTime = Date.now();
-  
-  // Monitor every 30 seconds
-  setInterval(async () => {
-    try {
-      const client = getWhatsAppClient();
-      if (!client || !client.pupPage) {
-        // No client or page available, set metrics to 0
-        updateBrowserMemoryMetric(0);
-        updateBrowserCpuMetric(0);
-        return;
-      }
-
-      // Get the browser and page from the WhatsApp client
-      const page = client.pupPage;
-      
-      // Get browser process metrics (this is approximate)
-      const metrics = await page.metrics();
-      
-      // Calculate memory usage in MB
-      const memoryMB = Math.round((metrics.JSHeapUsedSize || 0) / (1024 * 1024));
-      
-      // CPU calculation based on script duration change over time
-      const currentTime = Date.now();
-      const currentScriptDuration = metrics.ScriptDuration || 0;
-      
-      // Calculate the change in script duration over the time interval
-      const scriptDurationDelta = currentScriptDuration - lastScriptDuration;
-      const timeDelta = (currentTime - lastMeasureTime) / 1000; // Convert to seconds
-      
-      // Calculate CPU percentage: (script time / real time) * 100
-      // This gives us a more accurate representation of actual CPU usage
-      let cpuPercent = 0;
-      if (timeDelta > 0 && scriptDurationDelta >= 0) {
-        cpuPercent = Math.min(Math.round((scriptDurationDelta / timeDelta) * 100), 100);
-      }
-      
-      // If this is the first measurement, start with a reasonable baseline
-      if (lastScriptDuration === 0) {
-        // Use a small baseline based on whether there's any script activity
-        cpuPercent = currentScriptDuration > 0 ? Math.min(Math.round(currentScriptDuration * 10), 15) : 0;
-      }
-      
-      // Update for next iteration
-      lastScriptDuration = currentScriptDuration;
-      lastMeasureTime = currentTime;
-      
-      // Update metrics
-      updateBrowserMemoryMetric(memoryMB);
-      updateBrowserCpuMetric(cpuPercent);
-      
-      // Log high browser memory usage
-      if (memoryMB > 300) {
-        logger.warn(`🌐 High browser memory usage: ${memoryMB}MB`);
-      }
-      
-    } catch (error) {
-      // If we can't get metrics, set to 0
-      updateBrowserMemoryMetric(0);
-      updateBrowserCpuMetric(0);
-      
-      // Log error occasionally (not every time to avoid spam)
-      if (Date.now() % (5 * 60 * 1000) < 30 * 1000) {
-        logger.warn(`Failed to get browser metrics: ${error}`);
-      }
-    }
-  }, 30000); // 30 seconds
 }
