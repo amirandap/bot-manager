@@ -30,7 +30,12 @@
       "--metrics-recording-only",
       "--no-first-run",
       "--no-default-browser-check",
-      "--enable-tcp-fast-open"
+      "--enable-tcp-fast-open",
+      "--memory-pressure-off",
+      "--max_old_space_size=128",
+      "--js-flags=--max-old-space-size=128",
+      "--aggressive-cache-discard",
+      "--purge-memory-button"
     ],
     "stability": [
       "--disable-breakpad",

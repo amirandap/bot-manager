@@ -172,6 +172,7 @@ export function startBrowserMetricsMonitoring(getWhatsAppClient: () => Client | 
 
 /**
  * Start periodic health check to detect zombie states
+ * Respects QR scanning phases and doesn't interfere during authentication
  */
 export function startZombieDetection(getWhatsAppClient: () => Client | null): void {
   let lastHealthCheck = Date.now();
@@ -185,6 +186,20 @@ export function startZombieDetection(getWhatsAppClient: () => Client | null): vo
       // Check if we have a client and it appears to be working
       if (!client) {
         logger.warn("🧟 Zombie detection: No WhatsApp client available");
+        return;
+      }
+
+      // Get current WhatsApp status to avoid interfering during QR scanning
+      const currentStatus = logger.getMetric('WHATSAPP_STATUS') || 'UNKNOWN';
+      
+      // Don't interfere during QR scanning phases
+      if (currentStatus === 'WAITING_FOR_QR' || 
+          currentStatus === 'QR_READY' || 
+          currentStatus === 'QR_SCANNED' || 
+          currentStatus === 'AUTHENTICATING' ||
+          currentStatus === 'BROWSER_LAUNCHING') {
+        logger.debug(`🧟 Zombie detection: Skipping check during ${currentStatus} phase`);
+        lastHealthCheck = currentTime; // Reset timer to prevent false positives
         return;
       }
       

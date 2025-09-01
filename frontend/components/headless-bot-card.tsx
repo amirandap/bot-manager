@@ -188,10 +188,13 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
 
   const handleScanQR = useCallback(async () => {
     // QR scanning logic using context data
-    if (bot.type === "whatsapp" && botStatus?.pm2?.qrCodeStatus === "QR_READY") {
+    if (bot.type === "whatsapp" && 
+        (botStatus?.pm2?.qrCodeStatus === "QR_READY" || 
+         botStatus?.pm2?.qrCodeStatus === "SCANME" ||
+         botStatus?.pm2?.whatsappStatus === "QR_READY")) {
       setShowQrModal(true)
     }
-  }, [bot.type, botStatus?.pm2?.qrCodeStatus])
+  }, [bot.type, botStatus?.pm2?.qrCodeStatus, botStatus?.pm2?.whatsappStatus])
 
   const displayStatus = getDisplayStatus()
   const metrics = botStatus?.pm2
