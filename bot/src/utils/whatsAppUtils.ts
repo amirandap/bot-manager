@@ -28,6 +28,91 @@ import {
   startBrowserMetricsMonitoring,
   startZombieDetection
 } from "../services/MonitoringService";
+import { whatsAppSyncMonitor } from "../services/WhatsAppSyncMonitorService";
+
+// Global error handlers for critical issues
+process.on('uncaughtException', (error) => {
+  logger.error(`❌ CRITICAL: Uncaught Exception - ${error.message}`, { 
+    stack: error.stack, 
+    name: error.name,
+    timestamp: new Date().toISOString() 
+  }, "CRASH", 1);
+  logger.logLifecycleStep("CRASHED_UNCAUGHT_EXCEPTION");
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`❌ CRITICAL: Unhandled Promise Rejection`, { 
+    reason: reason,
+    promise: promise,
+    timestamp: new Date().toISOString() 
+  }, "CRASH", 1);
+  logger.logLifecycleStep("CRASHED_UNHANDLED_REJECTION");
+  process.exit(1);
+});
+
+process.on('SIGINT', () => {
+  logger.info("🛑 Received SIGINT, gracefully shutting down...", "🛑", undefined, "LIFECYCLE", "SIGINT_SHUTDOWN");
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logger.info("🛑 Received SIGTERM, gracefully shutting down...", "🛑", undefined, "LIFECYCLE", "SIGTERM_SHUTDOWN");
+  process.exit(0);
+});
+
+// Memory monitoring for critical thresholds
+const monitorCriticalMemory = () => {
+  const usage = process.memoryUsage();
+  const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024);
+  const rssMB = Math.round(usage.rss / 1024 / 1024);
+  
+  // Alert if memory usage is critical (>400MB heap or >500MB RSS)
+  if (heapUsedMB > 400 || rssMB > 500) {
+    logger.error(`⚠️ CRITICAL MEMORY WARNING: Heap: ${heapUsedMB}MB, RSS: ${rssMB}MB`, {
+      heapUsed: heapUsedMB,
+      heapTotal: heapTotalMB,
+      rss: rssMB,
+      external: Math.round(usage.external / 1024 / 1024),
+      timestamp: new Date().toISOString()
+    }, "MEMORY_CRITICAL", 1);
+  }
+};
+
+// Monitor memory every 30 seconds
+setInterval(monitorCriticalMemory, 30000);
+
+/**
+ * Clean corrupted session when sync fails
+ */
+export async function cleanCorruptedSession(): Promise<void> {
+  try {
+    const fs = await import('fs/promises');
+    const sessionPath = path.join(process.cwd(), 'sessions');
+    
+    logger.info("🧹 Attempting to clean corrupted session...", "🧹", undefined, "SESSION_CLEANUP", "STARTING");
+    
+    // Check if session directory exists
+    try {
+      await fs.access(sessionPath);
+      
+      // Remove session directory and all contents
+      await fs.rm(sessionPath, { recursive: true, force: true });
+      logger.info("✅ Corrupted session removed successfully", "🧹", undefined, "SESSION_CLEANUP", "SUCCESS");
+      
+      // Also clean cache to be safe
+      await cleanCache();
+      logger.info("✅ Cache cleaned after session removal", "🧹", undefined, "SESSION_CLEANUP", "CACHE_CLEANED");
+      
+    } catch {
+      logger.info("ℹ️ No session directory found, skipping cleanup", "🧹", undefined, "SESSION_CLEANUP", "NO_SESSION");
+    }
+    
+  } catch (error) {
+    logger.error(`❌ Failed to clean corrupted session: ${error}`, { error }, "SESSION_CLEANUP_ERROR", 1);
+  }
+}
 
 // State management
 let whatsappClient: Client | null = null;
@@ -82,17 +167,52 @@ export async function initializeWhatsAppClient(
 
     // Create a promise that resolves when the client is ready
     const clientReadyPromise = new Promise<Client>((resolve, reject) => {
-      // State change handler - captures all state transitions
+      // Enhanced state change handler with detailed sync monitoring
       whatsappClient!.on("change_state", (state) => {
         try {
-          logger.info(`WhatsApp state change: ${state}`, "🔄", undefined, "WHATSAPP_STATUS", state);
+          logger.info(`🔄 WhatsApp state transition: ${state}`, "🔄", undefined, "WHATSAPP_STATUS", state);
           
-          // Update specific metrics based on state
-          if (state === "PAIRING") {
-            logger.updateMetric("PAIRING_ATTEMPTS", 1);
-          } else if (state === "CONNECTED") {
-            logger.updateMetric("WHATSAPP_CONNECTIONS", 1);
+          // Detailed state transition logging
+          switch (state) {
+            case "CONFLICT":
+              logger.warn("⚠️ WhatsApp Web conflict detected - Will attempt takeover", "⚠️");
+              break;
+            case "CONNECTED":
+              logger.info("🌐 WhatsApp Web connected to servers", "🌐");
+              logger.updateMetric("WHATSAPP_CONNECTIONS", 1);
+              break;
+            case "DEPRECATED_VERSION":
+              logger.error("❌ WhatsApp Web version deprecated - Update required", {}, "VERSION_ERROR", 1);
+              break;
+            case "OPENING":
+              logger.info("🚀 WhatsApp Web opening connection", "🚀");
+              break;
+            case "PAIRING":
+              logger.info("📱 WhatsApp Web pairing mode - Ready for QR scan", "📱");
+              logger.updateMetric("PAIRING_ATTEMPTS", 1);
+              break;
+            case "TIMEOUT":
+              logger.warn("⏰ WhatsApp Web connection timeout", "⏰");
+              break;
+            case "UNPAIRED":
+              logger.info("📱 WhatsApp Web unpaired - QR scan required", "📱");
+              break;
+            case "UNPAIRED_IDLE":
+              logger.info("💤 WhatsApp Web unpaired idle state", "💤");
+              break;
+            default:
+              logger.info(`🔄 Unknown WhatsApp state: ${state}`, "🔄");
           }
+          
+          // Handle specific problematic states
+          if (state === "DEPRECATED_VERSION" || state === "TIMEOUT") {
+            logger.error(`🚨 Problematic WhatsApp state detected: ${state}`, {
+              state: state,
+              timestamp: new Date().toISOString(),
+              memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+            }, "WHATSAPP_STATE_ERROR", 1);
+          }
+          
         } catch (error) {
           logger.error(`Error handling state change: ${error}`, {}, "ERRORS", 1);
         }
@@ -105,54 +225,114 @@ export async function initializeWhatsAppClient(
       let lastLoadingProgress = 0;
       let stuckProgressCount = 0;
 
-      // Loading screen handler - shows authentication progress
+      // Enhanced loading screen handler with sync state monitoring
       whatsappClient!.on("loading_screen", (percent, message) => {
         try {
           // Only update to LOADING if we're not already READY
-          // This prevents loading events from overriding the READY state
           if (!isWhatsAppReady) {
-            logger.info(`WhatsApp loading: ${percent}% - ${message}`, "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
-            
-            // Convert percent to number for comparison
             const currentProgress = typeof percent === 'string' ? parseInt(percent) : percent;
             
-            // Check if progress is stuck
+            // Enhanced progress logging with sync phase detection
+            let syncPhase = "INITIALIZING";
+            if (currentProgress >= 0 && currentProgress < 30) {
+              syncPhase = "CONNECTING";
+            } else if (currentProgress >= 30 && currentProgress < 60) {
+              syncPhase = "AUTHENTICATING";
+            } else if (currentProgress >= 60 && currentProgress < 90) {
+              syncPhase = "SYNCING_CHATS";
+            } else if (currentProgress >= 90 && currentProgress < 100) {
+              syncPhase = "FINALIZING_SYNC";
+            }
+            
+            logger.info(`WhatsApp loading: ${currentProgress}% - ${message} [${syncPhase}]`, 
+              "⏳", undefined, "WHATSAPP_STATUS", "LOADING");
+            
+            // Detailed logging for critical phases
+            if (currentProgress >= 90) {
+              logger.info(`🔄 Critical sync phase: ${currentProgress}% - Finalizing WhatsApp sync process`, 
+                "🔄", undefined, "SYNC_CRITICAL", "FINALIZING");
+            }
+            
+            // Check if progress is stuck with enhanced monitoring
             if (currentProgress === lastLoadingProgress) {
               stuckProgressCount++;
-              if (stuckProgressCount > 20) { // If stuck for 20 consecutive updates
-                logger.warn(`🚨 Loading appears stuck at ${currentProgress}% - May need restart`);
+              
+              // Progressive warnings for stuck sync
+              if (stuckProgressCount === 10) {
+                logger.warn(`⚠️ Sync potentially stuck at ${currentProgress}% for 10 updates`);
+              } else if (stuckProgressCount === 20) {
+                logger.warn(`🚨 Sync stuck at ${currentProgress}% for 20 updates - Monitoring closely`);
+              } else if (stuckProgressCount > 30) {
+                logger.error(`� CRITICAL: Sync completely stuck at ${currentProgress}% for ${stuckProgressCount} updates`, {
+                  stuckAt: currentProgress,
+                  phase: syncPhase,
+                  duration: Math.round((Date.now() - loadingStartTime) / 1000),
+                  memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+                }, "SYNC_STUCK", 1);
               }
             } else {
+              // Progress resumed
+              if (stuckProgressCount > 0) {
+                logger.info(`✅ Sync resumed from ${lastLoadingProgress}% to ${currentProgress}% after ${stuckProgressCount} stuck updates`);
+              }
               stuckProgressCount = 0;
               lastLoadingProgress = currentProgress;
             }
             
-            // Set timeout for total loading time (10 minutes max)
+            // Enhanced timeout with phase-specific handling
             if (!loadingTimeout) {
               loadingTimeout = setTimeout(async () => {
                 const loadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
-                logger.warn(`⚠️ Loading taking too long (${loadingTime}s), attempting cache cleanup...`);
+                logger.error(`🚨 SYNC TIMEOUT: Loading failed after ${loadingTime}s at ${currentProgress}% [${syncPhase}]`, {
+                  loadingTimeSeconds: loadingTime,
+                  lastProgress: currentProgress,
+                  syncPhase: syncPhase,
+                  stuckCount: stuckProgressCount,
+                  sessionPath: path.join(process.cwd(), 'sessions'),
+                  timestamp: new Date().toISOString(),
+                  possibleCause: currentProgress >= 90 ? "WhatsApp sync finalization failure" : "Network or session corruption"
+                }, "SYNC_FAILURE", 1);
                 
-                // Try cache cleanup first
-                const client = getWhatsAppClient();
-                await cleanCache();
-                if (client) {
-                  await cleanBrowserCache(client);
+                logger.logLifecycleStep("SYNC_TIMEOUT_CRASH");
+                
+                // Log detailed memory and system state
+                const memUsage = process.memoryUsage();
+                logger.info(`💾 System state at sync timeout: Heap ${Math.round(memUsage.heapUsed/1024/1024)}MB, RSS ${Math.round(memUsage.rss/1024/1024)}MB, Phase: ${syncPhase}`);
+                
+                // Progressive cleanup based on sync phase
+                try {
+                  const client = getWhatsAppClient();
+                  
+                  if (currentProgress >= 90) {
+                    // Final phase failure - likely WhatsApp sync issue
+                    logger.info("🔧 Final phase failure detected - Applying deep cleanup");
+                    await cleanCache();
+                    await cleanBrowserCache(client);
+                    await cleanCorruptedSession();
+                  } else {
+                    // Early phase failure - lighter cleanup first
+                    logger.info("🔧 Early phase failure detected - Applying cache cleanup");
+                    await cleanCache();
+                    if (client) {
+                      await cleanBrowserCache(client);
+                    }
+                  }
+                  
+                  logger.info("🧹 Emergency cleanup completed for sync failure");
+                } catch (cleanupError) {
+                  logger.error(`❌ Emergency cleanup failed: ${cleanupError}`, {}, "CLEANUP_FAILED", 1);
                 }
                 
-                // Give it 2 more minutes after cleanup
-                setTimeout(() => {
-                  const finalLoadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
-                  logger.error(`🚨 Loading timeout after ${finalLoadingTime}s - Restarting bot to prevent zombie state`);
-                  process.exit(1); // PM2 will restart the process
-                }, 2 * 60 * 1000); // 2 more minutes
+                logger.error(`🚨 FORCING RESTART: WhatsApp sync timeout in ${syncPhase} phase`, {}, "FORCED_RESTART", 1);
+                process.exit(1);
                 
-              }, 8 * 60 * 1000); // 8 minutes timeout (then try cleanup)
+              }, 4 * 60 * 1000); // Reduced to 4 minutes for faster recovery
             }
           } else {
-            // Just log the progress without changing the status
-            logger.info(`WhatsApp loading: ${percent}% - ${message} (status already READY)`, "⏳");
+            // Log post-ready loading events for debugging
+            logger.info(`📊 Post-ready loading event: ${percent}% - ${message}`, "📊");
           }
+          
           logger.updateMetric("LOADING_PROGRESS", percent);
         } catch (error) {
           logger.error(`Error handling loading screen: ${error}`, {}, "ERRORS", 1);
@@ -192,6 +372,33 @@ export async function initializeWhatsAppClient(
           logger.info("WhatsApp authentication successful", "🤖", undefined, "WHATSAPP_STATUS", "AUTHENTICATED");
           logger.info("Processing session data and preparing connection", "🤖", undefined, "WHATSAPP_STATUS", "PROCESSING_SESSION");
           logger.logLifecycleStep("AUTHENTICATING");
+          
+          // Set a timeout for session processing (3 minutes max)
+          const sessionTimeout = setTimeout(async () => {
+            logger.error(`🚨 CRITICAL: Session processing timeout after 3 minutes`, {
+              timestamp: new Date().toISOString(),
+              phase: "PROCESSING_SESSION",
+              memoryMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+            }, "SESSION_TIMEOUT", 1);
+            
+            logger.logLifecycleStep("SESSION_PROCESSING_TIMEOUT");
+            
+            // Clean corrupted session before restart
+            try {
+              await cleanCorruptedSession();
+              logger.info("🧹 Corrupted session cleaned before restart");
+            } catch (cleanError) {
+              logger.error(`❌ Failed to clean session before restart: ${cleanError}`, {}, "SESSION_CLEANUP_ERROR", 1);
+            }
+            
+            logger.error(`🚨 FORCING RESTART: Session processing stuck, likely sync failure`, {}, "FORCED_RESTART", 1);
+            process.exit(1);
+          }, 3 * 60 * 1000); // 3 minutes for session processing
+          
+          // Clear timeout when ready
+          whatsappClient!.once("ready", () => {
+            clearTimeout(sessionTimeout);
+          });
           
           // Update authentication metrics
           logger.updateMetric("AUTH_SUCCESS", 1);
@@ -242,6 +449,68 @@ export async function initializeWhatsAppClient(
         
         // Start periodic cache maintenance
         startCacheMaintenance();
+
+        // Initialize advanced sync monitoring
+        whatsAppSyncMonitor.initialize(whatsappClient!);
+
+        // Add enhanced sync monitoring events (available in whatsapp-web.js v1.32.0+)
+        try {
+          // Monitor for offline message synchronization progress
+          await whatsappClient!.pupPage?.evaluate(() => {
+            // WhatsApp Web internal objects interface
+            interface WhatsAppWindow extends Window {
+              Store?: {
+                AuthStore?: {
+                  Cmd?: {
+                    on: (event: string, callback: () => void) => void;
+                  };
+                  OfflineMessageHandler?: {
+                    getOfflineDeliveryProgress?: () => number;
+                  };
+                  AppState?: {
+                    on: (event: string, callback: () => void) => void;
+                    hasSynced?: boolean;
+                  };
+                };
+                Conn?: {
+                  on: (event: string, callback: (state: string) => void) => void;
+                };
+              };
+            }
+            
+            const windowWithStore = window as WhatsAppWindow;
+            
+            if (windowWithStore.Store?.AuthStore?.Cmd?.on) {
+              windowWithStore.Store.AuthStore.Cmd.on('offline_progress_update', () => {
+                const progress = windowWithStore.Store?.AuthStore?.OfflineMessageHandler?.getOfflineDeliveryProgress?.();
+                if (progress !== undefined) {
+                  console.log(`[WhatsApp-Sync] Offline message sync progress: ${progress}%`);
+                }
+              });
+            }
+            
+            // Monitor for sync completion
+            if (windowWithStore.Store?.AuthStore?.AppState?.on) {
+              windowWithStore.Store.AuthStore.AppState.on('change:hasSynced', () => {
+                const hasSynced = windowWithStore.Store?.AuthStore?.AppState?.hasSynced;
+                console.log(`[WhatsApp-Sync] Sync state changed: ${hasSynced ? 'SYNCED' : 'NOT_SYNCED'}`);
+              });
+            }
+            
+            // Add state monitoring for connection quality
+            if (windowWithStore.Store?.Conn?.on) {
+              windowWithStore.Store.Conn.on('change:state', (state: string) => {
+                console.log(`[WhatsApp-Connection] Connection state: ${state}`);
+              });
+            }
+            
+            return true;
+          });
+          
+          logger.info("🔍 Enhanced sync monitoring activated", "🔍");
+        } catch (error) {
+          logger.warn(`⚠️ Enhanced sync monitoring setup failed: ${error}`);
+        }
 
         // Connect modern client to route exporter
         setClient(whatsappClient);

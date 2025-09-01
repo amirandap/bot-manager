@@ -30,7 +30,12 @@ export const WHATSAPP_LIFECYCLE_STEPS = {
   ERROR_UNKNOWN: 'whatsapp_error_unknown',
   QR_ERROR: 'whatsapp_qr_error',
   STOPPING: 'whatsapp_stopping',
-  STOPPED: 'whatsapp_stopped'
+  STOPPED: 'whatsapp_stopped',
+  // Crash states
+  CRASHED_UNCAUGHT_EXCEPTION: 'whatsapp_crashed_uncaught_exception',
+  CRASHED_UNHANDLED_REJECTION: 'whatsapp_crashed_unhandled_rejection',
+  SYNC_TIMEOUT_CRASH: 'whatsapp_sync_timeout_crash',
+  SESSION_PROCESSING_TIMEOUT: 'whatsapp_session_processing_timeout'
 } as const;
 
 export enum LogLevel {
@@ -401,7 +406,12 @@ export class LoggerService {
         'ERROR_CONNECTION': 'Connection Error',
         'ERROR_AUTHENTICATION': 'Auth Failed',
         'STOPPING': 'Shutting down',
-        'STOPPED': 'Stopped'
+        'STOPPED': 'Stopped',
+        // Crash states
+        'CRASHED_UNCAUGHT_EXCEPTION': 'CRASHED: Uncaught Exception',
+        'CRASHED_UNHANDLED_REJECTION': 'CRASHED: Unhandled Promise',
+        'SYNC_TIMEOUT_CRASH': 'CRASHED: Sync Timeout',
+        'SESSION_PROCESSING_TIMEOUT': 'CRASHED: Session Timeout'
       };
 
       const customStatus = statusMap[step] || step;

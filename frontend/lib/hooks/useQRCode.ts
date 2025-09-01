@@ -46,7 +46,9 @@ export function useQRCode(
   // Calculate if the bot is authenticated (QR was successfully scanned)
   const isAuthenticated =
     qrStatus?.whatsappStatus === "READY" ||
+    qrStatus?.whatsappStatus === "AUTHENTICATED" ||
     qrStatus?.whatsappStatus === "AUTHENTICATING" ||
+    qrStatus?.whatsappStatus === "PROCESSING_SESSION" ||
     qrStatus?.botStatus === "ready";
 
   // Calculate time remaining until QR expiry
@@ -290,6 +292,7 @@ export function useQRCode(
     isScannedOrAuthenticating: qrStatus?.whatsappStatus === 'QR_SCANNED' || 
                                qrStatus?.whatsappStatus === 'AUTHENTICATING' ||
                                qrStatus?.whatsappStatus === 'AUTHENTICATED' ||
+                               qrStatus?.whatsappStatus === 'PROCESSING_SESSION' ||
                                qrStatus?.whatsappStatus === 'READY',
   };
 }
