@@ -1,11 +1,11 @@
 {
   "pm2Config": {
     "nodeArgs": [
-      "--max-old-space-size=384",
+      "--max-old-space-size=450",
       "--gc-interval=100"
     ],
     "memory": {
-      "maxMemoryRestart": "450M",
+      "maxMemoryRestart": "512M",
       "maxRestarts": 10,
       "minUptime": 60000
     },

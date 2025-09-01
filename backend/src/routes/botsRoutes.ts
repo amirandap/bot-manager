@@ -34,6 +34,154 @@ export function setBotsRoutes(app: Router) {
    */
   app.get("/api/bots", botsController.getAllBots.bind(botsController));
 
+  // ===== BOT TEMPLATE CONFIGURATION ROUTES =====
+
+  /**
+   * @swagger
+   * /api/bots/template:
+   *   get:
+   *     summary: Get bot template configuration
+   *     tags: [Bot Template]
+   *     description: Retrieve the current bot template configuration used for spawning new bots
+   *     responses:
+   *       200:
+   *         description: Current bot template configuration
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   */
+  app.get(
+    "/api/bots/template",
+    botsController.getBotTemplate.bind(botsController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/template:
+   *   put:
+   *     summary: Update bot template configuration
+   *     tags: [Bot Template]
+   *     description: Update a specific configuration value in the bot template
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - configPath
+   *               - value
+   *             properties:
+   *               configPath:
+   *                 type: string
+   *                 description: Dot-notation path to the configuration (e.g., "pm2Config.memory.maxMemoryRestart")
+   *                 example: "pm2Config.memory.maxMemoryRestart"
+   *               value:
+   *                 description: New value for the configuration
+   *                 example: "512M"
+   *     responses:
+   *       200:
+   *         description: Configuration updated successfully
+   *       400:
+   *         description: Invalid request parameters
+   *       500:
+   *         description: Server error
+   */
+  app.put(
+    "/api/bots/template",
+    botsController.updateBotTemplate.bind(botsController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/template/memory:
+   *   post:
+   *     summary: Update memory configuration for all bots
+   *     tags: [Bot Template]
+   *     description: Update memory-related configurations for all bots
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - maxMemoryRestart
+   *               - nodeMaxOldSpace
+   *             properties:
+   *               maxMemoryRestart:
+   *                 type: string
+   *                 description: PM2 memory restart threshold
+   *                 example: "512M"
+   *               nodeMaxOldSpace:
+   *                 type: number
+   *                 description: Node.js max old space size in MB
+   *                 example: 384
+   *     responses:
+   *       200:
+   *         description: Memory configuration updated successfully
+   *       400:
+   *         description: Invalid request parameters
+   *       500:
+   *         description: Server error
+   */
+  app.post(
+    "/api/bots/template/memory",
+    botsController.updateMemoryConfig.bind(botsController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/template/apply:
+   *   post:
+   *     summary: Apply template to all existing bots
+   *     tags: [Bot Template]
+   *     description: Apply the current template configuration to all existing bots (requires restart)
+   *     responses:
+   *       200:
+   *         description: Template applied successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 restartedBots:
+   *                   type: array
+   *                   items:
+   *                     type: string
+   *                 count:
+   *                   type: number
+   *       500:
+   *         description: Server error
+   */
+  app.post(
+    "/api/bots/template/apply",
+    botsController.applyTemplateToAllBots.bind(botsController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/template/reload:
+   *   post:
+   *     summary: Reload template configuration from file
+   *     tags: [Bot Template]
+   *     description: Reload the bot template configuration from the JSON file
+   *     responses:
+   *       200:
+   *         description: Template reloaded successfully
+   *       500:
+   *         description: Server error
+   */
+  app.post(
+    "/api/bots/template/reload",
+    botsController.reloadBotTemplate.bind(botsController)
+  );
+
   // Get bot by ID
   app.get("/api/bots/:id", botsController.getBotById.bind(botsController));
 

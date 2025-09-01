@@ -1304,16 +1304,25 @@ export class BotSpawnerService {
       const bots = this.configService.getAllBots();
       
       for (const bot of bots) {
-        if (bot.pm2ServiceId) {
+        if (bot.pm2ServiceId && !bot.isExternal) {
           console.log(`🔄 Applying new template to bot ${bot.id} (${bot.pm2ServiceId})...`);
           
-          const success = await this.restartBot(bot.id);
-          if (success) {
-            restartedBots.push(bot.id);
-            console.log(`✅ Template applied to bot ${bot.id}`);
-          } else {
-            console.error(`❌ Failed to apply template to bot ${bot.id}`);
+          try {
+            // Stop the current PM2 service
+            await this.stopPM2Service(bot.pm2ServiceId);
+            
+            // Recreate with new template configuration
+            const result = await this.recreatePM2Service(bot);
+            
+            if (result.pm2ServiceId) {
+              restartedBots.push(bot.id);
+              console.log(`✅ Template applied to bot ${bot.id} with new config`);
+            }
+          } catch (error) {
+            console.error(`❌ Failed to apply template to bot ${bot.id}:`, error);
           }
+        } else if (bot.isExternal) {
+          console.log(`⚠️  Skipping external bot ${bot.id}`);
         }
       }
       
