@@ -3,3 +3,12 @@ dist/
 **/**/*.log
 .wwebjs_auth
 .env
+
+# WhatsApp Web cache directories
+.wwebjs_cache/
+**/.wwebjs_cache/
+**/session*/.wwebjs_cache/
+
+# Bot session data
+sessions/
+data/sessions/
