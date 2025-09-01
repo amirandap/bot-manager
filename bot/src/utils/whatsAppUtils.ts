@@ -247,6 +247,9 @@ export async function initializeWhatsAppClient(
 
         // Start monitoring browser metrics
         startBrowserMetricsMonitoring();
+        
+        // Start heap monitoring to prevent memory issues
+        startHeapMonitoring();
 
         // Connect modern client to route exporter
         setClient(whatsappClient);
@@ -477,6 +480,95 @@ export function updateBrowserCpuMetric(cpuPercent: number): void {
 }
 
 /**
+ * Force garbage collection and memory cleanup
+ */
+export async function forceMemoryCleanup(client?: Client): Promise<void> {
+  try {
+    logger.info('🧹 Starting forced memory cleanup...');
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+      logger.info("🗑️ Forced garbage collection executed");
+    }
+    
+    // If client is provided, try to clean browser cache
+    if (client && client.pupPage) {
+      try {
+        // Clear browser cache
+        await client.pupPage.evaluateOnNewDocument(() => {
+          // Clear caches in the browser context
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name));
+            });
+          }
+        });
+        
+        // Force page garbage collection in browser context
+        await client.pupPage.evaluate(() => {
+          if (window.gc) {
+            window.gc();
+          }
+        });
+        
+        logger.info('🧹 Browser cache cleared');
+      } catch (browserError) {
+        logger.warn(`🧹 Browser cleanup error: ${browserError}`);
+      }
+    }
+    
+    // Log memory usage after cleanup
+    const memUsage = process.memoryUsage();
+    const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    const heapPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
+    
+    logger.info(`💾 Memory after cleanup: ${heapUsedMB}MB/${heapTotalMB}MB (${heapPercent}%)`);
+    
+    // If heap usage is still above 85%, log a warning
+    if (heapPercent > 85) {
+      logger.warn(`⚠️ High heap usage detected: ${heapPercent}% - Consider restarting if this persists`);
+    }
+  } catch (error) {
+    logger.error(`Error during memory cleanup: ${error}`);
+  }
+}
+
+/**
+ * Monitor heap usage and trigger cleanup if needed
+ */
+export function startHeapMonitoring(): void {
+  // Monitor heap every 2 minutes
+  setInterval(async () => {
+    try {
+      const memUsage = process.memoryUsage();
+      const heapPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
+      
+      // Log heap usage every 10 minutes (every 5th check)
+      if (Date.now() % (10 * 60 * 1000) < 2 * 60 * 1000) {
+        const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+        const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+        logger.info(`💾 Heap usage: ${heapUsedMB}MB/${heapTotalMB}MB (${heapPercent}%)`);
+      }
+      
+      // If heap usage exceeds 90%, trigger cleanup
+      if (heapPercent > 90) {
+        logger.warn(`🚨 Critical heap usage: ${heapPercent}% - Triggering cleanup`);
+        await forceMemoryCleanup();
+      }
+      // If heap usage exceeds 85%, log warning
+      else if (heapPercent > 85) {
+        logger.warn(`⚠️ High heap usage: ${heapPercent}% - Monitoring closely`);
+      }
+      
+    } catch (error) {
+      logger.error(`Error monitoring heap: ${error}`);
+    }
+  }, 2 * 60 * 1000); // Every 2 minutes
+}
+
+/**
  * Start monitoring browser metrics (CPU and Memory)
  */
 export function startBrowserMetricsMonitoring(): void {
@@ -532,10 +624,20 @@ export function startBrowserMetricsMonitoring(): void {
       updateBrowserMemoryMetric(memoryMB);
       updateBrowserCpuMetric(cpuPercent);
       
-    } catch {
+      // Log high browser memory usage
+      if (memoryMB > 300) {
+        logger.warn(`🌐 High browser memory usage: ${memoryMB}MB`);
+      }
+      
+    } catch (error) {
       // If we can't get metrics, set to 0
       updateBrowserMemoryMetric(0);
       updateBrowserCpuMetric(0);
+      
+      // Log error occasionally (not every time to avoid spam)
+      if (Date.now() % (5 * 60 * 1000) < 30 * 1000) {
+        logger.warn(`Failed to get browser metrics: ${error}`);
+      }
     }
   }, 30000); // 30 seconds
 }
