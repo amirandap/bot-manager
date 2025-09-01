@@ -1,0 +1,50 @@
+{
+  "pm2Config": {
+    "nodeArgs": [
+      "--max-old-space-size=384",
+      "--gc-interval=100"
+    ],
+    "memory": {
+      "maxMemoryRestart": "450M",
+      "maxRestarts": 10,
+      "minUptime": 60000
+    },
+    "timeouts": {
+      "listenTimeout": 30000,
+      "killTimeout": 15000,
+      "restartDelay": 4000
+    },
+    "environment": {
+      "nodeEnv": "production",
+      "pm2AdvancedMetrics": "false",
+      "pm2DisableLogging": "false",
+      "pm2Silent": "false",
+      "debug": "",
+      "silentMetrics": "true",
+      "logLevel": "info"
+    }
+  },
+  "puppeteerOptimizations": {
+    "chromeArgs": {
+      "memoryPressureOff": true,
+      "maxOldSpaceSize": 128,
+      "aggressiveCacheDiscard": true,
+      "purgeMemoryButton": true
+    },
+    "diskCache": {
+      "diskCacheSize": 268435456,
+      "mediaCacheSize": 67108864
+    }
+  },
+  "monitoringConfig": {
+    "zombieDetectionInterval": 300000,
+    "cacheMaintenanceInterval": 300000,
+    "heapMonitoringInterval": 30000,
+    "browserMetricsInterval": 30000
+  },
+  "debugConfig": {
+    "enableDebugLogs": false,
+    "enableMetricsLogging": true,
+    "enablePerformanceTracking": true
+  }
+}

@@ -460,6 +460,24 @@ export class LoggerService {
       this.log('info', `Client phone number updated: ${phoneNumber}`, { phoneNumber, metric: 'CLIENT_PHONE' });
     }
   }
+
+  /**
+   * Get current value of a metric
+   */
+  public getMetric(metricKey: string): string | number | undefined {
+    const metric = this.metrics.get(metricKey);
+    return metric ? metric.value : undefined;
+  }
+
+  /**
+   * Debug logging method
+   */
+  public debug(message: string, emoji?: string, data?: Record<string, unknown>, metric?: string, metricValue?: string | number): void {
+    this.log('debug', message, data);
+    if (metric && metricValue !== undefined) {
+      this.updateMetric(metric, metricValue);
+    }
+  }
 }
 
 // Export for backward compatibility
