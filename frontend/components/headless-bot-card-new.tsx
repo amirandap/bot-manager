@@ -12,7 +12,9 @@ import {
   Clock,
   AlertTriangle,
   QrCode,
+  Copy,
   Maximize2,
+  MoreHorizontal,
 } from "lucide-react"
 import type { Bot } from "@/lib/types"
 import { useState, useCallback } from "react"
@@ -27,6 +29,8 @@ interface HeadlessBotCardProps {
   onRefresh?: () => void
 }
 
+type ProcessState = "offline" | "not_found" | "running"
+
 type StatusType = "online" | "offline" | "starting" | "error" | "idle" | "qr_required" | "degraded"
 
 export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBotCardProps) {
@@ -39,63 +43,34 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
       return { type: "offline", label: "Offline", color: "bg-red-500" }
     }
 
-    const pm2Status = botStatus.pm2.status
     const whatsappStatus = botStatus.pm2.whatsappStatus
-    const qrCodeStatus = botStatus.pm2.qrCodeStatus
-    const apiServerStatus = botStatus.pm2.apiServerStatus
-    const botStatusText = botStatus.pm2.botStatus
-    const errorCount = botStatus.pm2.errorCount || 0
+    const processState = getProcessState()
 
-    // Logical status determination based on real metrics
-    
-    // 1. If process is not running, it's offline
-    if (pm2Status !== "online") {
-      return { type: "offline", label: "Offline", color: "bg-red-500" }
+    if (whatsappStatus === "QR_READY") {
+      return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
     }
 
-    // 2. If there are active errors, show error status
-    if (errorCount > 0) {
-      return { type: "error", label: "Error", color: "bg-red-500" }
-    }
-
-    // 3. For WhatsApp bots, check WhatsApp-specific states
-    if (bot.type === "whatsapp") {
-      // QR code needs to be scanned
-      if (qrCodeStatus === "QR_READY" || whatsappStatus === "QR_READY") {
-        return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
-      }
-
-      // WhatsApp is connected and working
-      if (whatsappStatus === "CONNECTED" || whatsappStatus === "READY") {
-        // Check for performance issues
+    if (processState === "running") {
+      if (whatsappStatus === "AUTHENTICATED") {
         const cpuUsage = botStatus.pm2.cpu || 0
-        const heapUsage = botStatus.pm2.heapUsage || 0
-        
-        if (cpuUsage > 80 || heapUsage > 90) {
+        const memoryUsage = botStatus.pm2.memory || 0
+        const errorCount = botStatus.pm2.errorCount || 0
+
+        if (errorCount > 0) {
+          return { type: "error", label: "Error", color: "bg-red-500" }
+        }
+        if (cpuUsage > 80 || memoryUsage > 800) {
           return { type: "degraded", label: "Degraded", color: "bg-orange-500" }
         }
-        
-        // Check if bot is actively working vs idle
-        if (cpuUsage < 5 && heapUsage < 50) {
+        if (cpuUsage < 5 && memoryUsage < 100) {
           return { type: "idle", label: "Idle", color: "bg-green-500" }
         }
-        
         return { type: "online", label: "Online", color: "bg-green-500" }
       }
-
-      // WhatsApp is connecting or starting
-      if (whatsappStatus === "CONNECTING" || botStatusText?.includes("Initializing")) {
-        return { type: "starting", label: "Starting", color: "bg-orange-500" }
-      }
+      return { type: "starting", label: "Starting", color: "bg-orange-500" }
     }
 
-    // 4. For any bot type, if API server is up and process is online
-    if (apiServerStatus === "UP" || apiServerStatus === 1) {
-      return { type: "online", label: "Online", color: "bg-green-500" }
-    }
-
-    // 5. Default: if process is online but we don't have clear status
-    return { type: "starting", label: "Starting", color: "bg-orange-500" }
+    return { type: "offline", label: "Offline", color: "bg-red-500" }
   }
 
   const getStatusMessage = (): string => {
@@ -106,32 +81,37 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
       case "offline":
         return "Servicio detenido"
       case "starting":
-        return metrics?.botStatus || "Iniciando servicio..."
+        return "Iniciando Chrome..."
       case "error":
-        return "Se requiere atención"
+        return "Se requiere reautenticación"
       case "idle":
         return "En espera..."
       case "qr_required":
         return "QR listo para escanear"
       case "degraded":
-        return metrics?.cpu && metrics.cpu > 80 ? "CPU alta" : "Memoria alta"
+        return metrics?.cpu && metrics.cpu > 80 ? "Latencia alta" : "Heap alto"
       case "online":
-        return metrics?.botStatus || "Operativo"
+        return "Launching Chrome"
       default:
-        return "Estado desconocido"
+        return "Proceso detenido"
     }
   }
 
   const formatUptime = (uptime: number): string => {
-    // Backend sends uptime in milliseconds, convert to seconds first
-    const uptimeSeconds = Math.floor(uptime / 1000)
-    
-    if (uptimeSeconds < 60) return "0m"
-    if (uptimeSeconds < 3600) return `${Math.floor(uptimeSeconds / 60)}m`
-    const hours = Math.floor(uptimeSeconds / 3600)
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60)
+    if (uptime < 60) return "0m"
+    if (uptime < 3600) return `${Math.floor(uptime / 60)}m`
+    const hours = Math.floor(uptime / 3600)
+    const minutes = Math.floor((uptime % 3600) / 60)
     return `${hours}h ${minutes.toString().padStart(2, "0")}m`
   }
+
+  const getProcessState = (): ProcessState => {
+    if (!botStatus || !botStatus.pm2) return "not_found"
+    if (botStatus.pm2.pid && botStatus.status === "online") return "running"
+    return "offline"
+  }
+
+  const processState = getProcessState()
 
   const handleRestartProcess = async () => {
     setActionLoading("restart")
@@ -280,83 +260,9 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
             </div>
           )}
 
-          {/* Bot Custom Metrics */}
-          {metrics && bot.type === "whatsapp" && (
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Bot Metrics</h4>
-              
-              {/* Bot Status & WhatsApp Status */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {metrics.botStatus && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">Bot Status</span>
-                    <span className="font-medium text-gray-700">{metrics.botStatus}</span>
-                  </div>
-                )}
-                {metrics.whatsappStatus && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">WhatsApp</span>
-                    <span className="font-medium text-gray-700">{metrics.whatsappStatus}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* QR Code & API Status */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {metrics.qrCodeStatus && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">QR Status</span>
-                    <span className="font-medium text-gray-700">{metrics.qrCodeStatus}</span>
-                  </div>
-                )}
-                {metrics.apiServerStatus && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">API Server</span>
-                    <span className="font-medium text-gray-700">{metrics.apiServerStatus}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Message Processing */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {metrics.messagesProcessed !== undefined && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">Messages</span>
-                    <span className="font-medium text-gray-700">{metrics.messagesProcessed}</span>
-                  </div>
-                )}
-                {metrics.messageProcessingTime !== undefined && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">Proc. Time</span>
-                    <span className="font-medium text-gray-700">{metrics.messageProcessingTime}ms</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Error Count & QR Codes Generated */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {metrics.errorCount !== undefined && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">Errors</span>
-                    <span className={`font-medium ${metrics.errorCount > 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                      {metrics.errorCount}
-                    </span>
-                  </div>
-                )}
-                {metrics.qrCodesGenerated !== undefined && (
-                  <div className="flex flex-col">
-                    <span className="text-gray-500">QR Generated</span>
-                    <span className="font-medium text-gray-700">{metrics.qrCodesGenerated}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Browser Metrics */}
           {metrics && (metrics.browserCpuUsage || metrics.browserMemoryUsage) && (
             <div className="space-y-2 pt-2 border-t border-gray-100">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Browser Metrics</h4>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <Monitor className="h-4 w-4 text-gray-400" />
@@ -444,8 +350,9 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
         <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
           <DialogContent className="sm:max-w-md">
             <QRCodeDisplay 
-              bot={{ ...bot, id: bot.id }} 
-              onClose={() => {
+              botId={bot.id} 
+              onClose={() => setShowQrModal(false)}
+              onSuccess={() => {
                 setShowQrModal(false)
                 onRefresh?.()
               }}

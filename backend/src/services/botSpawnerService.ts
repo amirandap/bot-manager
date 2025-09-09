@@ -5,20 +5,17 @@ import dotenv from "dotenv";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { ConfigService } from "./configService";
-import { BotConfigTemplateService } from "./BotConfigTemplateService";
 import { Bot } from "../types";
 
 const execAsync = promisify(exec);
 
 export class BotSpawnerService {
   private configService: ConfigService;
-  private templateService: BotConfigTemplateService;
   private botDirectory: string;
   private dataDirectory: string;
 
   constructor() {
     this.configService = ConfigService.getInstance();
-    this.templateService = BotConfigTemplateService.getInstance();
     this.botDirectory = path.join(__dirname, "../../../bot");
     this.dataDirectory = path.join(__dirname, "../../../data");
   }
@@ -478,7 +475,7 @@ export class BotSpawnerService {
   }
 
   private async startBotWithPM2(botId: string, botConfig: any): Promise<void> {
-    console.log(`🚀 Starting bot ${botId} with PM2 using template configuration...`);
+    console.log(`🚀 Starting bot ${botId} with PM2...`);
 
     // Step 1: Compile bot to JavaScript for better performance and memory usage
     console.log(`🔨 Compiling bot TypeScript to JavaScript...`);
@@ -489,18 +486,62 @@ export class BotSpawnerService {
 
     const pm2ServiceId = `wabot-${botConfig.apiPort}`;
 
-    // Step 3: Get PM2 configuration from template service
-    console.log(`📋 Loading PM2 configuration from template...`);
-    const pm2Config = this.templateService.getPM2Config(botId, botConfig);
-    
-    // Log the configuration being used
-    const template = this.templateService.loadTemplate();
-    console.log(`✅ Template configuration loaded:`);
-    console.log(`   - Memory limit: ${template.pm2Config.memory.maxMemoryRestart}`);
-    console.log(`   - Node args: ${template.pm2Config.nodeArgs.join(' ')}`);
-    console.log(`   - Max restarts: ${template.pm2Config.memory.maxRestarts}`);
-    console.log(`   - Min uptime: ${template.pm2Config.memory.minUptime}ms`);
-    console.log(`   - Restart delay: ${template.pm2Config.timeouts.restartDelay}ms`);
+    // Load bot environment defaults
+    const botEnvDefaults = this.loadBotEnvironmentDefaults();
+
+    // Ensure required environment variables are set with proper type handling
+    const botEnv: Record<string, string> = {
+      ...botEnvDefaults,
+      BOT_ID: botId,
+      BOT_NAME: String(botConfig.name),
+      BOT_PORT: String(botConfig.apiPort),
+      PORT: String(botConfig.apiPort),
+      BOT_TYPE: String(botConfig.type || "whatsapp"),
+      BASE_URL: `${botConfig.apiHost}:${botConfig.apiPort}`,
+      NODE_ENV: "development",
+      PM2_HOME: path.join(this.dataDirectory, "pm2"),
+      TS_NODE_PROJECT: path.join(this.botDirectory, "tsconfig.json"),
+
+      // PM2 Metrics Configuration - disable metrics logging for cleaner output
+      PM2_ADVANCED_METRICS: "false",
+      PM2_DISABLE_LOGGING: "false",
+      PM2_SILENT: "false",
+      DEBUG: "", // Disable debug logs to prevent PM2/AXM noise
+
+      // Bot-specific metrics configuration
+      SILENT_METRICS: "true",
+      LOG_LEVEL: "info",
+      
+      // Only include PATH if it exists
+      ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
+    };
+
+    const pm2Config = {
+      name: pm2ServiceId,
+      script: path.join(this.botDirectory, "dist/index.js"), // Use compiled JavaScript
+      args: [String(botConfig.apiPort)], // Pass port as argument
+      node_args: [
+        "--max-old-space-size=256", // Limit heap memory to 256MB
+        "--optimize-for-size", // Optimize for memory efficiency
+        "--gc-interval=100" // More frequent garbage collection
+      ],
+      cwd: this.botDirectory,
+      env: botEnv, // Now properly typed
+      error_file: path.join(this.dataDirectory, "logs", botId, "error.log"),
+      out_file: path.join(this.dataDirectory, "logs", botId, "out.log"),
+      log_file: path.join(this.dataDirectory, "logs", botId, "combined.log"),
+      autorestart: true,
+      max_restarts: 5, // Reduce restarts to avoid resource exhaustion
+      min_uptime: 30000, // Increase minimum uptime
+      max_memory_restart: "256M", // Restart if memory exceeds 256MB (aligned with node args)
+      watch: false,
+      instances: 1,
+      exec_mode: "fork",
+      wait_ready: true,
+      listen_timeout: 15000, // Increase timeout for slow startup
+      kill_timeout: 10000, // Increase kill timeout
+      restart_delay: 5000, // Add delay between restarts
+    };
 
     return new Promise((resolve, reject) => {
       pm2.connect(async (err) => {
@@ -521,7 +562,7 @@ export class BotSpawnerService {
             });
           });
 
-          // Start the new process with template configuration
+          // Start the new process
           pm2.start(pm2Config, async (startErr) => {
             if (startErr) {
               console.error(`Failed to start PM2 process:`, startErr);
@@ -1248,88 +1289,6 @@ export class BotSpawnerService {
       if (error.stdout) console.error(`Stdout: ${error.stdout}`);
       if (error.stderr) console.error(`Stderr: ${error.stderr}`);
       throw new Error(`Bot compilation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update bot template configuration dynamically
-   */
-  public updateBotTemplate(configPath: string, value: any): boolean {
-    console.log(`🔧 Updating bot template configuration: ${configPath} = ${value}`);
-    return this.templateService.updateConfig(configPath, value);
-  }
-
-  /**
-   * Reload bot template configuration
-   */
-  public reloadBotTemplate(): void {
-    console.log(`🔄 Reloading bot template configuration...`);
-    this.templateService.reloadTemplate();
-  }
-
-  /**
-   * Get current bot template configuration
-   */
-  public getBotTemplate() {
-    return this.templateService.loadTemplate();
-  }
-
-  /**
-   * Update memory configuration for all bots
-   */
-  public async updateMemoryConfig(maxMemoryRestart: string, nodeMaxOldSpace: number): Promise<boolean> {
-    try {
-      // Update template configuration
-      this.templateService.updateConfig('pm2Config.memory.maxMemoryRestart', maxMemoryRestart);
-      this.templateService.updateConfig('pm2Config.nodeArgs.0', `--max-old-space-size=${nodeMaxOldSpace}`);
-      
-      console.log(`✅ Updated memory configuration:`);
-      console.log(`   - PM2 memory restart: ${maxMemoryRestart}`);
-      console.log(`   - Node max old space: ${nodeMaxOldSpace}MB`);
-      
-      return true;
-    } catch (error) {
-      console.error(`❌ Failed to update memory configuration:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Apply template configuration to existing bots (restart required)
-   */
-  public async applyTemplateToExistingBots(): Promise<{success: boolean, restartedBots: string[]}> {
-    const restartedBots: string[] = [];
-    
-    try {
-      const bots = this.configService.getAllBots();
-      
-      for (const bot of bots) {
-        if (bot.pm2ServiceId && !bot.isExternal) {
-          console.log(`🔄 Applying new template to bot ${bot.id} (${bot.pm2ServiceId})...`);
-          
-          try {
-            // Stop the current PM2 service
-            await this.stopPM2Service(bot.pm2ServiceId);
-            
-            // Recreate with new template configuration
-            const result = await this.recreatePM2Service(bot);
-            
-            if (result.pm2ServiceId) {
-              restartedBots.push(bot.id);
-              console.log(`✅ Template applied to bot ${bot.id} with new config`);
-            }
-          } catch (error) {
-            console.error(`❌ Failed to apply template to bot ${bot.id}:`, error);
-          }
-        } else if (bot.isExternal) {
-          console.log(`⚠️  Skipping external bot ${bot.id}`);
-        }
-      }
-      
-      return { success: true, restartedBots };
-    } catch (error) {
-      console.error(`❌ Failed to apply template to existing bots:`, error);
-      return { success: false, restartedBots };
     }
   }
 }

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   RefreshCw,
   QrCode,
+  Play,
+  Pause,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -28,6 +30,7 @@ const SimpleProgress = ({ value }: { value: number }) => (
 interface QRCodeDisplayProps {
   bot: Bot;
   onClose?: () => void;
+  autoRefresh?: boolean;
   refreshInterval?: number;
   autoCloseOnAuth?: boolean; // New prop for auto-close on authentication
 }
@@ -35,6 +38,7 @@ interface QRCodeDisplayProps {
 export default function QRCodeDisplay({
   bot,
   onClose,
+  autoRefresh = true,
   refreshInterval = 5000,
   autoCloseOnAuth = true, // Default to auto-close when authenticated
 }: QRCodeDisplayProps) {
@@ -43,22 +47,15 @@ export default function QRCodeDisplay({
     qrImageUrl,
     isLoading,
     error,
+    refresh,
+    startAutoRefresh,
+    stopAutoRefresh,
+    isAutoRefreshing,
     isAuthenticated,
     timeRemaining,
-    isScannedOrAuthenticating,
   } = useQRCode(bot.id, refreshInterval);
 
-  // Auto-close modal when QR is scanned or when authenticated
-  useEffect(() => {
-    if (autoCloseOnAuth && (isScannedOrAuthenticating || isAuthenticated) && onClose) {
-      // Add a small delay to show success state before closing
-      const closeTimer = setTimeout(() => {
-        onClose();
-      }, isAuthenticated ? 2000 : 1000); // Longer delay for full authentication, shorter for QR scanned
-
-      return () => clearTimeout(closeTimer);
-    }
-  }, [isScannedOrAuthenticating, isAuthenticated, onClose, autoCloseOnAuth]);
+  // Auto-close modal when authenticated
   useEffect(() => {
     if (autoCloseOnAuth && isAuthenticated && onClose) {
       // Add a small delay to show success state before closing
@@ -69,6 +66,15 @@ export default function QRCodeDisplay({
       return () => clearTimeout(closeTimer);
     }
   }, [isAuthenticated, onClose, autoCloseOnAuth]);
+
+  // Auto-start refresh if enabled
+  useEffect(() => {
+    if (autoRefresh && !isAutoRefreshing) {
+      startAutoRefresh();
+    } else if (!autoRefresh && isAutoRefreshing) {
+      stopAutoRefresh();
+    }
+  }, [autoRefresh, isAutoRefreshing, startAutoRefresh, stopAutoRefresh]);
 
   const formatTimeRemaining = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
@@ -215,12 +221,12 @@ export default function QRCodeDisplay({
                   </>
                 ) : qrStatus.qrCode.expired ? (
                   <>
-                    <RefreshCw className="h-12 w-12 text-orange-500 mx-auto mb-2 animate-spin" />
-                    <p className="text-sm text-orange-600 font-medium">
+                    <Clock className="h-12 w-12 text-red-500 mx-auto mb-2" />
+                    <p className="text-sm text-red-600 font-medium">
                       QR Code Expired
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Generating new QR code automatically...
+                      Please restart the bot to generate a new QR code
                     </p>
                   </>
                 ) : (
@@ -286,12 +292,49 @@ export default function QRCodeDisplay({
               <span>Last updated:</span>
               <span>{new Date(qrStatus.timestamp).toLocaleTimeString()}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Auto-refresh:</span>
-              <span className="text-green-600 font-medium">Active</span>
-            </div>
+            {isAutoRefreshing && (
+              <div className="flex justify-between">
+                <span>Auto-refresh:</span>
+                <span className="text-green-600 font-medium">Active</span>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Controls */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={isLoading}
+            className="flex-1"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={isAutoRefreshing ? stopAutoRefresh : startAutoRefresh}
+            className="flex-1"
+          >
+            {isAutoRefreshing ? (
+              <>
+                <Pause className="h-4 w-4 mr-2" />
+                Stop Auto
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 mr-2" />
+                Start Auto
+              </>
+            )}
+          </Button>
+        </div>
 
         {/* Success message when authenticated */}
         {isAuthenticated && (
