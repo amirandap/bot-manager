@@ -101,18 +101,6 @@ data/sessions/
 data/logs/
 data/qr-codes/
 
-# WhatsApp Web cache directories (should not be in git)
-.wwebjs_cache/
-**/.wwebjs_cache/
-bot/.wwebjs_cache/
-backend/.wwebjs_cache/
-**/session*/.wwebjs_cache/
-
-# Bot session data and cache
-data/sessions/**/.wwebjs_cache/
-sessions/
-**sessions**/
-
 # Root logs directory
 logs/
 

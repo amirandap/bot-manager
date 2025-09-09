@@ -28,7 +28,6 @@ export interface UseQRCodeResult {
   isAutoRefreshing: boolean;
   isAuthenticated: boolean;
   timeRemaining: number; // milliseconds remaining until expiry
-  isScannedOrAuthenticating: boolean; // true when QR is scanned or authenticating
 }
 
 export function useQRCode(
@@ -46,9 +45,7 @@ export function useQRCode(
   // Calculate if the bot is authenticated (QR was successfully scanned)
   const isAuthenticated =
     qrStatus?.whatsappStatus === "READY" ||
-    qrStatus?.whatsappStatus === "AUTHENTICATED" ||
     qrStatus?.whatsappStatus === "AUTHENTICATING" ||
-    qrStatus?.whatsappStatus === "PROCESSING_SESSION" ||
     qrStatus?.botStatus === "ready";
 
   // Calculate time remaining until QR expiry
@@ -180,22 +177,12 @@ export function useQRCode(
     // Adjust refresh interval based on bot state
     let adjustedInterval = autoRefreshInterval;
 
-    if (qrStatus?.qrCode.expired) {
-      // If QR is expired, refresh very frequently (every 1 second) to get the new one
-      adjustedInterval = 1000;
-      console.log('🔄 QR expired - using aggressive refresh (1s)');
-    } else if (!qrStatus?.qrCode.available) {
-      // If QR is not available, refresh every 2 seconds
-      adjustedInterval = 2000;
-      console.log('🔄 QR not available - using fast refresh (2s)');
-    } else if (qrStatus?.qrCode.available && !qrStatus.qrCode.expired) {
+    if (qrStatus?.qrCode.available && !qrStatus.qrCode.expired) {
       // If QR is available, check more frequently (every 3 seconds) for authentication
       adjustedInterval = Math.min(autoRefreshInterval, 3000);
-      console.log('🔄 QR available - using normal refresh (3s)');
     } else if (isAuthenticated) {
       // If already authenticated, check less frequently (every 10 seconds)
       adjustedInterval = Math.max(autoRefreshInterval, 10000);
-      console.log('🔄 Authenticated - using slow refresh (10s)');
     }
 
     console.log(`🔄 Starting auto-refresh with ${adjustedInterval}ms interval`);
@@ -227,13 +214,6 @@ export function useQRCode(
   useEffect(() => {
     if (!qrStatus?.qrCode.available || qrStatus.qrCode.expired) {
       setTimeRemaining(0);
-      
-      // If QR is expired, refresh more aggressively to get the new one
-      if (qrStatus?.qrCode.expired && intervalId) {
-        console.log("🔄 QR expired, refreshing to get new QR...");
-        refresh();
-      }
-      
       return;
     }
 
@@ -243,13 +223,12 @@ export function useQRCode(
 
       // If time expired, refresh status to get updated state
       if (remaining <= 0) {
-        console.log("🔄 QR time expired, refreshing to get new QR...");
         refresh();
       }
     }, 1000);
 
     return () => clearInterval(timeInterval);
-  }, [qrStatus, calculateTimeRemaining, refresh, intervalId]);
+  }, [qrStatus, calculateTimeRemaining, refresh]);
 
   // Restart auto-refresh when QR state changes significantly
   useEffect(() => {
@@ -289,10 +268,5 @@ export function useQRCode(
     isAutoRefreshing: intervalId !== null,
     isAuthenticated,
     timeRemaining,
-    isScannedOrAuthenticating: qrStatus?.whatsappStatus === 'QR_SCANNED' || 
-                               qrStatus?.whatsappStatus === 'AUTHENTICATING' ||
-                               qrStatus?.whatsappStatus === 'AUTHENTICATED' ||
-                               qrStatus?.whatsappStatus === 'PROCESSING_SESSION' ||
-                               qrStatus?.whatsappStatus === 'READY',
   };
 }

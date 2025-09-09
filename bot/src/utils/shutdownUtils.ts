@@ -4,10 +4,10 @@
  * Following modular architecture - utils should be pure functions
  */
 
-import {
-  shutdownWhatsAppClient
+import { 
+  shutdownWhatsAppClient,
+  cleanupQRCodeAfterConnection
 } from "./whatsAppUtils";
-import { cleanupQRCodeAfterConnection } from "../services/QRCodeService";
 import { shutdownAPIServer } from "./apiUtils";
 import { logger } from '../services/LoggerService';
 

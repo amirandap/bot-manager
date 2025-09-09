@@ -7,9 +7,8 @@ import { DirectoryManagerService } from "./services/DirectoryManagerService";
 // Import utility functions instead of service classes
 import {
   initializeWhatsAppClient,
-  shutdownWhatsAppClient
+  cleanupQRCodeAfterConnection
 } from "./utils/whatsAppUtils";
-import { cleanupQRCodeAfterConnection } from "./services/QRCodeService";
 
 import {
   setupExpressAPI,

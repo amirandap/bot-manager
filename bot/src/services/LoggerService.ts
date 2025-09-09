@@ -30,12 +30,7 @@ export const WHATSAPP_LIFECYCLE_STEPS = {
   ERROR_UNKNOWN: 'whatsapp_error_unknown',
   QR_ERROR: 'whatsapp_qr_error',
   STOPPING: 'whatsapp_stopping',
-  STOPPED: 'whatsapp_stopped',
-  // Crash states
-  CRASHED_UNCAUGHT_EXCEPTION: 'whatsapp_crashed_uncaught_exception',
-  CRASHED_UNHANDLED_REJECTION: 'whatsapp_crashed_unhandled_rejection',
-  SYNC_TIMEOUT_CRASH: 'whatsapp_sync_timeout_crash',
-  SESSION_PROCESSING_TIMEOUT: 'whatsapp_session_processing_timeout'
+  STOPPED: 'whatsapp_stopped'
 } as const;
 
 export enum LogLevel {
@@ -406,12 +401,7 @@ export class LoggerService {
         'ERROR_CONNECTION': 'Connection Error',
         'ERROR_AUTHENTICATION': 'Auth Failed',
         'STOPPING': 'Shutting down',
-        'STOPPED': 'Stopped',
-        // Crash states
-        'CRASHED_UNCAUGHT_EXCEPTION': 'CRASHED: Uncaught Exception',
-        'CRASHED_UNHANDLED_REJECTION': 'CRASHED: Unhandled Promise',
-        'SYNC_TIMEOUT_CRASH': 'CRASHED: Sync Timeout',
-        'SESSION_PROCESSING_TIMEOUT': 'CRASHED: Session Timeout'
+        'STOPPED': 'Stopped'
       };
 
       const customStatus = statusMap[step] || step;
@@ -468,24 +458,6 @@ export class LoggerService {
     this.updateMetric('CLIENT_PHONE', phoneNumber);
     if (!this.config.silentMetrics) {
       this.log('info', `Client phone number updated: ${phoneNumber}`, { phoneNumber, metric: 'CLIENT_PHONE' });
-    }
-  }
-
-  /**
-   * Get current value of a metric
-   */
-  public getMetric(metricKey: string): string | number | undefined {
-    const metric = this.metrics.get(metricKey);
-    return metric ? metric.value : undefined;
-  }
-
-  /**
-   * Debug logging method
-   */
-  public debug(message: string, emoji?: string, data?: Record<string, unknown>, metric?: string, metricValue?: string | number): void {
-    this.log('debug', message, data);
-    if (metric && metricValue !== undefined) {
-      this.updateMetric(metric, metricValue);
     }
   }
 }
