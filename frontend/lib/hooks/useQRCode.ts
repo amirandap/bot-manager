@@ -46,9 +46,13 @@ export function useQRCode(
   const isAuthenticated =
     qrStatus?.whatsappStatus === "READY" ||
     qrStatus?.whatsappStatus === "AUTHENTICATING" ||
-    qrStatus?.botStatus === "ready";
+    qrStatus?.whatsappStatus === "PROCESSING_SESSION" ||
+    qrStatus?.whatsappStatus === "AUTHENTICATED" ||
+    qrStatus?.botStatus === "ready" ||
+    qrStatus?.botStatus === "Authenticating" ||
+    qrStatus?.botStatus === "Ready & Operational";
 
-  // Calculate time remaining until QR expiry
+  // Calculate time remaining until QR expiry based on backend data
   const calculateTimeRemaining = useCallback(
     (status: QRCodeStatus | null): number => {
       if (
@@ -59,10 +63,18 @@ export function useQRCode(
         return 0;
       }
 
+      // Trust the backend's expiration logic instead of calculating our own
+      // If backend says it's not expired, show time remaining based on 20-second window
       const createdAt = new Date(status.qrCode.createdAt).getTime();
       const now = Date.now();
       const expiryTime = createdAt + 20 * 1000; // 20 seconds expiry (QR regenerates every 20 seconds)
       const remaining = Math.max(0, expiryTime - now);
+
+      // But if backend says it's not expired, ensure we don't show 0 time remaining
+      if (!status.qrCode.expired && remaining <= 0) {
+        // Backend hasn't marked it as expired yet, so there's still some time
+        return 1000; // Show at least 1 second remaining
+      }
 
       return remaining;
     },
@@ -89,7 +101,13 @@ export function useQRCode(
 
   const fetchQRImage = useCallback(async () => {
     try {
-      const response = await fetch(api.proxy.getQRCodeImage(botId));
+      const response = await fetch(api.proxy.getQRCodeImage(botId), {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -117,13 +135,27 @@ export function useQRCode(
   const fetchQRStatus = useCallback(async () => {
     try {
       setError(null);
-      const response = await fetch(api.proxy.getQRCodeStatus(botId));
+      const response = await fetch(api.proxy.getQRCodeStatus(botId), {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to fetch QR status: ${response.status}`);
       }
 
       const statusData: QRCodeStatus = await response.json();
+      console.log("🔍 Frontend received QR status:", {
+        available: statusData.qrCode.available,
+        expired: statusData.qrCode.expired,
+        createdAt: statusData.qrCode.createdAt,
+        whatsappStatus: statusData.whatsappStatus,
+        timestamp: statusData.timestamp
+      });
+      
       setQrStatus(statusData);
 
       // Calculate and update time remaining
@@ -177,12 +209,22 @@ export function useQRCode(
     // Adjust refresh interval based on bot state
     let adjustedInterval = autoRefreshInterval;
 
-    if (qrStatus?.qrCode.available && !qrStatus.qrCode.expired) {
+    if (qrStatus?.qrCode.expired) {
+      // If QR expired, use aggressive refresh (1 second) to get new QR quickly
+      adjustedInterval = 1000;
+      console.log("🔄 QR expired - using aggressive refresh (1s)");
+    } else if (qrStatus?.qrCode.available && !qrStatus.qrCode.expired) {
       // If QR is available, check more frequently (every 3 seconds) for authentication
       adjustedInterval = Math.min(autoRefreshInterval, 3000);
+      console.log("🔄 QR available - using normal refresh (3s)");
     } else if (isAuthenticated) {
       // If already authenticated, check less frequently (every 10 seconds)
       adjustedInterval = Math.max(autoRefreshInterval, 10000);
+      console.log("🔄 Authenticated - using slow refresh (10s)");
+    } else {
+      // QR not available - might be starting up
+      adjustedInterval = 2000;
+      console.log("🔄 QR not available - using fast refresh (2s)");
     }
 
     console.log(`🔄 Starting auto-refresh with ${adjustedInterval}ms interval`);

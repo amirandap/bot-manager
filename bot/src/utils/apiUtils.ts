@@ -10,11 +10,7 @@ import { getQRStatus, isWhatsAppClientReady, getWhatsAppClient } from "./whatsAp
 import { getClient } from "../config/clientExporter";
 import { logger } from "../services/LoggerService";
 import { MessageController } from "../controllers/MessageController";
-interface BotConfig {
-  BOT_ID: string;
-  BOT_NAME: string;
-  BOT_PORT: number;
-}
+import { BotConfig } from "../types/config";
 
 // Global server state
 let expressApp: express.Application | null = null;
@@ -791,6 +787,125 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
           timestamp: new Date().toISOString()
         });
       }
+    }
+  });
+
+  // ============================================================================
+  // CACHE MANAGEMENT ROUTES
+  // ============================================================================
+
+  /**
+   * @swagger
+   * /api/cache/clean:
+   *   post:
+   *     summary: Clean universal WhatsApp cache
+   *     tags: [Cache Management]
+   *     description: Force cleanup of the universal WhatsApp Web cache
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               reason:
+   *                 type: string
+   *                 description: Reason for cache cleanup
+   *                 example: "Manual cleanup requested"
+   *     responses:
+   *       200:
+   *         description: Cache cleaned successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *                 cacheStats:
+   *                   type: object
+   *       500:
+   *         description: Server error
+   */
+  expressApp.post("/api/cache/clean", async (req, res) => {
+    try {
+      const { reason = "Manual cleanup via bot API" } = req.body;
+      
+      // Import cache manager
+      const { qrAutoRestartController } = await import("../controllers/AutoRestartController");
+      
+      await qrAutoRestartController.forceCacheCleanup(reason);
+      const cacheStats = qrAutoRestartController.getCacheInfo();
+      
+      res.json({
+        success: true,
+        message: "Universal cache cleaned successfully",
+        cacheStats,
+        reason,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to clean universal cache",
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/cache/stats:
+   *   get:
+   *     summary: Get universal cache statistics
+   *     tags: [Cache Management]
+   *     description: Retrieve statistics about the universal WhatsApp Web cache
+   *     responses:
+   *       200:
+   *         description: Cache statistics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 exists:
+   *                   type: boolean
+   *                 size:
+   *                   type: number
+   *                 files:
+   *                   type: number
+   *                 path:
+   *                   type: string
+   *       500:
+   *         description: Server error
+   */
+  expressApp.get("/api/cache/stats", async (req, res) => {
+    try {
+      // Import cache manager
+      const { cacheManager } = await import("../services/CacheManager");
+      
+      const cacheStats = cacheManager.getCacheStats();
+      const cachePath = cacheManager.getUniversalCachePath();
+      
+      res.json({
+        ...cacheStats,
+        path: cachePath,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        exists: false,
+        size: 0,
+        files: 0,
+        path: "unknown",
+        error: "Failed to get cache stats",
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 

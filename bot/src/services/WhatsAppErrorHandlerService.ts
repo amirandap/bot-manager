@@ -14,19 +14,11 @@ import {
   ErrorValidationResult,
   DetailedErrorAnalysis,
 } from "../types";
+import { ErrorPattern } from "../types/services";
 
 // ============================================================================
 // ERROR CLASSIFICATION SYSTEM
 // ============================================================================
-
-interface ErrorPattern {
-  pattern: RegExp;
-  category: ErrorCategory;
-  severity: ErrorSeverity;
-  isRecoverable: boolean;
-  description: string;
-  retryAfter?: number;
-}
 
 /**
  * WhatsApp Error Classifier - Industry standard error classification

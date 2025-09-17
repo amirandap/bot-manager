@@ -4,18 +4,9 @@ import { logger } from "../services/LoggerService";
  * Reduces code duplication across routes
  */
 
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { getClient } from "../config/clientExporter";
-/**
- * Extended Request interface to include bot-specific data
- */
-export interface BotRequest extends Request {
-  bot?: {
-    requestId: string;
-    client: any;
-    startTime: number;
-  };
-}
+import { BotRequest } from "../types/middleware";
 
 /**
  * Middleware to add request ID and timing
