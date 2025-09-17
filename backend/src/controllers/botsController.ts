@@ -407,4 +407,89 @@ export class BotsController {
       });
     }
   }
+
+  /**
+   * Limpiar cache universal de WhatsApp
+   */
+  public async cleanUniversalCache(req: Request, res: Response): Promise<void> {
+    try {
+      const { reason = "Manual cleanup via API" } = req.body;
+
+      // Hacer llamada a uno de los bots para limpiar el cache universal
+      const bots = await this.botService.getAllBots();
+      const runningBot = bots.find(bot => bot.status === 'online');
+
+      if (!runningBot) {
+        res.status(503).json({
+          success: false,
+          error: "No running bots available to perform cache cleanup",
+          message: "At least one bot must be running to clean the universal cache"
+        });
+        return;
+      }
+
+      // Hacer llamada al endpoint del bot para limpiar cache
+      const botUrl = `http://localhost:${runningBot.apiPort}/api/cache/clean`;
+      const response = await axios.post(botUrl, { reason }, {
+        timeout: 30000, // 30 seconds timeout
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      res.json({
+        success: true,
+        message: "Universal cache cleaned successfully",
+        cacheStats: response.data.cacheStats || {},
+        cleanedBy: runningBot.id
+      });
+
+    } catch (error) {
+      console.error("Error cleaning universal cache:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to clean universal cache",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+
+  /**
+   * Obtener estadísticas del cache universal
+   */
+  public async getCacheStats(req: Request, res: Response): Promise<void> {
+    try {
+      // Hacer llamada a uno de los bots para obtener estadísticas del cache
+      const bots = await this.botService.getAllBots();
+      const runningBot = bots.find(bot => bot.status === 'online');
+
+      if (!runningBot) {
+        res.status(503).json({
+          exists: false,
+          size: 0,
+          files: 0,
+          path: "unknown",
+          error: "No running bots available to get cache stats"
+        });
+        return;
+      }
+
+      // Hacer llamada al endpoint del bot para obtener estadísticas
+      const botUrl = `http://localhost:${runningBot.apiPort}/api/cache/stats`;
+      const response = await axios.get(botUrl, {
+        timeout: 10000, // 10 seconds timeout
+      });
+
+      res.json(response.data);
+
+    } catch (error) {
+      console.error("Error getting cache stats:", error);
+      res.status(500).json({
+        exists: false,
+        size: 0,
+        files: 0,
+        path: "unknown",
+        error: "Failed to get cache stats",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
 }

@@ -1,7 +1,7 @@
 /**
  * WhatsApp Client Management Utilities
  * CENTRALIZED - Unified utility functions for WhatsApp client lifecycle
- * Now includes internal QR code management
+ * Now includes internal QR code management and universal cache
  */
 
 import { Client, LocalAuth } from "whatsapp-web.js";
@@ -14,6 +14,7 @@ import { QR_PATH } from "../config/EnvironmentManager";
 import { EnvironmentConfig } from "../types/types";
 import { setClient } from "../config/clientExporter";
 import { qrAutoRestartController } from "../controllers/AutoRestartController";
+import { cacheManager } from "../services/CacheManager";
 
 // State management
 let whatsappClient: Client | null = null;
@@ -114,6 +115,9 @@ export async function initializeWhatsAppClient(
   // Iniciar el controlador de auto-reinicio para QR code
   qrAutoRestartController.startMonitoring();
   
+  // Inicializar contexto de sesión para lógica inteligente
+  qrAutoRestartController.initializeSessionContext(config.SESSION_PATH, config.BOT_ID);
+  
   if (whatsappClient) {
     logger.info("WhatsApp client already initialized", "ℹ️");
     return whatsappClient;
@@ -123,6 +127,12 @@ export async function initializeWhatsAppClient(
     logger.info("WHATSAPP CLIENT INITIALIZATION", "🚀");
     logger.info("WhatsApp state: browser_launching - Starting WhatsApp Web browser", "🤖", undefined, "WHATSAPP_STATUS", "BROWSER_LAUNCHING");
     logger.logLifecycleStep("BROWSER_LAUNCHING");
+
+    // Preparar cache universal antes de inicializar
+    await cacheManager.prepareCache(config.BOT_ID);
+    const universalCachePath = cacheManager.getUniversalCachePath();
+    const cacheStats = cacheManager.getCacheStats();
+    logger.info(`🗂️ Usando cache universal: ${universalCachePath} (${cacheStats.files} archivos, ${(cacheStats.size / 1024 / 1024).toFixed(2)} MB)`);
 
     // Initialize QR code path internally
     initializeQRCodePath(config.BOT_ID);
@@ -136,15 +146,15 @@ export async function initializeWhatsAppClient(
     whatsappClient = new Client({
       authStrategy: new LocalAuth({
         clientId: config.BOT_ID,
-        dataPath: config.SESSION_PATH,
+        dataPath: config.SESSION_PATH, // Sesión separada por bot
       }),
       puppeteer: puppeteerOptions,
       webVersionCache: {
         type: "local",
-        path: path.join(config.SESSION_PATH, '.wwebjs_cache')
+        path: universalCachePath // Cache universal compartido
       },
       // Memory optimization settings
-      qrMaxRetries: 5, // Increased from 3 to 5 para mayor fiabilidad
+      qrMaxRetries: 10, // Aumentado para permitir más intentos con lógica inteligente
       restartOnAuthFail: true, // Auto-reiniciar en fallos de autenticación
       takeoverOnConflict: true,
     });
@@ -156,11 +166,18 @@ export async function initializeWhatsAppClient(
         try {
           logger.info(`WhatsApp state change: ${state}`, "🔄", undefined, "WHATSAPP_STATUS", state);
           
+          // DIAGNÓSTICO: Agregar logging extendido de estados
+          console.log(`[DEBUG] WhatsApp state change detected: ${state}`);
+          console.log(`[DEBUG] Current time: ${new Date().toISOString()}`);
+          console.log(`[DEBUG] Client ready state: ${whatsappClient?.info ? 'has info' : 'no info'}`);
+          
           // Update specific metrics based on state
           if (state === "PAIRING") {
             logger.updateMetric("PAIRING_ATTEMPTS", 1);
           } else if (state === "CONNECTED") {
             logger.updateMetric("WHATSAPP_CONNECTIONS", 1);
+            // DIAGNÓSTICO: Si llega a CONNECTED, debería estar cerca de READY
+            console.log(`[DEBUG] WhatsApp reached CONNECTED state - should reach READY soon`);
           }
         } catch (error) {
           logger.error(`Error handling state change: ${error}`, {}, "ERRORS", 1);
@@ -200,9 +217,31 @@ export async function initializeWhatsAppClient(
             if (!loadingTimeout) {
               loadingTimeout = setTimeout(() => {
                 const loadingTime = Math.round((Date.now() - loadingStartTime) / 1000);
+                
+                // DIAGNÓSTICO: Información detallada antes del timeout
+                console.log(`[DEBUG] ========= LOADING TIMEOUT TRIGGERED =========`);
+                console.log(`[DEBUG] Loading time: ${loadingTime}s`);
+                console.log(`[DEBUG] Last progress: ${lastLoadingProgress}%`);
+                console.log(`[DEBUG] Stuck count: ${stuckProgressCount}`);
+                console.log(`[DEBUG] WhatsApp ready flag: ${isWhatsAppReady}`);
+                console.log(`[DEBUG] Client state: ${whatsappClient ? 'exists' : 'null'}`);
+                console.log(`[DEBUG] Client info: ${whatsappClient?.info ? 'has info' : 'no info'}`);
+                
                 logger.error(`🚨 Loading timeout after ${loadingTime}s - Restarting bot to prevent zombie state`);
+                
+                // DIAGNÓSTICO: Intentar obtener más información del cliente antes de reiniciar
+                try {
+                  console.log(`[DEBUG] Attempting to get client state before restart...`);
+                  if (whatsappClient) {
+                    console.log(`[DEBUG] Client exists, checking state...`);
+                    // No acceder directamente a propiedades internas que pueden causar errores
+                  }
+                } catch (debugError) {
+                  console.log(`[DEBUG] Error getting client state: ${debugError}`);
+                }
+                
                 process.exit(1); // PM2 will restart the process
-              }, 10 * 60 * 1000); // 10 minutes timeout
+              }, 2 * 60 * 1000); // 2 minutes timeout para diagnóstico rápido
             }
           } else {
             // Just log the progress without changing the status
@@ -246,6 +285,13 @@ export async function initializeWhatsAppClient(
       // Authentication handlers
       whatsappClient!.on("authenticated", () => {
         try {
+          console.log(`[DEBUG] ========= AUTHENTICATED EVENT TRIGGERED =========`);
+          console.log(`[DEBUG] Authenticated at: ${new Date().toISOString()}`);
+          console.log(`[DEBUG] About to wait for Store injection and ready event...`);
+          console.log(`[DEBUG] This event should be followed by 'ready' event`);
+          console.log(`[DEBUG] If ready event doesn't fire, there's an issue with Store injection or hasSynced`);
+          console.log(`[DEBUG] =============================================`);
+          
           logger.info("QR Code scanned successfully!", "📱", undefined, "QR_STATUS", "SCANNED");
           logger.info("WhatsApp authentication successful", "🤖", undefined, "WHATSAPP_STATUS", "AUTHENTICATED");
           logger.info("Processing session data and preparing connection", "🤖", undefined, "WHATSAPP_STATUS", "PROCESSING_SESSION");
@@ -280,6 +326,14 @@ export async function initializeWhatsAppClient(
       // Ready handler - this is where we resolve the promise
       whatsappClient!.on("ready", async () => {
         isWhatsAppReady = true; // Mark as ready to prevent loading events from overriding
+        
+        // DIAGNÓSTICO: Logging extendido para el evento ready
+        console.log(`[DEBUG] ========= READY EVENT TRIGGERED =========`);
+        console.log(`[DEBUG] Time: ${new Date().toISOString()}`);
+        console.log(`[DEBUG] Client info available: ${whatsappClient?.info ? 'YES' : 'NO'}`);
+        if (whatsappClient?.info) {
+          console.log(`[DEBUG] Phone number: ${whatsappClient.info.wid?.user || 'unknown'}`);
+        }
         
         // Clear loading timeout since we're now ready
         if (loadingTimeout) {

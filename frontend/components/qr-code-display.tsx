@@ -103,6 +103,32 @@ export default function QRCodeDisplay({
 
     // Check if authenticated first
     if (isAuthenticated) {
+      // Show specific authentication progress states
+      if (qrStatus?.whatsappStatus === "AUTHENTICATING" || qrStatus?.botStatus === "Authenticating") {
+        return (
+          <Badge
+            variant="default"
+            className="flex items-center gap-1 bg-blue-100 text-blue-800"
+          >
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Authenticating
+          </Badge>
+        );
+      }
+      
+      if (qrStatus?.whatsappStatus === "PROCESSING_SESSION" || qrStatus?.whatsappStatus === "AUTHENTICATED") {
+        return (
+          <Badge
+            variant="default"
+            className="flex items-center gap-1 bg-blue-100 text-blue-800"
+          >
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Processing Session
+          </Badge>
+        );
+      }
+      
+      // Default authenticated state
       return (
         <Badge
           variant="default"
@@ -210,15 +236,42 @@ export default function QRCodeDisplay({
                     <p className="text-sm text-gray-600">Loading...</p>
                   </>
                 ) : !qrStatus.qrCode.available ? (
-                  <>
-                    <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-2" />
-                    <p className="text-sm text-orange-600 font-medium">
-                      QR Not Available
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Bot may be starting up or already connected
-                    </p>
-                  </>
+                  // Check if we're in authentication process
+                  isAuthenticated ? (
+                    <>
+                      {qrStatus.whatsappStatus === "AUTHENTICATING" || qrStatus.botStatus === "Authenticating" ? (
+                        <>
+                          <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-2 animate-spin" />
+                          <p className="text-sm text-blue-600 font-medium">Authenticating...</p>
+                          <p className="text-xs text-gray-500 mt-1">WhatsApp is verifying your scan...</p>
+                          <p className="text-xs text-blue-500 mt-1 font-medium">Please wait, this takes about 5-7 seconds</p>
+                        </>
+                      ) : qrStatus.whatsappStatus === "PROCESSING_SESSION" || qrStatus.whatsappStatus === "AUTHENTICATED" ? (
+                        <>
+                          <RefreshCw className="h-12 w-12 text-blue-500 mx-auto mb-2 animate-spin" />
+                          <p className="text-sm text-blue-600 font-medium">Processing Session...</p>
+                          <p className="text-xs text-gray-500 mt-1">Setting up your WhatsApp session...</p>
+                          <p className="text-xs text-blue-500 mt-1 font-medium">Almost ready...</p>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2 animate-pulse" />
+                          <p className="text-sm text-green-600 font-medium">Successfully Connected!</p>
+                          <p className="text-xs text-gray-500 mt-1">Bot is ready to use!</p>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-2" />
+                      <p className="text-sm text-orange-600 font-medium">
+                        QR Not Available
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Bot may be starting up or already connected
+                      </p>
+                    </>
+                  )
                 ) : qrStatus.qrCode.expired ? (
                   <>
                     <Clock className="h-12 w-12 text-red-500 mx-auto mb-2" />
@@ -256,6 +309,17 @@ export default function QRCodeDisplay({
         {/* QR Code Info */}
         {qrStatus && (
           <div className="text-xs text-muted-foreground space-y-1 p-3 bg-gray-50 rounded-lg">
+            {/* Debug information - Temporary */}
+            <div className="bg-yellow-100 border border-yellow-300 p-2 rounded mb-2">
+              <div className="font-semibold text-yellow-800 mb-1">Debug Info:</div>
+              <div>Available: {String(qrStatus.qrCode.available)}</div>
+              <div>Expired: {String(qrStatus.qrCode.expired)}</div>
+              <div>WhatsApp Status: {qrStatus.whatsappStatus}</div>
+              <div>Created: {qrStatus.qrCode.createdAt}</div>
+              <div>Age (min): {qrStatus.qrCode.ageMinutes}</div>
+              <div>Timestamp: {qrStatus.timestamp}</div>
+            </div>
+            
             <div className="flex justify-between">
               <span>Status:</span>
               <span className="font-medium">
@@ -314,6 +378,24 @@ export default function QRCodeDisplay({
               className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
             />
             Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Force refresh by clearing any cached state
+              console.log("🔄 Force refresh triggered");
+              refresh();
+            }}
+            disabled={isLoading}
+            className="flex-1"
+            title="Force refresh without cache"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
+            Force Refresh
           </Button>
 
           <Button

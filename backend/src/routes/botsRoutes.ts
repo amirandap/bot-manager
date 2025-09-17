@@ -249,4 +249,82 @@ export function setBotsRoutes(app: Router) {
     "/api/bots/:id/pm2/status",
     botsController.getBotPM2Status.bind(botsController)
   );
+
+  /**
+   * @swagger
+   * /api/bots/cache/clean:
+   *   post:
+   *     summary: Clean universal WhatsApp cache
+   *     tags: [Cache Management]
+   *     description: Force cleanup of the universal WhatsApp Web cache shared by all bots
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               reason:
+   *                 type: string
+   *                 description: Reason for cache cleanup
+   *                 example: "Manual cleanup requested by user"
+   *     responses:
+   *       200:
+   *         description: Cache cleaned successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *                 cacheStats:
+   *                   type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
+  app.post(
+    "/api/bots/cache/clean",
+    botsController.cleanUniversalCache.bind(botsController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/cache/stats:
+   *   get:
+   *     summary: Get universal cache statistics
+   *     tags: [Cache Management]
+   *     description: Retrieve statistics about the universal WhatsApp Web cache
+   *     responses:
+   *       200:
+   *         description: Cache statistics retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 exists:
+   *                   type: boolean
+   *                 size:
+   *                   type: number
+   *                 files:
+   *                   type: number
+   *                 path:
+   *                   type: string
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   */
+  app.get(
+    "/api/bots/cache/stats",
+    botsController.getCacheStats.bind(botsController)
+  );
 }

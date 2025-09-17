@@ -8,6 +8,7 @@ import * as path from "path";
 import pino from 'pino';
 import tx2 from 'tx2';
 import { METRICS } from '../types/metrics';
+import { LogLevel, LoggerConfig } from '../types/services';
 
 // WhatsApp Lifecycle Steps - migrated from pm2Utils_unified to eliminate dependency
 export const WHATSAPP_LIFECYCLE_STEPS = {
@@ -32,21 +33,6 @@ export const WHATSAPP_LIFECYCLE_STEPS = {
   STOPPING: 'whatsapp_stopping',
   STOPPED: 'whatsapp_stopped'
 } as const;
-
-export enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3,
-}
-
-export interface LoggerConfig {
-  logLevel: LogLevel;
-  logToFile: boolean;
-  logToConsole: boolean;
-  logDirectory: string;
-  silentMetrics?: boolean; // Silenciar logs automáticos de métricas
-}
 
 /**
  * Unified Logger Service Class

@@ -4,8 +4,7 @@
  */
 
 import { logger } from "../services/LoggerService";
-
-export type DetectedMediaType = "image" | "document" | "audio" | "video" | "text";
+import { DetectedMediaType } from "../types/utils";
 
 /**
  * Detect media type based on file MIME type and extension
