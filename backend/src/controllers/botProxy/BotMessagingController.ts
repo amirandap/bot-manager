@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { BotCommunicationService } from "../../services/botProxy/BotCommunicationService";
 import { MessageRoutingService } from "../../services/botProxy/MessageRoutingService";
 import { ErrorHandlingService } from "../../services/botProxy/ErrorHandlingService";
-import { contactMappingService } from "../../services/ContactMappingService";
+import { getContactMappingService } from "../../services/ContactMappingService";
 
 export interface MessageResponse {
   success: true;
@@ -48,7 +48,7 @@ export class BotMessagingController {
         console.log(`🔍 [BACKEND] External lookup requested: ${externalsource} -> ${externalid}`);
         
         try {
-          const lookupResult = contactMappingService.lookupPhoneNumber(externalsource, externalid);
+          const lookupResult = getContactMappingService().lookupPhoneNumber(externalsource, externalid);
           
           if (lookupResult.found && lookupResult.phonenumber) {
             console.log(`✅ [BACKEND] External contact found: ${externalid} -> ${lookupResult.phonenumber}`);

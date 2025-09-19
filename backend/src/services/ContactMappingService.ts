@@ -15,6 +15,15 @@ export interface ContactLookupResult {
   mapping?: ContactMapping;
 }
 
+export interface UnknownContactEntry {
+  externalsource: string;
+  externalid: string;
+  first_seen: string;
+  last_seen: string;
+  attempt_count: number;
+  status: 'pending' | 'resolved' | 'ignored';
+}
+
 /**
  * Service for managing external contact mappings
  * Maps external identifiers (like @logistica_softgroup from trellousername) to phone numbers
@@ -50,6 +59,22 @@ export class ContactMappingService {
       
       this.db.exec(createTableQuery);
 
+      // Create the unknown_contacts table for tracking unmapped external IDs
+      const createUnknownTableQuery = `
+        CREATE TABLE IF NOT EXISTS unknown_contacts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          externalsource TEXT NOT NULL,
+          externalid TEXT NOT NULL,
+          first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+          attempt_count INTEGER DEFAULT 1,
+          status TEXT DEFAULT 'pending',
+          UNIQUE(externalsource, externalid)
+        )
+      `;
+      
+      this.db.exec(createUnknownTableQuery);
+
       // Create index for faster lookups
       const createIndexQuery = `
         CREATE INDEX IF NOT EXISTS idx_external_lookup 
@@ -58,13 +83,26 @@ export class ContactMappingService {
       
       this.db.exec(createIndexQuery);
 
+      // Create index for unknown contacts
+      const createUnknownIndexQuery = `
+        CREATE INDEX IF NOT EXISTS idx_unknown_lookup 
+        ON unknown_contacts(externalsource, externalid)
+      `;
+      
+      this.db.exec(createUnknownIndexQuery);
+
       console.log('✅ Contact mappings database initialized successfully');
       console.log(`📁 Database location: ${this.dbPath}`);
       
       // Log current mappings count
       const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM contact_mappings');
       const result = countStmt.get() as { count: number };
+      
+      const unknownCountStmt = this.db.prepare(`SELECT COUNT(*) as count FROM unknown_contacts WHERE status = 'pending'`);
+      const unknownResult = unknownCountStmt.get() as { count: number };
+      
       console.log(`📊 Current mappings count: ${result.count}`);
+      console.log(`❓ Unknown contacts pending: ${unknownResult.count}`);
       
     } catch (error) {
       console.error('❌ Failed to initialize contact mappings database:', error);
@@ -96,6 +134,10 @@ export class ContactMappingService {
         };
       } else {
         console.log(`❌ Contact not found: ${externalsource} -> ${externalid}`);
+        
+        // Register the unknown contact for future mapping
+        this.registerUnknownContact(externalsource, externalid);
+        
         return {
           found: false
         };
@@ -103,6 +145,41 @@ export class ContactMappingService {
     } catch (error) {
       console.error('❌ Error looking up contact:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Register an unknown external contact for future mapping
+   */
+  public registerUnknownContact(externalsource: string, externalid: string): void {
+    try {
+      console.log(`📝 Registering unknown contact: ${externalsource} -> ${externalid}`);
+      
+      // Try to update existing record first (increment attempt count and update last_seen)
+      const updateStmt = this.db.prepare(`
+        UPDATE unknown_contacts 
+        SET last_seen = CURRENT_TIMESTAMP, attempt_count = attempt_count + 1 
+        WHERE externalsource = ? AND externalid = ? AND status = 'pending'
+      `);
+      
+      const updateResult = updateStmt.run(externalsource, externalid);
+      
+      if (updateResult.changes === 0) {
+        // No existing record, create new one
+        const insertStmt = this.db.prepare(`
+          INSERT OR IGNORE INTO unknown_contacts (externalsource, externalid) 
+          VALUES (?, ?)
+        `);
+        
+        insertStmt.run(externalsource, externalid);
+        console.log(`✅ New unknown contact registered: ${externalsource} -> ${externalid}`);
+      } else {
+        console.log(`📊 Updated attempt count for known unknown contact: ${externalsource} -> ${externalid}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error registering unknown contact:', error);
+      // Don't throw here - this is supplementary functionality
     }
   }
 
@@ -119,6 +196,9 @@ export class ContactMappingService {
       `);
       
       const result = stmt.run(mapping.externalsource, mapping.externalid, mapping.phonenumber);
+      
+      // Mark any unknown contact as resolved
+      this.markUnknownContactAsResolved(mapping.externalsource, mapping.externalid);
       
       // Get the inserted record
       const getStmt = this.db.prepare(`
@@ -317,7 +397,7 @@ export class ContactMappingService {
   /**
    * Get database statistics
    */
-  public getStats(): { totalMappings: number, uniqueSources: number, dbPath: string } {
+  public getStats(): { totalMappings: number, unknownPending: number, unknownResolved: number, uniqueSources: number, dbPath: string } {
     try {
       const totalStmt = this.db.prepare('SELECT COUNT(*) as count FROM contact_mappings');
       const totalResult = totalStmt.get() as { count: number };
@@ -325,8 +405,16 @@ export class ContactMappingService {
       const sourcesStmt = this.db.prepare('SELECT COUNT(DISTINCT externalsource) as count FROM contact_mappings');
       const sourcesResult = sourcesStmt.get() as { count: number };
       
+      const unknownPendingStmt = this.db.prepare(`SELECT COUNT(*) as count FROM unknown_contacts WHERE status = 'pending'`);
+      const unknownPendingResult = unknownPendingStmt.get() as { count: number };
+      
+      const unknownResolvedStmt = this.db.prepare(`SELECT COUNT(*) as count FROM unknown_contacts WHERE status = 'resolved'`);
+      const unknownResolvedResult = unknownResolvedStmt.get() as { count: number };
+      
       return {
         totalMappings: totalResult.count,
+        unknownPending: unknownPendingResult.count,
+        unknownResolved: unknownResolvedResult.count,
         uniqueSources: sourcesResult.count,
         dbPath: this.dbPath
       };
@@ -335,7 +423,94 @@ export class ContactMappingService {
       throw error;
     }
   }
+
+  /**
+   * Get all unknown contacts that need mapping
+   */
+  public getUnknownContacts(status: 'pending' | 'resolved' | 'ignored' | 'all' = 'pending'): UnknownContactEntry[] {
+    try {
+      console.log(`📋 Getting unknown contacts with status: ${status}`);
+      
+      let query = `
+        SELECT externalsource, externalid, first_seen, last_seen, attempt_count, status 
+        FROM unknown_contacts 
+      `;
+      
+      if (status !== 'all') {
+        query += ` WHERE status = ? `;
+      }
+      
+      query += ` ORDER BY attempt_count DESC, last_seen DESC`;
+      
+      const stmt = this.db.prepare(query);
+      const unknownContacts = status === 'all' ? 
+        stmt.all() as UnknownContactEntry[] : 
+        stmt.all(status) as UnknownContactEntry[];
+      
+      console.log(`📊 Found ${unknownContacts.length} unknown contacts with status: ${status}`);
+      return unknownContacts;
+      
+    } catch (error) {
+      console.error('❌ Error getting unknown contacts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark an unknown contact as resolved when a mapping is created
+   */
+  public markUnknownContactAsResolved(externalsource: string, externalid: string): void {
+    try {
+      console.log(`✅ Marking unknown contact as resolved: ${externalsource} -> ${externalid}`);
+      
+      const stmt = this.db.prepare(`
+        UPDATE unknown_contacts 
+        SET status = 'resolved', last_seen = CURRENT_TIMESTAMP 
+        WHERE externalsource = ? AND externalid = ?
+      `);
+      
+      stmt.run(externalsource, externalid);
+      
+    } catch (error) {
+      console.error('❌ Error marking unknown contact as resolved:', error);
+      // Don't throw here - this is supplementary functionality
+    }
+  }
+
+  /**
+   * Mark an unknown contact as ignored
+   */
+  public markUnknownContactAsIgnored(externalsource: string, externalid: string): void {
+    try {
+      console.log(`🚫 Marking unknown contact as ignored: ${externalsource} -> ${externalid}`);
+      
+      const stmt = this.db.prepare(`
+        UPDATE unknown_contacts 
+        SET status = 'ignored', last_seen = CURRENT_TIMESTAMP 
+        WHERE externalsource = ? AND externalid = ?
+      `);
+      
+      const result = stmt.run(externalsource, externalid);
+      
+      if (result.changes === 0) {
+        console.log(`❌ Unknown contact not found for ignoring: ${externalsource} -> ${externalid}`);
+      } else {
+        console.log(`✅ Unknown contact marked as ignored`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error marking unknown contact as ignored:', error);
+      throw error;
+    }
+  }
 }
 
-// Export singleton instance
-export const contactMappingService = new ContactMappingService();
+// Singleton instance with lazy initialization
+let instance: ContactMappingService | null = null;
+
+export const getContactMappingService = (): ContactMappingService => {
+  if (!instance) {
+    instance = new ContactMappingService();
+  }
+  return instance;
+};
