@@ -43,7 +43,7 @@ export const validateJsonPayload = (req: Request, res: Response, next: NextFunct
  * Detailed field validation for send-message endpoint
  */
 export const validateSendMessageFields = (req: Request, res: Response, next: NextFunction) => {
-  const { botId, to, phoneNumber, group_id, groupId, message } = req.body;
+  const { botId, to, phoneNumber, group_id, groupId, message, externalid, externalsource } = req.body;
   const hasFile = !!(req as any).file;
   
   const errors: string[] = [];
@@ -69,16 +69,29 @@ export const validateSendMessageFields = (req: Request, res: Response, next: Nex
     suggestions.push('Provide a valid bot identifier');
   }
   
-  // Required field: recipient (to, phoneNumber, group_id, or groupId)
+  // Required field: recipient (to, phoneNumber, group_id, groupId, OR externalid+externalsource)
   const recipients = [to, phoneNumber, group_id, groupId].filter(Boolean);
-  if (recipients.length === 0) {
-    errors.push('Recipient is required: use "to", "phoneNumber", "group_id", or "groupId"');
-    suggestions.push('Add one of: {"to": "+1234567890@c.us"} or {"group_id": "120363...@g.us"}');
+  const hasExternalLookup = externalid && externalsource;
+  
+  if (recipients.length === 0 && !hasExternalLookup) {
+    errors.push('Recipient is required: use "to", "phoneNumber", "group_id", "groupId", or both "externalid" and "externalsource"');
+    suggestions.push('Add one of: {"to": "+1234567890@c.us"}, {"group_id": "120363...@g.us"}, or {"externalsource": "trellousername", "externalid": "@logistica_softgroup"}');
   } else if (recipients.length > 1) {
     warnings.push('Multiple recipient fields detected. Using first available in order: to, phoneNumber, group_id, groupId');
+  } else if (hasExternalLookup && recipients.length > 0) {
+    warnings.push('Both direct recipient and external lookup provided. Direct recipient takes priority.');
   }
   
-  // Validate recipient format
+  // Validate external lookup fields
+  if (externalid && !externalsource) {
+    errors.push('externalsource is required when externalid is provided');
+    suggestions.push('Add externalsource field (e.g., "trellousername", "slack", etc.)');
+  } else if (externalsource && !externalid) {
+    errors.push('externalid is required when externalsource is provided');
+    suggestions.push('Add externalid field (e.g., "@logistica_softgroup", "@username", etc.)');
+  }
+  
+  // Validate recipient format (only if direct recipient is provided)
   const primaryRecipient = to || phoneNumber || group_id || groupId;
   if (primaryRecipient && typeof primaryRecipient === 'string') {
     if (primaryRecipient.includes('@g.us')) {
