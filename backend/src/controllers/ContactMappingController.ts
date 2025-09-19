@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { contactMappingService, ContactMapping } from '../services/ContactMappingService';
+import { getContactMappingService, ContactMapping } from '../services/ContactMappingService';
 
 /**
  * Controller for managing external contact mappings
@@ -20,7 +20,7 @@ export class ContactMappingController {
       
       if (source) {
         // Get mappings for specific source
-        const mappings = contactMappingService.getMappingsBySource(source);
+        const mappings = getContactMappingService().getMappingsBySource(source);
         result = {
           mappings,
           total: mappings.length,
@@ -30,7 +30,7 @@ export class ContactMappingController {
         };
       } else {
         // Get all mappings with pagination
-        result = contactMappingService.getAllMappings(limit, offset);
+        result = getContactMappingService().getAllMappings(limit, offset);
         result = { ...result, limit, offset };
       }
 
@@ -67,7 +67,7 @@ export class ContactMappingController {
         return;
       }
 
-      const result = contactMappingService.lookupPhoneNumber(source, id);
+      const result = getContactMappingService().lookupPhoneNumber(source, id);
 
       if (result.found) {
         res.json({
@@ -132,7 +132,7 @@ export class ContactMappingController {
         return;
       }
 
-      const mapping = contactMappingService.addMapping({
+      const mapping = getContactMappingService().addMapping({
         externalsource: externalsource.trim(),
         externalid: externalid.trim(),
         phonenumber: phonenumber.replace(/\s/g, '') // Remove spaces
@@ -204,7 +204,7 @@ export class ContactMappingController {
         return;
       }
 
-      const updatedMapping = contactMappingService.updateMapping(
+      const updatedMapping = getContactMappingService().updateMapping(
         source.trim(),
         id.trim(),
         phonenumber.replace(/\s/g, '') // Remove spaces
@@ -253,7 +253,7 @@ export class ContactMappingController {
         return;
       }
 
-      const deleted = contactMappingService.deleteMapping(source.trim(), id.trim());
+      const deleted = getContactMappingService().deleteMapping(source.trim(), id.trim());
 
       if (deleted) {
         res.json({
@@ -287,7 +287,7 @@ export class ContactMappingController {
    */
   public async deleteAllMappings(req: Request, res: Response): Promise<void> {
     try {
-      const deletedCount = contactMappingService.deleteAllMappings();
+      const deletedCount = getContactMappingService().deleteAllMappings();
 
       res.json({
         success: true,
@@ -312,8 +312,8 @@ export class ContactMappingController {
    */
   public async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const stats = contactMappingService.getStats();
-      const health = contactMappingService.healthCheck();
+      const stats = getContactMappingService().getStats();
+      const health = getContactMappingService().healthCheck();
 
       res.json({
         success: true,
@@ -329,6 +329,81 @@ export class ContactMappingController {
       res.status(500).json({
         success: false,
         error: 'Failed to get database statistics',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  /**
+   * GET /api/contacts/unknown - Get unknown contacts that need mapping
+   */
+  public async getUnknownContacts(req: Request, res: Response): Promise<void> {
+    try {
+      const status = (req.query.status as string) || 'pending';
+      
+      if (!['pending', 'resolved', 'ignored', 'all'].includes(status)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid status. Must be one of: pending, resolved, ignored, all',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      const unknownContacts = getContactMappingService().getUnknownContacts(status as any);
+
+      res.json({
+        success: true,
+        data: {
+          unknownContacts,
+          count: unknownContacts.length,
+          status
+        },
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error getting unknown contacts:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get unknown contacts',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  /**
+   * PUT /api/contacts/unknown/:source/:id/ignore - Mark unknown contact as ignored
+   */
+  public async ignoreUnknownContact(req: Request, res: Response): Promise<void> {
+    try {
+      const { source, id } = req.params;
+
+      if (!source || !id) {
+        res.status(400).json({
+          success: false,
+          error: 'External source and ID are required in URL path',
+          timestamp: new Date().toISOString()
+        });
+        return;
+      }
+
+      getContactMappingService().markUnknownContactAsIgnored(source.trim(), id.trim());
+
+      res.json({
+        success: true,
+        message: 'Unknown contact marked as ignored successfully',
+        ignored: { externalsource: source, externalid: id },
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('❌ Error ignoring unknown contact:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to ignore unknown contact',
         details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });
@@ -382,7 +457,7 @@ export class ContactMappingController {
             throw new Error('Invalid phone number format');
           }
 
-          contactMappingService.addMapping({
+          getContactMappingService().addMapping({
             externalsource: mapping.externalsource.trim(),
             externalid: mapping.externalid.trim(),
             phonenumber: mapping.phonenumber.replace(/\s/g, '')

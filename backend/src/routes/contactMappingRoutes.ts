@@ -294,6 +294,84 @@ router.get('/stats', contactMappingController.getStats.bind(contactMappingContro
 
 /**
  * @swagger
+ * /api/contacts/unknown:
+ *   get:
+ *     summary: Get unknown contacts that need mapping
+ *     tags: [Contact Mappings]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, resolved, ignored, all]
+ *           default: pending
+ *         description: Filter by status
+ *     responses:
+ *       200:
+ *         description: List of unknown contacts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     unknownContacts:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           externalsource:
+ *                             type: string
+ *                           externalid:
+ *                             type: string
+ *                           first_seen:
+ *                             type: string
+ *                           last_seen:
+ *                             type: string
+ *                           attempt_count:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                     count:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ */
+router.get('/unknown', contactMappingController.getUnknownContacts.bind(contactMappingController));
+
+/**
+ * @swagger
+ * /api/contacts/unknown/{source}/{id}/ignore:
+ *   put:
+ *     summary: Mark unknown contact as ignored
+ *     tags: [Contact Mappings]
+ *     parameters:
+ *       - in: path
+ *         name: source
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: External source system
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: External identifier
+ *     responses:
+ *       200:
+ *         description: Unknown contact marked as ignored successfully
+ *       404:
+ *         description: Unknown contact not found
+ */
+router.put('/unknown/:source/:id/ignore', contactMappingController.ignoreUnknownContact.bind(contactMappingController));
+
+/**
+ * @swagger
  * /api/contacts/bulk-import:
  *   post:
  *     summary: Bulk import contact mappings
