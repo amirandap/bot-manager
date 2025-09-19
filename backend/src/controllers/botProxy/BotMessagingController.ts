@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BotCommunicationService } from "../../services/botProxy/BotCommunicationService";
 import { MessageRoutingService } from "../../services/botProxy/MessageRoutingService";
 import { ErrorHandlingService } from "../../services/botProxy/ErrorHandlingService";
+import { contactMappingService } from "../../services/ContactMappingService";
 
 export interface MessageResponse {
   success: true;
@@ -30,10 +31,64 @@ export class BotMessagingController {
     try {
       console.log(`📨 [BACKEND] Message request ${requestId} received`);
 
-      const { botId, imageUrl, ...rawBodyData } = req.body;
+      const { botId, imageUrl, externalid, externalsource, ...rawBodyData } = req.body;
       if (!botId) {
         this.errorHandlingService.handleValidationError(
           "Bot ID is required in request body",
+          requestId,
+          res
+        );
+        return;
+      }
+
+      // Handle external ID lookup if provided
+      let processedBodyData = { ...rawBodyData };
+      
+      if (externalid && externalsource) {
+        console.log(`🔍 [BACKEND] External lookup requested: ${externalsource} -> ${externalid}`);
+        
+        try {
+          const lookupResult = contactMappingService.lookupPhoneNumber(externalsource, externalid);
+          
+          if (lookupResult.found && lookupResult.phonenumber) {
+            console.log(`✅ [BACKEND] External contact found: ${externalid} -> ${lookupResult.phonenumber}`);
+            
+            // Override the 'to' field with the found phone number
+            processedBodyData.to = lookupResult.phonenumber;
+            
+            console.log(`📞 [BACKEND] Phone number resolved from external ID: ${lookupResult.phonenumber}`);
+          } else {
+            console.log(`❌ [BACKEND] External contact not found: ${externalsource} -> ${externalid}`);
+            this.errorHandlingService.handleValidationError(
+              `Contact not found for external ID: ${externalsource}:${externalid}. Please ensure the mapping exists in the contact database.`,
+              requestId,
+              res
+            );
+            return;
+          }
+        } catch (lookupError) {
+          console.error(`❌ [BACKEND] Error during external lookup:`, lookupError);
+          this.errorHandlingService.handleValidationError(
+            `Failed to lookup external contact: ${lookupError instanceof Error ? lookupError.message : 'Unknown error'}`,
+            requestId,
+            res
+          );
+          return;
+        }
+      } else if (externalid || externalsource) {
+        // If only one is provided, it's an error
+        this.errorHandlingService.handleValidationError(
+          "Both 'externalid' and 'externalsource' must be provided together for external contact lookup",
+          requestId,
+          res
+        );
+        return;
+      }
+
+      // Validate that we have a 'to' field (either original or from lookup)
+      if (!processedBodyData.to) {
+        this.errorHandlingService.handleValidationError(
+          "Either 'to' field or both 'externalid' and 'externalsource' must be provided",
           requestId,
           res
         );
@@ -84,7 +139,7 @@ export class BotMessagingController {
       // Normalize message data and determine optimal endpoint
       const { endpoint, bodyData, messageType } =
         this.messageRoutingService.determineOptimalEndpoint(
-          rawBodyData,
+          processedBodyData,
           processedFile
         );
 
@@ -96,6 +151,7 @@ export class BotMessagingController {
         normalizedData: bodyData,
         hasFile: !!processedFile,
         imageUrl: imageUrl || undefined,
+        externalLookup: externalid && externalsource ? { externalsource, externalid, resolvedTo: processedBodyData.to } : undefined,
       });
 
       const result = await this.botCommunicationService.forwardRequest({
