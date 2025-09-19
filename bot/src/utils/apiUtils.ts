@@ -26,6 +26,7 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
 
   // Import routes only when needed
   const getGroupsRouter = (await import("../routes/getGroups")).default;
+  const notificationsRouter = (await import("../routes/notifications")).default;
   const { addRequestId, logRequest } = await import("../middleware/botMiddleware");
 
   // Create Express app
@@ -563,6 +564,18 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
   expressApp.post("/send-video", upload.single("file"), (req, res) => {
     MessageController.sendMedia(req, res, "video");
   });
+
+  // ============================================================================
+  // NOTIFICATION SETTINGS ROUTES
+  // ============================================================================
+  
+  /**
+   * @swagger
+   * tags:
+   *   - name: Configuración de Notificaciones
+   *     description: Gestión de configuraciones para evitar interferencia con notificaciones del teléfono
+   */
+  expressApp.use("/api/notifications", notificationsRouter);
 
   // ============================================================================
   // OTHER ROUTES

@@ -7,7 +7,8 @@
  */
 
 // Core logging service
-export { LoggerService, LogLevel, LoggerConfig } from "./LoggerService";
+export { LoggerService } from "./LoggerService";
+export { LogLevel, LoggerConfig } from "../types/services";
 
 // Remaining specialized services
 export { DirectoryManagerService } from "./DirectoryManagerService";

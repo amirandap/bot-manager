@@ -14,7 +14,8 @@
 
 import { logger } from "../services/LoggerService";
 import { cacheManager } from "../services/CacheManager";
-import { sessionStateDetector, SessionState } from "../services/SessionStateDetector";
+import { sessionStateDetector } from "../services/SessionStateDetector";
+import { SessionState } from "../types/services";
 
 /**
  * Clase que implementa un sistema de auto-reinicio para cuando los QR codes fallan

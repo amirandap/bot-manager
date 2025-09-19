@@ -22,8 +22,8 @@ import {
   getTextFieldForMediaType,
   validateMediaTypeSupport,
   getFileSizeLimit,
-  DetectedMediaType
 } from "../utils/mediaTypeDetector";
+import { DetectedMediaType } from "../types/utils";
 import {
   SendResponse,
   MediaSendResponse,

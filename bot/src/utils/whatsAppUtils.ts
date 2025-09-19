@@ -142,6 +142,11 @@ export async function initializeWhatsAppClient(
 
     // Log Puppeteer configuration details (Chromium path already shown in startup)
     logger.info(`Puppeteer config for ${process.platform}`, "⚙️");
+    
+    // Log user agent information
+    if (puppeteerOptions.userAgent) {
+      logger.info(`🌐 User Agent: ${puppeteerOptions.userAgent}`, "🌐");
+    }
 
     whatsappClient = new Client({
       authStrategy: new LocalAuth({
@@ -345,6 +350,35 @@ export async function initializeWhatsAppClient(
         
         logger.info("WhatsApp state: ready - WhatsApp client is ready", "🤖", undefined, "WHATSAPP_STATUS", "READY");
         logger.logLifecycleStep("READY");
+
+        // CONFIGURACIÓN PARA EVITAR INTERFERENCIA CON NOTIFICACIONES DEL TELÉFONO
+        try {
+          logger.info("🔧 Configurando opciones para minimizar interferencia con notificaciones...");
+          
+          // 1. Desactivar sincronización de fondo para evitar que el bot interfiera con las notificaciones
+          await whatsappClient!.setBackgroundSync(false);
+          logger.info("✅ Background sync desactivado - El bot no interferirá con las notificaciones del teléfono");
+          
+          // 2. Configurar presencia como no disponible para minimizar detección
+          whatsappClient!.sendPresenceUnavailable();
+          logger.info("✅ Presencia configurada como no disponible");
+          
+          // 3. Desactivar auto-descarga de medios para reducir actividad
+          whatsappClient!.setAutoDownloadPhotos(false);
+          whatsappClient!.setAutoDownloadVideos(false);
+          whatsappClient!.setAutoDownloadDocuments(false);
+          whatsappClient!.setAutoDownloadAudio(false);
+          logger.info("✅ Auto-descarga de medios desactivada para reducir actividad del bot");
+          
+          logger.info("🎯 Configuración completada - El bot ahora debería interferir menos con las notificaciones del teléfono");
+          
+          // CONFIGURAR USER AGENT PARA LINUX
+          await configureLinuxUserAgent();
+          
+        } catch (configError) {
+          logger.warn(`⚠️ Error aplicando configuraciones de notificación: ${configError}`);
+          // No fallar el startup por esto, solo advertir
+        }
 
         // Start monitoring browser metrics
         startBrowserMetricsMonitoring();
@@ -591,6 +625,173 @@ export function updateBrowserMemoryMetric(memoryMB: number): void {
  */
 export function updateBrowserCpuMetric(cpuPercent: number): void {
   logger.updateMetric("BROWSER_CPU", cpuPercent);
+}
+
+/**
+ * Configure Linux User Agent to present the bot as a Linux browser
+ */
+async function configureLinuxUserAgent(): Promise<void> {
+  const client = getWhatsAppClient();
+  
+  if (!client || !client.pupPage) {
+    logger.warn("⚠️ No se pudo configurar User Agent - Cliente o página no disponible");
+    return;
+  }
+
+  try {
+    // Get the configured user agent from Puppeteer config
+    const puppeteerOptions = puppeteerConfig.getConfiguration();
+    const linuxUserAgent = puppeteerOptions.userAgent || 
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+    // Set user agent on the page
+    await client.pupPage.setUserAgent(linuxUserAgent);
+    
+    // Override navigator properties to show Linux
+    await client.pupPage.evaluateOnNewDocument(() => {
+      // Override platform
+      Object.defineProperty(navigator, 'platform', {
+        get: () => 'Linux x86_64'
+      });
+      
+      // Override appVersion
+      Object.defineProperty(navigator, 'appVersion', {
+        get: () => '5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+      });
+      
+      // Override userAgent (in case it gets checked in JS)
+      Object.defineProperty(navigator, 'userAgent', {
+        get: () => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+      });
+      
+      // Override oscpu
+      Object.defineProperty(navigator, 'oscpu', {
+        get: () => 'Linux x86_64'
+      });
+    });
+    
+    logger.info("🐧 User Agent configurado para Linux - El bot se presentará como navegador Linux", "🐧");
+    logger.info(`🌐 User Agent: ${linuxUserAgent}`, "🌐");
+    
+    // Verificar la configuración
+    await verifyLinuxConfiguration();
+    
+  } catch (error) {
+    logger.warn(`⚠️ Error configurando User Agent para Linux: ${error}`);
+  }
+}
+
+/**
+ * Verify that the browser is correctly configured as Linux
+ */
+async function verifyLinuxConfiguration(): Promise<void> {
+  const client = getWhatsAppClient();
+  
+  if (!client || !client.pupPage) {
+    return;
+  }
+
+  try {
+    const browserInfo = await client.pupPage.evaluate(() => {
+      return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        appVersion: navigator.appVersion,
+        oscpu: (navigator as any).oscpu || 'N/A'
+      };
+    });
+    
+    logger.info("🔍 Verificación de configuración del navegador:", "🔍");
+    logger.info(`  📱 Platform: ${browserInfo.platform}`, "📱");
+    logger.info(`  🌐 User Agent: ${browserInfo.userAgent}`, "🌐");
+    logger.info(`  📋 App Version: ${browserInfo.appVersion}`, "📋");
+    logger.info(`  💻 OS CPU: ${browserInfo.oscpu}`, "💻");
+    
+    if (browserInfo.platform.includes('Linux') || browserInfo.userAgent.includes('Linux')) {
+      logger.info("✅ Bot configurado exitosamente para presentarse como Linux", "✅");
+    } else {
+      logger.warn("⚠️ El bot podría no estar presentándose como Linux - Verificar configuración", "⚠️");
+    }
+    
+  } catch (error) {
+    logger.warn(`⚠️ Error verificando configuración del navegador: ${error}`);
+  }
+}
+
+/**
+ * Configure notification settings to minimize interference with phone notifications
+ * Can be called dynamically to adjust bot behavior
+ */
+export async function configureNotificationSettings(options: {
+  backgroundSync?: boolean;
+  presenceAvailable?: boolean;
+  autoDownloadMedia?: boolean;
+} = {}): Promise<void> {
+  const client = getWhatsAppClient();
+  
+  if (!client) {
+    throw new Error("WhatsApp client not available");
+  }
+
+  try {
+    logger.info("🔧 Configurando ajustes de notificación...");
+
+    // Background sync configuration
+    const backgroundSync = options.backgroundSync ?? false;
+    await client.setBackgroundSync(backgroundSync);
+    logger.info(`📱 Background sync: ${backgroundSync ? 'activado' : 'desactivado'}`);
+
+    // Presence configuration
+    const presenceAvailable = options.presenceAvailable ?? false;
+    if (presenceAvailable) {
+      client.sendPresenceAvailable();
+      logger.info("👤 Presencia: disponible");
+    } else {
+      client.sendPresenceUnavailable();
+      logger.info("👤 Presencia: no disponible");
+    }
+
+    // Auto-download media configuration
+    const autoDownloadMedia = options.autoDownloadMedia ?? false;
+    client.setAutoDownloadPhotos(autoDownloadMedia);
+    client.setAutoDownloadVideos(autoDownloadMedia);
+    client.setAutoDownloadDocuments(autoDownloadMedia);
+    client.setAutoDownloadAudio(autoDownloadMedia);
+    logger.info(`📥 Auto-descarga de medios: ${autoDownloadMedia ? 'activada' : 'desactivada'}`);
+
+    logger.info("✅ Configuración de notificaciones aplicada exitosamente");
+  } catch (error) {
+    logger.error(`Error configurando ajustes de notificación: ${error}`);
+    throw error;
+  }
+}
+
+/**
+ * Apply phone-friendly settings to minimize notification interference
+ * This is the recommended configuration for normal phone usage
+ */
+export async function applyPhoneFriendlySettings(): Promise<void> {
+  await configureNotificationSettings({
+    backgroundSync: false,        // No interfere con notificaciones del teléfono
+    presenceAvailable: false,     // Minimiza detección como dispositivo activo
+    autoDownloadMedia: false      // Reduce actividad del bot
+  });
+  
+  logger.info("📱 Configuración amigable para teléfono aplicada - Las notificaciones deberían llegar normalmente");
+}
+
+/**
+ * Apply bot-optimized settings for maximum performance
+ * This configuration prioritizes bot functionality over phone notifications
+ */
+export async function applyBotOptimizedSettings(): Promise<void> {
+  await configureNotificationSettings({
+    backgroundSync: true,         // Sincronización completa
+    presenceAvailable: true,      // Presencia activa
+    autoDownloadMedia: true       // Descarga automática de medios
+  });
+  
+  logger.info("🤖 Configuración optimizada para bot aplicada - Máximo rendimiento del bot");
 }
 
 /**

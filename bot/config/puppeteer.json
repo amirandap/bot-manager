@@ -3,7 +3,8 @@
     "headless": true,
     "defaultViewport": null,
     "ignoreHTTPSErrors": true,
-    "devtools": false
+    "devtools": false,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
   },
   "browser": {
     "forceSystemChromium": false,
@@ -69,7 +70,8 @@
       "--disable-accelerated-2d-canvas",
       "--use-gl=swiftshader",
       "--ignore-gpu-blacklist",
-      "--no-zygote"
+      "--no-zygote",
+      "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     ],
     "whatsapp_optimized": [
       "--disable-features=AudioServiceOutOfProcess,TranslateUI",

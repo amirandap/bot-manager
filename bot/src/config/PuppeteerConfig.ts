@@ -14,6 +14,7 @@ interface PuppeteerJsonConfig {
     defaultViewport: null;
     ignoreHTTPSErrors: boolean;
     devtools: boolean;
+    userAgent?: string;
   };
   browser: {
     forceSystemChromium: boolean;
@@ -47,6 +48,7 @@ export interface PuppeteerConfiguration {
   defaultViewport: null;
   ignoreHTTPSErrors?: boolean;
   devtools?: boolean;
+  userAgent?: string;
 }
 
 export interface ChromiumValidationResult {
@@ -108,7 +110,8 @@ export class PuppeteerConfig {
         headless: true,
         defaultViewport: null,
         ignoreHTTPSErrors: true,
-        devtools: false
+        devtools: false,
+        userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
       },
       browser: {
         forceSystemChromium: false,
@@ -284,6 +287,11 @@ export class PuppeteerConfig {
       ignoreHTTPSErrors: this.config.general.ignoreHTTPSErrors,
       devtools: this.config.general.devtools,
     };
+
+    // Set user agent if specified
+    if (this.config.general.userAgent) {
+      config.userAgent = this.config.general.userAgent;
+    }
 
     // Set executable path only if using system Chromium
     if (chromiumPath) {
