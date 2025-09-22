@@ -1,3 +1,5 @@
+import { PM2ProcessMetrics } from "../services/PM2MetricsService";
+
 export interface Bot {
   id: string;
   name: string;
@@ -13,6 +15,14 @@ export interface Bot {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  
+  // PM2 integration fields
+  pm2?: PM2ProcessMetrics | null; // PM2 metrics (null if not available)
+  health?: {
+    status: "healthy" | "warning" | "critical" | "unknown";
+    issues: string[];
+    score: number;
+  }; // Health evaluation based on metrics
 }
 
 export interface BotConfig {

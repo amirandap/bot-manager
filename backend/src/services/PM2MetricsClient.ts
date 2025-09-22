@@ -52,56 +52,67 @@ export class PM2MetricsClient {
           return;
         }
 
-        const process = processDescription[0];
-        const env = process.pm2_env;
-        const monit = process.monit;
+        try {
+          const process = processDescription[0];
+          const env = process.pm2_env || {};
+          const monit = process.monit || {};
 
-        // Métricas básicas disponibles
-        const allMetrics = {
-          // Información del proceso
-          name: process.name,
-          pid: process.pid,
-          status: env.status,
-          uptime: env.pm_uptime,
-          restarts: env.restart_time,
+          // Safely extract metrics with fallbacks for transitional states
+          const allMetrics = {
+            // Información del proceso (siempre disponible)
+            name: process.name,
+            pid: process.pid || undefined,
+            status: env.status || "unknown",
+            uptime: env.pm_uptime || undefined,
+            restarts: env.restart_time || 0,
 
-          // Métricas de rendimiento
-          cpu: monit?.cpu || 0,
-          memory: Math.round((monit?.memory || 0) / 1024 / 1024), // Convert to MB
+            // Métricas de rendimiento (pueden no estar disponibles en estados transitorios)
+            cpu: this.safeGetNumber(monit?.cpu),
+            memory: this.safeGetNumber(monit?.memory) ? Math.round((monit.memory || 0) / 1024 / 1024) : undefined,
 
-          // Métricas de la aplicación (si están disponibles)
-          heap_size: env.axm_monitor?.["Heap Size"]?.value || 0,
-          heap_usage: env.axm_monitor?.["Heap Usage"]?.value || 0,
-          event_loop_latency:
-            env.axm_monitor?.["Event Loop Latency"]?.value || 0,
-          active_handles: env.axm_monitor?.["Active handles"]?.value || 0,
-          active_requests: env.axm_monitor?.["Active requests"]?.value || 0,
+            // Métricas de la aplicación (opcionales, pueden fallar en estados como QR_READY)
+            heap_size: this.safeGetMetricValue(env.axm_monitor, "Heap Size"),
+            heap_usage: this.safeGetMetricValue(env.axm_monitor, "Heap Usage"),
+            event_loop_latency: this.safeGetMetricValue(env.axm_monitor, "Event Loop Latency"),
+            active_handles: this.safeGetMetricValue(env.axm_monitor, "Active handles"),
+            active_requests: this.safeGetMetricValue(env.axm_monitor, "Active requests"),
 
-          // Métricas customizadas del bot - dinámicamente extraídas
-          customMetrics: this.extractCustomMetrics(env.axm_monitor),
+            // Métricas customizadas del bot - dinámicamente extraídas (con manejo de errores)
+            customMetrics: this.safeExtractCustomMetrics(env.axm_monitor),
 
-          // Logs
-          log_path: env.pm_out_log_path,
-          error_log_path: env.pm_err_log_path,
+            // Logs (pueden no estar disponibles)
+            log_path: env.pm_out_log_path || undefined,
+            error_log_path: env.pm_err_log_path || undefined,
 
-          // Variables de entorno (filtradas)
-          node_version: env.node_version,
+            // Variables de entorno (filtradas)
+            node_version: env.node_version || undefined,
 
-          // Métricas customizadas completas (si existen)
-          custom_metrics: env.axm_monitor || {},
-        };
+            // Métricas customizadas completas (si existen)
+            custom_metrics: env.axm_monitor || {},
+          };
 
-        // Si se especifican métricas específicas, filtrar
-        if (metrics.length > 0) {
-          const filteredMetrics: any = {};
-          metrics.forEach((metric) => {
-            if (allMetrics.hasOwnProperty(metric)) {
-              filteredMetrics[metric] = (allMetrics as any)[metric];
-            }
-          });
-          resolve(filteredMetrics);
-        } else {
-          resolve(allMetrics);
+          // Si se especifican métricas específicas, filtrar
+          if (metrics.length > 0) {
+            const filteredMetrics: any = {};
+            metrics.forEach((metric) => {
+              if (allMetrics.hasOwnProperty(metric)) {
+                filteredMetrics[metric] = (allMetrics as any)[metric];
+              }
+            });
+            resolve(filteredMetrics);
+          } else {
+            resolve(allMetrics);
+          }
+        } catch (extractionError) {
+          // Si hay error extrayendo métricas, devolver métricas básicas
+          console.warn(`⚠️ Error extracting metrics for ${processName}, returning basic info:`, extractionError);
+          const basicMetrics = {
+            name: processName,
+            status: "unknown",
+            customMetrics: {},
+            custom_metrics: {},
+          };
+          resolve(basicMetrics);
         }
       });
     });
@@ -213,6 +224,47 @@ export class PM2MetricsClient {
     });
 
     return customMetrics;
+  }
+
+  /**
+   * Extrae métricas customizadas de forma segura (maneja errores en estados transitorios)
+   */
+  private safeExtractCustomMetrics(axmMonitor: any): Record<string, any> {
+    try {
+      return this.extractCustomMetrics(axmMonitor);
+    } catch (error) {
+      console.warn(`⚠️ Error extracting custom metrics:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Obtiene un valor numérico de forma segura
+   */
+  private safeGetNumber(value: any): number | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value;
+    }
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? undefined : parsed;
+  }
+
+  /**
+   * Obtiene el valor de una métrica de axm_monitor de forma segura
+   */
+  private safeGetMetricValue(axmMonitor: any, metricName: string): any {
+    try {
+      if (!axmMonitor || !axmMonitor[metricName]) {
+        return undefined;
+      }
+      return axmMonitor[metricName]?.value;
+    } catch (error) {
+      console.warn(`⚠️ Error getting metric ${metricName}:`, error);
+      return undefined;
+    }
   }
 
   /**

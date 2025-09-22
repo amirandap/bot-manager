@@ -18,74 +18,80 @@ export class BotService {
       console.log("BotService: Retrieved", bots.length, "bots from config");
 
       // Enrich each bot with PM2 metrics as the primary source of truth
-      const botsWithMetrics = await Promise.all(
-        bots.map(async (bot) => {
-          if (bot.isExternal) {
-            // External bots don't have PM2 metrics
-            return {
+      const botsWithMetrics: Bot[] = [];
+      
+      // Process bots sequentially to avoid PM2 connection conflicts
+      for (const bot of bots) {
+        if (bot.isExternal) {
+          // External bots don't have PM2 metrics
+          botsWithMetrics.push({
+            ...bot,
+            status: "stopped" as const,
+            pm2: null,
+          });
+          continue;
+        }
+
+        // Get PM2 metrics for internal bots
+        const pm2ProcessId = bot.pm2ServiceId || bot.id;
+        console.log(`🔍 Getting PM2 metrics for bot ${bot.id} (process: ${pm2ProcessId})`);
+
+        try {
+          const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
+          
+          if (!metrics) {
+            console.log(`❌ No PM2 metrics found for ${pm2ProcessId}`);
+            botsWithMetrics.push({
               ...bot,
               status: "stopped" as const,
               pm2: null,
-            };
+            });
+            continue;
           }
 
-          // Get PM2 metrics for internal bots
-          const pm2ProcessId = bot.pm2ServiceId || bot.id;
-          console.log(`🔍 Getting PM2 metrics for bot ${bot.id} (process: ${pm2ProcessId})`);
+          // Evaluate health based on metrics
+          const healthEvaluation = pm2MetricsService.evaluateProcessHealth(metrics);
 
-          try {
-            const metrics = await pm2MetricsService.getProcessMetrics(pm2ProcessId);
-            
-            if (!metrics) {
-              console.log(`❌ No PM2 metrics found for ${pm2ProcessId}`);
-              return {
-                ...bot,
-                status: "stopped" as const,
-                pm2: null,
-              };
-            }
-
-            // Evaluate health based on metrics
-            const healthEvaluation = pm2MetricsService.evaluateProcessHealth(metrics);
-
-            // Map PM2 status to bot status (PM2 is the source of truth)
-            let status: "spawning" | "online" | "error" | "stopped" | "unknown";
-            switch (metrics.status) {
-              case "online":
-                status = healthEvaluation.status === "critical" ? "error" : "online";
-                break;
-              case "stopped":
-                status = "stopped";
-                break;
-              case "errored":
-                status = "error";
-                break;
-              case "launching":
-                status = "spawning";
-                break;
-              default:
-                status = "unknown";
-            }
-
-            console.log(`📊 Bot ${bot.id} status from PM2: ${metrics.status} -> ${status}`);
-
-            return {
-              ...bot,
-              status,
-              pm2: metrics,
-              health: healthEvaluation,
-            };
-
-          } catch (error) {
-            console.error(`❌ Error getting PM2 metrics for bot ${bot.id}:`, error);
-            return {
-              ...bot,
-              status: "stopped" as const,
-              pm2: null,
-            };
+          // Map PM2 status to bot status (PM2 is the source of truth)
+          let status: "spawning" | "online" | "error" | "stopped" | "unknown";
+          switch (metrics.status) {
+            case "online":
+              status = healthEvaluation.status === "critical" ? "error" : "online";
+              break;
+            case "stopped":
+              status = "stopped";
+              break;
+            case "errored":
+              status = "error";
+              break;
+            case "launching":
+              status = "spawning";
+              break;
+            default:
+              status = "unknown";
           }
-        })
-      );
+
+          console.log(`📊 Bot ${bot.id} status from PM2: ${metrics.status} -> ${status}`);
+
+          botsWithMetrics.push({
+            ...bot,
+            status,
+            pm2: metrics,
+            health: healthEvaluation,
+          });
+
+        } catch (error) {
+          console.error(`❌ Error getting PM2 metrics for bot ${bot.id}:`, error);
+          botsWithMetrics.push({
+            ...bot,
+            status: "stopped" as const,
+            pm2: null,
+          });
+        }
+      }
+
+      console.log("BotService: Enriched all bots with PM2 metrics");
+      return botsWithMetrics;
 
       console.log("BotService: Enriched all bots with PM2 metrics");
       return botsWithMetrics;
