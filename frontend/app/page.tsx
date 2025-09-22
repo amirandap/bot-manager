@@ -8,12 +8,20 @@ export default function Home() {
     <main className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Bot Management Dashboard</h1>
-        <Link
-          href="/api-docs"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-        >
-          📚 Ver Documentación API
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/contacts"
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+          >
+            👥 Contact Mappings
+          </Link>
+          <Link
+            href="/api-docs"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            📚 Ver Documentación API
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<DashboardSkeleton />}>
         <BotDashboard />
