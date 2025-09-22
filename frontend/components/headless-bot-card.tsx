@@ -35,78 +35,116 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
   const [showQrModal, setShowQrModal] = useState(false)
 
   const getDisplayStatus = (): { type: StatusType; label: string; color: string } => {
-    if (!botStatus || !botStatus.pm2) {
+    // PM2 is the single source of truth - if no bot status, it's offline
+    if (!botStatus) {
       return { type: "offline", label: "Offline", color: "bg-red-500" }
     }
 
-    const pm2Status = botStatus.pm2.status
-    const whatsappStatus = botStatus.pm2.whatsappStatus
-    const qrCodeStatus = botStatus.pm2.qrCodeStatus
-    const apiServerStatus = botStatus.pm2.apiServerStatus
-    const botStatusText = botStatus.pm2.botStatus
-    const errorCount = botStatus.pm2.errorCount || 0
-
-    // Logical status determination based on real metrics
+    // Use the backend status which is now derived from PM2
+    const backendStatus = botStatus.status
     
-    // 1. If process is not running, it's offline
-    if (pm2Status !== "online") {
-      return { type: "offline", label: "Offline", color: "bg-red-500" }
+    // For external bots (no PM2 data), use backend status directly
+    if (botStatus.isExternal || !botStatus.pm2) {
+      switch (backendStatus) {
+        case "online":
+          return { type: "online", label: "Online", color: "bg-green-500" }
+        case "error":
+          return { type: "error", label: "Error", color: "bg-red-500" }
+        case "spawning":
+          return { type: "starting", label: "Starting", color: "bg-orange-500" }
+        case "stopped":
+          return { type: "offline", label: "Offline", color: "bg-red-500" }
+        default:
+          return { type: "offline", label: "Unknown", color: "bg-gray-500" }
+      }
     }
 
-    // 2. If there are active errors, show error status
+    // For PM2-managed bots, enhance status with PM2 metrics
+    const pm2Metrics = botStatus.pm2
+    const whatsappStatus = pm2Metrics.whatsappStatus
+    const qrCodeStatus = pm2Metrics.qrCodeStatus
+    const errorCount = pm2Metrics.errorCount || 0
+
+    // If there are active errors, show error status
     if (errorCount > 0) {
       return { type: "error", label: "Error", color: "bg-red-500" }
     }
 
-    // 3. For WhatsApp bots, check WhatsApp-specific states
-    if (bot.type === "whatsapp") {
-      // QR code needs to be scanned
-      if (qrCodeStatus === "QR_READY" || whatsappStatus === "QR_READY") {
-        return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
-      }
+    // Backend status is derived from PM2, so use it as base
+    switch (backendStatus) {
+      case "online":
+        // For WhatsApp bots, check for special states
+        if (bot.type === "whatsapp") {
+          // QR code needs to be scanned
+          if (qrCodeStatus === "QR_READY" || whatsappStatus === "QR_READY") {
+            return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
+          }
 
-      // WhatsApp is connected and working
-      if (whatsappStatus === "CONNECTED" || whatsappStatus === "READY") {
-        // Check for performance issues
-        const cpuUsage = botStatus.pm2.cpu || 0
-        const heapUsage = botStatus.pm2.heapUsage || 0
-        
-        if (cpuUsage > 80 || heapUsage > 90) {
-          return { type: "degraded", label: "Degraded", color: "bg-orange-500" }
-        }
-        
-        // Check if bot is actively working vs idle
-        if (cpuUsage < 5 && heapUsage < 50) {
-          return { type: "idle", label: "Idle", color: "bg-green-500" }
+          // Check for performance issues
+          const cpuUsage = pm2Metrics.cpu || 0
+          const heapUsage = pm2Metrics.heapUsage || 0
+          
+          if (cpuUsage > 80 || heapUsage > 90) {
+            return { type: "degraded", label: "Degraded", color: "bg-orange-500" }
+          }
+          
+          // Check if bot is actively working vs idle
+          if (cpuUsage < 5 && heapUsage < 50) {
+            return { type: "idle", label: "Idle", color: "bg-green-500" }
+          }
         }
         
         return { type: "online", label: "Online", color: "bg-green-500" }
-      }
 
-      // WhatsApp is connecting or starting
-      if (whatsappStatus === "CONNECTING" || botStatusText?.includes("Initializing")) {
+      case "error":
+        return { type: "error", label: "Error", color: "bg-red-500" }
+
+      case "spawning":
         return { type: "starting", label: "Starting", color: "bg-orange-500" }
-      }
-    }
 
-    // 4. For any bot type, if API server is up and process is online
-    if (apiServerStatus === "UP" || apiServerStatus === 1) {
-      return { type: "online", label: "Online", color: "bg-green-500" }
-    }
+      case "stopped":
+        return { type: "offline", label: "Offline", color: "bg-red-500" }
 
-    // 5. Default: if process is online but we don't have clear status
-    return { type: "starting", label: "Starting", color: "bg-orange-500" }
+      default:
+        return { type: "offline", label: "Unknown", color: "bg-gray-500" }
+    }
   }
 
   const getStatusMessage = (): string => {
     const displayStatus = getDisplayStatus()
-    const metrics = botStatus?.pm2
+    
+    // If no bot status, show basic message
+    if (!botStatus) {
+      return "Sin conexión"
+    }
 
+    // Use backend status message when available (derived from PM2)
+    if (botStatus.statusMessage) {
+      switch (displayStatus.type) {
+        case "error":
+          return "Se requiere atención"
+        case "qr_required":
+          return "QR listo para escanear"
+        case "degraded":
+          const pm2Metrics = botStatus.pm2
+          return pm2Metrics?.cpu && pm2Metrics.cpu > 80 ? "CPU alta" : "Memoria alta"
+        default:
+          return botStatus.statusMessage
+      }
+    }
+
+    // Fallback to PM2 bot status if available
+    const pm2BotStatus = botStatus.pm2?.botStatus
+    if (pm2BotStatus) {
+      return pm2BotStatus
+    }
+
+    // Default messages based on display status
     switch (displayStatus.type) {
       case "offline":
         return "Servicio detenido"
       case "starting":
-        return metrics?.botStatus || "Iniciando servicio..."
+        return "Iniciando servicio..."
       case "error":
         return "Se requiere atención"
       case "idle":
@@ -114,9 +152,9 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
       case "qr_required":
         return "QR listo para escanear"
       case "degraded":
-        return metrics?.cpu && metrics.cpu > 80 ? "CPU alta" : "Memoria alta"
+        return "Rendimiento degradado"
       case "online":
-        return metrics?.botStatus || "Operativo"
+        return "Operativo"
       default:
         return "Estado desconocido"
     }

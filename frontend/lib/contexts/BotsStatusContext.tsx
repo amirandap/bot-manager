@@ -64,21 +64,28 @@ export interface UnifiedBotStatus {
   id: string;
   name: string;
   type?: 'whatsapp' | 'discord';
-  status: 'online' | 'offline' | 'stopped' | 'stopping' | 'errored' | 'launching' | 'unknown';
+  status: 'spawning' | 'online' | 'error' | 'stopped' | 'unknown';
   
-  // Optional core fields that may come from backend
-  pushName?: string;
-  apiResponsive?: boolean;
-  lastSeen?: string;
+  // Backend fields that are now included with PM2 data
+  pm2ServiceId?: string;
+  isExternal?: boolean;
+  statusMessage?: string;
+  apiHost?: string;
+  apiPort?: number;
+  phoneNumber?: string | null;
+  pushName?: string | null;
+  enabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   
-  // PM2 metrics - comprehensive
-  pm2?: BotPM2Metrics;
+  // PM2 metrics - comprehensive (now always included from backend)
+  pm2?: BotPM2Metrics | null;
   
-  // Health metrics
+  // Health metrics (now always included from backend)
   health?: BotHealth;
   
   // Dynamic field support - ANY additional field from backend status
-  [key: string]: string | number | boolean | BotPM2Metrics | BotHealth | undefined;
+  [key: string]: string | number | boolean | BotPM2Metrics | BotHealth | null | undefined;
 }
 
 interface BotsStatusContextType {
@@ -111,7 +118,11 @@ export function BotsStatusProvider({
     try {
       setError(null);
       
-      const response = await fetch('/api/status', {
+      const API_BASE = process.env.NODE_ENV === 'production' 
+        ? 'https://wapi.softgrouprd.com' 
+        : 'http://localhost:3001';
+      
+      const response = await fetch(`${API_BASE}/api/bots`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

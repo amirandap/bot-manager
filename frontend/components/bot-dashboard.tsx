@@ -18,6 +18,7 @@ export default function BotDashboard() {
 
   const handleDeleteBot = async (botId: string) => {
     // TODO: Implement delete functionality through context
+    console.log('Delete bot:', botId);
     // For now, refresh after delete action
     await refreshBots();
   };
@@ -27,6 +28,7 @@ export default function BotDashboard() {
   };
 
   const handleBotCreated = () => {
+    console.log('Bot created callback');
     setShowSpawner(false);
     refreshBots();
   };
@@ -171,18 +173,18 @@ export default function BotDashboard() {
               )}
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {bots.map((bot) => {
-                  // Convert UnifiedBotStatus to Bot format
+                  // Bot data now comes directly from backend with PM2 metrics
                   const adaptedBot = {
                     id: bot.id,
                     name: bot.name,
-                    type: bot.type,
-                    apiHost: 'localhost', // Default values since not in UnifiedBotStatus
-                    apiPort: 7200, // Default port
-                    phoneNumber: bot.pm2?.clientPhoneNumber || null,
-                    pushName: bot.pushName || null,
-                    enabled: bot.status === 'online',
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
+                    type: bot.type || 'whatsapp',
+                    apiHost: bot.apiHost || 'localhost',
+                    apiPort: bot.apiPort || 7200,
+                    phoneNumber: bot.phoneNumber || bot.pm2?.clientPhoneNumber || null,
+                    pushName: bot.pushName || bot.pm2?.clientPushName || null,
+                    enabled: bot.enabled !== undefined ? bot.enabled : bot.status === 'online',
+                    createdAt: bot.createdAt || new Date().toISOString(),
+                    updatedAt: bot.updatedAt || new Date().toISOString(),
                   };
 
                   return (
