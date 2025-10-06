@@ -38,6 +38,7 @@ export interface PM2ProcessMetrics {
   pm2Id?: number;
   createdAt?: string;
   nodeVersion?: string;
+  botVersion?: string;
   execPath?: string;
   logPath?: string;
   errorLogPath?: string;
@@ -135,6 +136,7 @@ export class PM2MetricsService {
         pm2Id: undefined,
         createdAt: undefined,
         nodeVersion: metrics.node_version,
+        botVersion: metrics.customMetrics?.['BOT_VERSION'] || metrics.customMetrics?.['Bot Version'],
         execPath: undefined,
         logPath: metrics.log_path,
         errorLogPath: metrics.error_log_path,

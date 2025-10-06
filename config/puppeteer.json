@@ -46,19 +46,29 @@
     "privacy": [
       "--disable-background-networking",
       "--disable-notifications",
+      "--disable-desktop-notifications",
       "--disable-offer-store-unmasked-wallet-cards",
       "--disable-popup-blocking",
       "--disable-speech-api",
       "--mute-audio",
       "--no-pings",
       "--disable-logging",
-      "--silent"
+      "--silent",
+      "--disable-permissions-api",
+      "--disable-media-stream",
+      "--disable-camera",
+      "--disable-microphone"
     ],
     "automation": [
       "--disable-blink-features=AutomationControlled",
       "--autoplay-policy=user-gesture-required",
       "--disable-print-preview",
-      "--hide-scrollbars"
+      "--hide-scrollbars",
+      "--disable-web-security",
+      "--disable-site-isolation-trials",
+      "--disable-features=VizDisplayCompositor,AudioServiceOutOfProcess,Translate",
+      "--user-data-dir=/tmp/wabot-chrome-data",
+      "--profile-directory=WABot"
     ],
     "linux": [
       "--disable-software-rasterizer",
@@ -68,7 +78,12 @@
       "--no-zygote"
     ],
     "whatsapp_optimized": [
-      "--disable-features=AudioServiceOutOfProcess,TranslateUI"
+      "--disable-features=AudioServiceOutOfProcess,TranslateUI",
+      "--no-first-run",
+      "--disable-default-browser-check",
+      "--disable-sync",
+      "--disable-extensions",
+      "--incognito"
     ]
   },
   "environments": {

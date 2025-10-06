@@ -4,6 +4,9 @@ import { EnvironmentManager } from "./config/EnvironmentManager";
 import { puppeteerConfig } from "./config/PuppeteerConfig";
 import { DirectoryManagerService } from "./services/DirectoryManagerService";
 
+// Bot Version - Update this when making significant changes
+export const BOT_VERSION = "2.1.0";
+
 // Import utility functions instead of service classes
 import {
   initializeWhatsAppClient,
@@ -147,6 +150,10 @@ async function startBot(): Promise<void> {
 
     const envManager = EnvironmentManager.getInstance();
     const config = envManager.getConfig();
+    
+    // Initialize bot version metric
+    logger.updateMetric("BOT_VERSION", BOT_VERSION);
+    logger.info(`📋 Bot Version: ${BOT_VERSION}`, "📋");
     
     // Step 2: Initialize WhatsApp client and wait for it to be ready
     getSystemInfo(); // Show system information
