@@ -44,9 +44,10 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
     }
 
     const whatsappStatus = botStatus.pm2.whatsappStatus
+    const qrCodeStatus = botStatus.pm2.qrCodeStatus
     const processState = getProcessState()
 
-    if (whatsappStatus === "QR_READY") {
+    if (whatsappStatus === "QR_READY" || qrCodeStatus === "QR_READY" || qrCodeStatus === "SCANME") {
       return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
     }
 
@@ -168,10 +169,14 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
 
   const handleScanQR = useCallback(async () => {
     // QR scanning logic using context data
-    if (bot.type === "whatsapp" && botStatus?.pm2?.qrCodeStatus === "QR_READY") {
+    if (bot.type === "whatsapp" && (
+      botStatus?.pm2?.qrCodeStatus === "QR_READY" || 
+      botStatus?.pm2?.qrCodeStatus === "SCANME" ||
+      botStatus?.pm2?.whatsappStatus === "QR_READY"
+    )) {
       setShowQrModal(true)
     }
-  }, [bot.type, botStatus?.pm2?.qrCodeStatus])
+  }, [bot.type, botStatus?.pm2?.qrCodeStatus, botStatus?.pm2?.whatsappStatus])
 
   const displayStatus = getDisplayStatus()
   const metrics = botStatus?.pm2

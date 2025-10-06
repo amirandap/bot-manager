@@ -74,5 +74,11 @@ export const METRICS: Record<string, MetricDefinition> = {
     type: 'metric',
     id: 'whatsapp/client-phone',
     unit: 'string'
+  },
+  BOT_VERSION: {
+    name: 'Bot Version',
+    type: 'metric',
+    id: 'bot/version',
+    unit: 'string'
   }
 };

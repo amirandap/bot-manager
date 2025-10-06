@@ -106,6 +106,7 @@ export interface BotStatus {
     httpP95Latency?: number;
     httpMeanLatency?: number;
     nodeVersion?: string;
+    botVersion?: string;
     logPath?: string;
     errorLogPath?: string;
     outLogPath?: string;

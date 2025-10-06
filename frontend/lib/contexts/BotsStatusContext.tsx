@@ -42,6 +42,7 @@ export interface BotPM2Metrics {
   
   // System metrics
   nodeVersion?: string;
+  botVersion?: string;
   logPath?: string;
   errorLogPath?: string;
   outLogPath?: string;

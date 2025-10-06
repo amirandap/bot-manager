@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   QrCode,
   Maximize2,
+  Tag,
 } from "lucide-react"
 import type { Bot } from "@/lib/types"
 import { useState, useCallback } from "react"
@@ -76,7 +77,7 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
         // For WhatsApp bots, check for special states
         if (bot.type === "whatsapp") {
           // QR code needs to be scanned
-          if (qrCodeStatus === "QR_READY" || whatsappStatus === "QR_READY") {
+          if (qrCodeStatus === "QR_READY" || qrCodeStatus === "SCANME" || qrCodeStatus === "SCANNED" || whatsappStatus === "QR_READY") {
             return { type: "qr_required", label: "QR Required", color: "bg-orange-500" }
           }
 
@@ -226,10 +227,15 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
 
   const handleScanQR = useCallback(async () => {
     // QR scanning logic using context data
-    if (bot.type === "whatsapp" && botStatus?.pm2?.qrCodeStatus === "QR_READY") {
+    if (bot.type === "whatsapp" && (
+      botStatus?.pm2?.qrCodeStatus === "QR_READY" || 
+      botStatus?.pm2?.qrCodeStatus === "SCANME" ||
+      botStatus?.pm2?.qrCodeStatus === "SCANNED" ||
+      botStatus?.pm2?.whatsappStatus === "QR_READY"
+    )) {
       setShowQrModal(true)
     }
-  }, [bot.type, botStatus?.pm2?.qrCodeStatus])
+  }, [bot.type, botStatus?.pm2?.qrCodeStatus, botStatus?.pm2?.whatsappStatus])
 
   const displayStatus = getDisplayStatus()
   const metrics = botStatus?.pm2
@@ -303,6 +309,14 @@ export default function HeadlessBotCard({ bot, onDelete, onRefresh }: HeadlessBo
                 <span className="text-gray-600">Restarts</span>
                 <span className="font-medium">{metrics.restarts || 0}</span>
               </div>
+              
+              {metrics.botVersion && (
+                <div className="flex items-center gap-2">
+                  <Tag className="h-3 w-3 text-gray-400" />
+                  <span className="text-gray-600">Version</span>
+                  <span className="font-medium">{metrics.botVersion}</span>
+                </div>
+              )}
             </div>
           )}
 
