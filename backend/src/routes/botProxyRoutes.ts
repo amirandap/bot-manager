@@ -816,4 +816,173 @@ export function setBotProxyRoutes(app: Router) {
     "/api/bots/confirmation",
     botProxyController.sendConfirmationMessage.bind(botProxyController)
   );
+
+  /**
+   * @swagger
+   * /api/bots/add-to-group:
+   *   post:
+   *     summary: Add contact to WhatsApp group
+   *     tags: [Bot Proxy - Messaging]
+   *     description: Add one or more contacts to a WhatsApp group
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [botId, groupName, participants]
+   *             properties:
+   *               botId:
+   *                 type: string
+   *                 description: Unique bot identifier
+   *                 example: "whatsapp-bot-1234567890"
+   *               groupName:
+   *                 type: string
+   *                 description: Name of the WhatsApp group
+   *                 example: "Marketing Team"
+   *               participants:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of phone numbers to add to the group
+   *                 example: ["+1234567890", "+0987654321"]
+   *               groupId:
+   *                 type: string
+   *                 description: Optional group ID if known (alternative to groupName)
+   *                 example: "1234567890-1234567890@g.us"
+   *           examples:
+   *             add_by_name:
+   *               summary: Add participants by group name
+   *               value:
+   *                 botId: "whatsapp-bot-1234567890"
+   *                 groupName: "Marketing Team"
+   *                 participants: ["+1234567890", "+0987654321"]
+   *             add_by_id:
+   *               summary: Add participants by group ID
+   *               value:
+   *                 botId: "whatsapp-bot-1234567890"
+   *                 groupId: "1234567890-1234567890@g.us"
+   *                 participants: ["+1234567890"]
+   *     responses:
+   *       200:
+   *         description: Participants added successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 groupId:
+   *                   type: string
+   *                   example: "1234567890-1234567890@g.us"
+   *                 groupName:
+   *                   type: string
+   *                   example: "Marketing Team"
+   *                 addedParticipants:
+   *                   type: array
+   *                   items:
+   *                     type: string
+   *                   example: ["+1234567890", "+0987654321"]
+   *                 failedParticipants:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       phoneNumber:
+   *                         type: string
+   *                       reason:
+   *                         type: string
+   *                   example: []
+   *       400:
+   *         description: Bot ID, group name/ID, and participants are required
+   *       404:
+   *         description: Bot not found or group not found
+   *       500:
+   *         description: Bot not responding or server error
+   */
+  app.post(
+    "/api/bots/add-to-group",
+    botProxyController.addToGroup.bind(botProxyController)
+  );
+
+  /**
+   * @swagger
+   * /api/bots/verify-number:
+   *   post:
+   *     summary: Verificar número de WhatsApp
+   *     tags: [Bot Proxy - Verification]
+   *     description: Verifica si un número de teléfono está registrado en WhatsApp. Si no se proporciona botId, se usa automáticamente el primer bot disponible.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [phoneNumber]
+   *             properties:
+   *               phoneNumber:
+   *                 type: string
+   *                 description: Número de teléfono con código de país
+   *                 example: "+1234567890"
+   *               botId:
+   *                 type: string
+   *                 description: Identificador único del bot (opcional - se auto-selecciona si no se proporciona)
+   *                 example: "whatsapp-bot-1234567890"
+   *           examples:
+   *             verify_number_auto:
+   *               summary: Verificar número con bot automático
+   *               value:
+   *                 phoneNumber: "+1234567890"
+   *             verify_number_specific:
+   *               summary: Verificar número con bot específico
+   *               value:
+   *                 phoneNumber: "+1234567890"
+   *                 botId: "whatsapp-bot-1234567890"
+   *     responses:
+   *       200:
+   *         description: Verificación completada exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 phoneNumber:
+   *                   type: string
+   *                   example: "+1234567890"
+   *                 isRegistered:
+   *                   type: boolean
+   *                   example: true
+   *                 numberId:
+   *                   type: string
+   *                   example: "1234567890@c.us"
+   *                 formatted:
+   *                   type: string
+   *                   example: "+1234567890"
+   *                 isValid:
+   *                   type: boolean
+   *                   example: true
+   *                 errorDetails:
+   *                   type: string
+   *                   nullable: true
+   *                   example: null
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                   example: "2025-10-06T23:30:00Z"
+   *       400:
+   *         description: Número de teléfono requerido
+   *       503:
+   *         description: No hay bots disponibles para verificación
+   *       500:
+   *         description: Error del servidor o bot no responde
+   */
+  app.post(
+    "/api/bots/verify-number",
+    botProxyController.verifyWhatsAppNumber.bind(botProxyController)
+  );
 }

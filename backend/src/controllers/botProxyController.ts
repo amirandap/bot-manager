@@ -57,6 +57,14 @@ export class BotProxyController {
     return this.configController.getGroups(req, res);
   }
 
+  public async addToGroup(req: Request, res: Response): Promise<void> {
+    return this.configController.addToGroup(req, res);
+  }
+
+  public async verifyWhatsAppNumber(req: Request, res: Response): Promise<void> {
+    return this.configController.verifyWhatsAppNumber(req, res);
+  }
+
   // ===== MESSAGING OPERATIONS =====
   public async sendMessage(req: Request, res: Response): Promise<void> {
     return this.messagingController.sendMessage(req, res);
