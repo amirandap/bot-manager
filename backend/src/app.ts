@@ -4,6 +4,9 @@ import { setBotProxyRoutes } from "./routes/botProxyRoutes";
 import { setStatusRoutes } from "./routes/statusRoutes";
 import { setDeployRoutes } from "./routes/deployRoutes";
 import { setLogRoutes } from "./routes/logRoutes";
+import verifyRoutes from "./routes/verifyRoutes";
+import apiKeyRoutes from "./routes/apiKeyRoutes";
+// Monitoring routes
 import messageMonitoringRoutes from "./routes/messageMonitoringRoutes";
 import contactMappingRoutes from "./routes/contactMappingRoutes";
 import { setupSwagger } from "./swagger";
@@ -67,6 +70,12 @@ setBotsRoutes(app);
 setStatusRoutes(app);
 setDeployRoutes(app);
 setLogRoutes(app);
+
+// Set up Twilio-compatible Verify API routes
+app.use('/api', verifyRoutes);
+
+// Set up API key management routes (admin)
+app.use('/api/admin', apiKeyRoutes);
 
 // Set up message monitoring routes
 app.use('/api/monitoring', messageMonitoringRoutes);

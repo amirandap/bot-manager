@@ -42,6 +42,22 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
 
   // Basic middleware
   expressApp.use(express.json());
+  
+  // CORS Configuration
+  expressApp.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    
+    next();
+  });
+  
   expressApp.use(addRequestId);
   expressApp.use(logRequest);
 
@@ -917,6 +933,433 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
         path: "unknown",
         error: "Failed to get cache stats",
         details: errorMessage,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // ============================================================================
+  // GROUP MANAGEMENT ENDPOINTS
+  // ============================================================================
+
+  /**
+   * @swagger
+   * /add-to-group:
+   *   post:
+   *     summary: Add participants to WhatsApp group
+   *     tags: [Group Management]
+   *     description: Add one or more participants to a WhatsApp group using group name or ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [participants]
+   *             properties:
+   *               groupName:
+   *                 type: string
+   *                 description: Name of the WhatsApp group (alternative to groupId)
+   *                 example: "Marketing Team"
+   *               groupId:
+   *                 type: string
+   *                 description: WhatsApp group ID (alternative to groupName)
+   *                 example: "1234567890-1234567890@g.us"
+   *               participants:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                 description: Array of phone numbers to add to the group
+   *                 example: ["+1234567890", "+0987654321"]
+   *           examples:
+   *             add_by_name:
+   *               summary: Add participants by group name
+   *               value:
+   *                 groupName: "Marketing Team"
+   *                 participants: ["+1234567890", "+0987654321"]
+   *             add_by_id:
+   *               summary: Add participants by group ID
+   *               value:
+   *                 groupId: "1234567890-1234567890@g.us"
+   *                 participants: ["+1234567890"]
+   *     responses:
+   *       200:
+   *         description: Participants added successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 groupId:
+   *                   type: string
+   *                   example: "1234567890-1234567890@g.us"
+   *                 groupName:
+   *                   type: string
+   *                   example: "Marketing Team"
+   *                 addedParticipants:
+   *                   type: array
+   *                   items:
+   *                     type: string
+   *                   example: ["+1234567890", "+0987654321"]
+   *                 failedParticipants:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       phoneNumber:
+   *                         type: string
+   *                       reason:
+   *                         type: string
+   *                   example: []
+   *                 message:
+   *                   type: string
+   *                   example: "Successfully added 2 participants to the group"
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                   example: "2025-10-06T23:30:00Z"
+   *       400:
+   *         description: Missing required parameters or invalid input
+   *       404:
+   *         description: Group not found
+   *       500:
+   *         description: Server error or WhatsApp client not ready
+   */
+  expressApp.post("/add-to-group", async (req, res) => {
+    const { groupName, groupId, participants } = req.body;
+
+    // Validation
+    if (!groupName && !groupId) {
+      return res.status(400).json({
+        success: false,
+        error: "Either groupName or groupId is required"
+      });
+    }
+
+    if (!participants || !Array.isArray(participants) || participants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Participants array is required and must not be empty"
+      });
+    }
+
+    try {
+      // Get WhatsApp client
+      const client = getWhatsAppClient();
+      if (!client) {
+        return res.status(500).json({
+          success: false,
+          error: "WhatsApp client not ready"
+        });
+      }
+
+      let targetGroupId = groupId;
+      let targetGroupName = groupName;
+
+      // If group name is provided but not ID, find the group
+      if (groupName && !groupId) {
+        try {
+          const chats = await client.getChats();
+          const groups = chats.filter(chat => chat.isGroup);
+          const targetGroup = groups.find(group => 
+            group.name.toLowerCase() === groupName.toLowerCase()
+          );
+
+          if (!targetGroup) {
+            return res.status(404).json({
+              success: false,
+              error: `Group with name "${groupName}" not found`,
+              availableGroups: groups.map(g => ({ id: g.id._serialized, name: g.name }))
+            });
+          }
+
+          targetGroupId = targetGroup.id._serialized;
+          targetGroupName = targetGroup.name;
+        } catch (error: any) {
+          return res.status(500).json({
+            success: false,
+            error: "Failed to retrieve groups",
+            details: error.message
+          });
+        }
+      } else if (groupId && !groupName) {
+        // If only groupId provided, get the group name for logging
+        try {
+          const chat = await client.getChatById(targetGroupId!);
+          if (chat.isGroup) {
+            targetGroupName = chat.name;
+          }
+        } catch (error: any) {
+          // Not critical, continue without name
+          logger.warn(`Could not retrieve group name for ${targetGroupId}: ${error.message}`);
+        }
+      }
+
+      // Format and validate participants
+      const { formatRecipient } = await import("./recipientFormattingUtils");
+      const formattedParticipants: string[] = [];
+      const invalidParticipants: string[] = [];
+
+      for (const participant of participants) {
+        try {
+          const formatted = formatRecipient(participant);
+          
+          // Check if number is valid on WhatsApp
+          const numberId = await client.getNumberId(formatted);
+          if (numberId) {
+            formattedParticipants.push(formatted);
+          } else {
+            invalidParticipants.push(participant);
+          }
+        } catch (error) {
+          invalidParticipants.push(participant);
+        }
+      }
+
+      if (formattedParticipants.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No valid WhatsApp numbers found in participants list",
+          invalidParticipants
+        });
+      }
+
+      // Add participants to group
+      const addedParticipants: string[] = [];
+      const failedParticipants: Array<{phoneNumber: string, reason: string}> = [];
+
+      try {
+        // Get the group chat
+        const chat = await client.getChatById(targetGroupId!);
+        
+        if (!chat.isGroup) {
+          return res.status(400).json({
+            success: false,
+            error: "Provided ID is not a group"
+          });
+        }
+
+        // Check if bot is admin before attempting to add participants
+        const groupMetadata = await (chat as any).groupMetadata;
+        const botNumber = client.info.wid._serialized;
+        const botParticipant = groupMetadata.participants.find((p: any) => p.id._serialized === botNumber);
+        
+        logger.info(`Bot admin check - Bot: ${botNumber}, Group: ${targetGroupName}`);
+        logger.info(`Bot participant found: ${!!botParticipant}, Is admin: ${botParticipant?.isAdmin}`);
+        
+        if (!botParticipant || !botParticipant.isAdmin) {
+          logger.warn(`Bot is not admin of group ${targetGroupName}. Cannot add participants.`);
+          return res.status(403).json({
+            success: false,
+            error: "Bot is not an administrator of this group",
+            message: "The bot must be a group administrator to add participants. Please promote the bot to admin first.",
+            groupId: targetGroupId,
+            groupName: targetGroupName,
+            botNumber: botNumber,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        logger.info(`Bot is admin of group ${targetGroupName}. Proceeding to add participants.`);
+
+        // Add each participant individually for better error handling
+        for (const participant of formattedParticipants) {
+          try {
+            // Use the addParticipants method available on group chats
+            // Note: We use 'as any' here because TypeScript may not have the latest WhatsApp Web.js types
+            const result = await (chat as any).addParticipants([participant]);
+            logger.info(`Add participant result for ${participant}:`, JSON.stringify(result));
+            addedParticipants.push(participant);
+            logger.info(`Successfully added ${participant} to group ${targetGroupName}`);
+          } catch (addError: any) {
+            const reason = addError.message || "Unknown error occurred";
+            failedParticipants.push({ phoneNumber: participant, reason });
+            logger.error(`Failed to add ${participant} to group ${targetGroupName}: ${reason}`, addError);
+          }
+        }
+
+        // Add invalid participants to failed list
+        for (const invalid of invalidParticipants) {
+          failedParticipants.push({ 
+            phoneNumber: invalid, 
+            reason: "Number not registered on WhatsApp" 
+          });
+        }
+
+        const response = {
+          success: true,
+          groupId: targetGroupId,
+          groupName: targetGroupName,
+          addedParticipants,
+          failedParticipants,
+          message: `Successfully added ${addedParticipants.length} participant(s) to the group`,
+          timestamp: new Date().toISOString()
+        };
+
+        logger.info(`Group operation completed: ${addedParticipants.length} added, ${failedParticipants.length} failed`);
+        res.json(response);
+
+      } catch (groupError: any) {
+        logger.error(`Failed to add participants to group: ${groupError.message}`);
+        res.status(500).json({
+          success: false,
+          error: "Failed to add participants to group",
+          details: groupError.message,
+          groupId: targetGroupId,
+          groupName: targetGroupName,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+    } catch (error: any) {
+      logger.error(`Add to group error: ${error.message}`);
+      res.status(500).json({
+        success: false,
+        error: "Server error occurred",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // ============================================================================
+  // NUMBER VERIFICATION ENDPOINTS
+  // ============================================================================
+
+  /**
+   * @swagger
+   * /verify-number:
+   *   post:
+   *     summary: Verificar número de WhatsApp
+   *     tags: [Verification]
+   *     description: Verifica si un número de teléfono está registrado en WhatsApp
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [phoneNumber]
+   *             properties:
+   *               phoneNumber:
+   *                 type: string
+   *                 description: Número de teléfono con código de país
+   *                 example: "+1234567890"
+   *           examples:
+   *             verify_number:
+   *               summary: Verificar número individual
+   *               value:
+   *                 phoneNumber: "+1234567890"
+   *     responses:
+   *       200:
+   *         description: Verificación exitosa
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 phoneNumber:
+   *                   type: string
+   *                   example: "+1234567890"
+   *                 isRegistered:
+   *                   type: boolean
+   *                   example: true
+   *                 numberId:
+   *                   type: string
+   *                   example: "1234567890@c.us"
+   *                 formatted:
+   *                   type: string
+   *                   example: "+1 (234) 567-890"
+   *                 isValid:
+   *                   type: boolean
+   *                   example: true
+   *                 country:
+   *                   type: string
+   *                   example: "US"
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                   example: "2025-10-06T23:30:00Z"
+   *       400:
+   *         description: Número de teléfono requerido
+   *       500:
+   *         description: Error en la verificación o cliente WhatsApp no listo
+   */
+  expressApp.post("/verify-number", async (req, res) => {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number is required",
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    try {
+      // Importar funciones de utilidad
+      const { formatRecipient } = await import("./recipientFormattingUtils");
+      const { cleanAndFormatPhoneNumber } = await import("./cleanAndFormatPhoneNumber");
+      
+      // Formatear número
+      const formattedNumber = formatRecipient(phoneNumber);
+      const cleanedNumber = cleanAndFormatPhoneNumber(phoneNumber);
+      
+      // Obtener cliente WhatsApp
+      const client = getWhatsAppClient();
+      if (!client) {
+        return res.status(500).json({
+          success: false,
+          error: "WhatsApp client not ready",
+          phoneNumber,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Verificar número en WhatsApp
+      let isRegistered = false;
+      let numberId = null;
+      let errorDetails = null;
+      
+      try {
+        numberId = await client.getNumberId(formattedNumber);
+        isRegistered = !!numberId;
+        
+        logger.info(`Number verification: ${phoneNumber} -> ${isRegistered ? 'REGISTERED' : 'NOT REGISTERED'}`);
+      } catch (verifyError: any) {
+        logger.warn(`Number verification failed: ${verifyError.message}`);
+        isRegistered = false;
+        errorDetails = verifyError.message;
+      }
+
+      // Respuesta estructurada
+      const response = {
+        success: true,
+        phoneNumber,
+        isRegistered,
+        numberId: numberId?._serialized || null,
+        formatted: cleanedNumber.cleanedPhoneNumber,
+        isValid: cleanedNumber.isValid,
+        errorDetails: isRegistered ? null : errorDetails,
+        timestamp: new Date().toISOString()
+      };
+
+      logger.info(`Number verification completed: ${phoneNumber} -> ${isRegistered}`);
+      res.json(response);
+
+    } catch (error: any) {
+      logger.error(`Number verification error: ${error.message}`);
+      res.status(500).json({
+        success: false,
+        error: "Server error during verification",
+        details: error.message,
+        phoneNumber,
         timestamp: new Date().toISOString()
       });
     }
