@@ -4,17 +4,18 @@ import { useState } from "react";
 import HeadlessBotCard from "./headless-bot-card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Settings, Activity, ArrowLeft, Plus, RefreshCw, Database, MonitorSpeaker } from "lucide-react";
+import { Settings, Activity, ArrowLeft, Plus, RefreshCw, Database, MonitorSpeaker, Webhook } from "lucide-react";
 import { DeploymentManager } from "./deployment-manager";
 import ApiDocsPage from "../app/api-docs/page";
 import { AllBotsDataInspector } from "./bot-data-inspector";
 import { MessageMonitoringDashboard } from "./message-monitoring-dashboard";
+import { WebhookMonitoringDashboard } from "./webhook-monitoring-dashboard";
 import { useBotsStatus } from "@/lib/contexts/BotsStatusContext";
 
 export default function BotDashboard() {
   const { bots, isLoading, error, lastUpdated, refreshBots } = useBotsStatus();
   const [showSpawner, setShowSpawner] = useState(false);
-  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "monitoring" | "api-docs" | "debug">("bots");
+  const [activeTab, setActiveTab] = useState<"bots" | "deployments" | "monitoring" | "webhooks" | "api-docs" | "debug">("bots");
 
   const handleDeleteBot = async (botId: string) => {
     // TODO: Implement delete functionality through context
@@ -25,12 +26,6 @@ export default function BotDashboard() {
 
   const handleAddBot = () => {
     setShowSpawner(true);
-  };
-
-  const handleBotCreated = () => {
-    console.log('Bot created callback');
-    setShowSpawner(false);
-    refreshBots();
   };
 
   return (
@@ -95,6 +90,19 @@ export default function BotDashboard() {
                 <div className="flex items-center gap-2">
                   <MonitorSpeaker className="h-4 w-4" />
                   Message Monitoring
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("webhooks")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "webhooks"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Webhook className="h-4 w-4" />
+                  Webhook Monitoring
                 </div>
               </button>
               <button
@@ -229,6 +237,18 @@ export default function BotDashboard() {
                 <h2 className="text-xl font-semibold">Message Monitoring</h2>
               </div>
               <MessageMonitoringDashboard />
+            </div>
+          ) : activeTab === "webhooks" ? (
+            // Webhook Monitoring Tab
+            <div className="space-y-6">
+              <WebhookMonitoringDashboard 
+                bots={bots.map(bot => ({
+                  BOT_ID: bot.id,
+                  BOT_NAME: bot.name,
+                  BOT_PORT: bot.apiPort || 7200,
+                  isReady: bot.status === 'online'
+                }))} 
+              />
             </div>
           ) : activeTab === "debug" ? (
             // Debug Data Tab
