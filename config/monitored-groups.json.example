@@ -1,0 +1,33 @@
+{
+  "_comment": "Example configuration file for monitored groups",
+  "_instructions": [
+    "1. Get the group ID by sending a message in the group and checking the bot logs",
+    "2. Add a new object to the array with your group configuration",
+    "3. Set 'enabled' to true to start monitoring",
+    "4. Configure one or more webhook URLs to receive messages",
+    "5. Optionally configure includeAttachments and includeMetadata"
+  ],
+  "examples": [
+    {
+      "groupId": "1234567890-1234567890@g.us",
+      "groupName": "Team Chat",
+      "webhooks": [
+        "https://your-server.com/webhook/messages",
+        "https://backup-server.com/webhook/whatsapp"
+      ],
+      "enabled": true,
+      "includeAttachments": true,
+      "includeMetadata": true
+    },
+    {
+      "groupId": "9876543210-9876543210@g.us",
+      "groupName": "Support Group",
+      "webhooks": [
+        "https://support.example.com/api/whatsapp-messages"
+      ],
+      "enabled": false,
+      "includeAttachments": false,
+      "includeMetadata": true
+    }
+  ]
+}

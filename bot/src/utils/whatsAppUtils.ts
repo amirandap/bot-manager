@@ -15,6 +15,7 @@ import { EnvironmentConfig } from "../types/types";
 import { setClient } from "../config/clientExporter";
 import { qrAutoRestartController } from "../controllers/AutoRestartController";
 import { cacheManager } from "../services/CacheManager";
+import { groupWebhookService } from "../services/GroupWebhookService";
 
 // State management
 let whatsappClient: Client | null = null;
@@ -392,6 +393,9 @@ export async function initializeWhatsAppClient(
         // Connect modern client to route exporter
         setClient(whatsappClient);
 
+        // Initialize Group Webhook Service
+        await initializeGroupWebhookMonitoring(whatsappClient!);
+
         try {
           const clientInfo = whatsappClient!.info;
           if (clientInfo) {
@@ -697,7 +701,7 @@ async function verifyLinuxConfiguration(): Promise<void> {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
         appVersion: navigator.appVersion,
-        oscpu: (navigator as any).oscpu || 'N/A'
+        oscpu: (navigator as { oscpu?: string }).oscpu || 'N/A'
       };
     });
     
@@ -1001,4 +1005,44 @@ export function startZombieDetection(): void {
       logger.warn(`Zombie detection error: ${error}`);
     }
   }, 5 * 60 * 1000); // Every 5 minutes
+}
+
+/**
+ * Initialize Group Webhook Monitoring
+ * Sets up message listener to forward messages from monitored groups to webhooks
+ */
+async function initializeGroupWebhookMonitoring(client: Client): Promise<void> {
+  try {
+    // Initialize the service
+    await groupWebhookService.initialize();
+    
+    const monitoredGroups = groupWebhookService.getMonitoredGroups();
+    logger.info(`📡 Group Webhook Monitoring initialized with ${monitoredGroups.length} monitored groups`);
+    
+    // Log enabled groups
+    const enabledGroups = monitoredGroups.filter(g => g.enabled);
+    if (enabledGroups.length > 0) {
+      logger.info(`✅ Active monitored groups:`);
+      enabledGroups.forEach(group => {
+        logger.info(`   - ${group.groupName || group.groupId} → ${group.webhooks.length} webhook(s)`);
+      });
+    } else {
+      logger.info(`ℹ️ No active monitored groups. Add groups via API or config file.`);
+    }
+    
+    // Set up message listener
+    client.on('message', async (message) => {
+      try {
+        // Process message for webhook forwarding
+        await groupWebhookService.processMessage(message);
+      } catch (error) {
+        logger.error(`Error processing message for webhooks: ${error}`);
+      }
+    });
+    
+    logger.info('✅ Message listener registered for group webhook forwarding');
+  } catch (error) {
+    logger.error(`Failed to initialize Group Webhook Monitoring: ${error}`);
+    // Don't throw - allow bot to continue even if webhook monitoring fails
+  }
 }

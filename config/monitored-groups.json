@@ -1,0 +1,12 @@
+[
+  {
+    "groupId": "EXAMPLE_GROUP_ID@g.us",
+    "groupName": "Grupo de Ejemplo",
+    "webhooks": [
+      "https://tu-servidor.com/webhook/messages"
+    ],
+    "enabled": false,
+    "includeAttachments": true,
+    "includeMetadata": true
+  }
+]

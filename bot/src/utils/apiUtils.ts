@@ -27,6 +27,7 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
   // Import routes only when needed
   const getGroupsRouter = (await import("../routes/getGroups")).default;
   const notificationsRouter = (await import("../routes/notifications")).default;
+  const monitoredGroupsRouter = (await import("../routes/monitoredGroups")).default;
   const { addRequestId, logRequest } = await import("../middleware/botMiddleware");
 
   // Create Express app
@@ -599,6 +600,8 @@ export async function setupExpressAPI(config: BotConfig): Promise<express.Applic
 
   // Endpoint /get-groups está documentado en su archivo de ruta: /src/routes/getGroups.ts
   expressApp.use("/get-groups", getGroupsRouter);
+  // CRUD and management for monitored groups and webhooks
+  expressApp.use("/api/monitored-groups", monitoredGroupsRouter);
 
   /**
    * @swagger
