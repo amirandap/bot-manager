@@ -39,9 +39,12 @@ The bot spawning feature allows you to create and start new WhatsApp bot instanc
 
 ```bash
 # From bot/.env (defaults)
-FALLBACKNUMBER=18298870174
+FALLBACKNUMBER=+10000000000
 CHROME_PATH=/usr/bin/google-chrome
 GMAIL_USER=your-email@gmail.com
+GMAIL_PASS=your-app-password
+MAIL_RECIPIENT=recipient@example.com
+USER_API_BASE_URL=https://api.example.com
 
 # Generated per bot instance
 BOT_ID=whatsapp-bot-1234567890

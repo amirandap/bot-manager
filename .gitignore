@@ -16,18 +16,36 @@ build/
 out/
 *.tsbuildinfo
 
-# Environment files
-.env.local
-.env.development*
-.env.production*
-.env.dev*
-.env.test*
-.env.*.local
+# Environment files. Commit templates only (.env.example).
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.env
 
-# Personal/sensitive environment files (these should be ignored)
-.env.personal
-.env.secrets
-.env.custom
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+
+# Credential and secret config files
+credentials.json
+**/credentials.json
+client_secret*.json
+service-account*.json
+serviceAccount*.json
+*-credentials.json
+secrets.json
+**/secrets.json
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
 
 # Logs
 npm-debug.log*

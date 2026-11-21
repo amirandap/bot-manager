@@ -37,10 +37,26 @@ echo "├── bot/              # Single bot binary (shared)"
 echo "├── backend/          # API server"
 echo "└── frontend/         # Dashboard"
 
+# Root environment is gitignored. Start from the placeholder template.
+if [ ! -f .env ]; then
+    if [ -f .env.example ]; then
+        cp .env.example .env
+        echo "✅ Created .env from .env.example — fill in local values, do not commit it"
+    else
+        echo "⚠️  .env.example not found. Create a root .env before starting the app."
+    fi
+else
+    echo "ℹ️  Root .env already exists"
+fi
+
 # Setup bot directory
 echo "🤖 Setting up bot dependencies..."
 if [ -d "bot" ] && [ -f "bot/package.json" ]; then
     cd bot
+    if [ ! -f .env ] && [ -f .env.example ]; then
+        cp .env.example .env
+        echo "✅ Created bot/.env from bot/.env.example"
+    fi
     npm install
     echo "✅ Bot dependencies installed"
     cd ..

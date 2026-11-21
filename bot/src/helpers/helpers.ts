@@ -28,6 +28,10 @@ export interface User {
 
 export const fetchUserData = async (discorduserid: string) => {
   try {
+    if (!URL) {
+      throw new Error("USER_API_BASE_URL is not set");
+    }
+
     const response = await fetch(
       `${URL}/consultaUser/private?user_discord_id=${discorduserid}`,
       {
