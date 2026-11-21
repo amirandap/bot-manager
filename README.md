@@ -159,17 +159,12 @@ The system uses a dynamic JSON configuration file that automatically updates wit
 
 ### 🌍 Environment Variables
 
-**Backend (.env):**
+Secrets and machine-specific settings live in a gitignored `.env`. The committed template is `.env.example` (names and placeholders only). Bot-instance variables (`FALLBACKNUMBER`, `GMAIL_USER`, `GMAIL_PASS`, `MAIL_RECIPIENT`, `USER_API_BASE_URL`) are documented in `bot/.env.example`.
 
 ```bash
-PORT=3001                          # Backend server port
-FALLBACK_API_HOST=http://localhost # Default host for empty apiHost values
-```
-
-**Frontend (.env.local):**
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001  # Backend API endpoint
+cp .env.example .env
+cp bot/.env.example bot/.env
+# Then edit both files locally. Do not commit them.
 ```
 
 ### 🔌 Port Configuration
@@ -184,11 +179,15 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3001  # Backend API endpoint
 
 ### 1. Environment Setup
 
-Configure your environment variables:
+Copy the templates and fill in local values. `.env` is gitignored; only the example files belong in git.
 
 ```bash
-# Edit the main environment file with your configuration
+cp .env.example .env
+cp bot/.env.example bot/.env
+
+# Edit with your configuration. Do not commit these files.
 nano .env
+nano bot/.env
 ```
 
 ### 2. Bot Configuration

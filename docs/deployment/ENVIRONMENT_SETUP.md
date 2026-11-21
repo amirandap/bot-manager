@@ -8,9 +8,9 @@ The project now has a clean, simplified environment configuration with only the 
 
 ### Root Directory
 
-- **`.env`** - Development environment (used by `npm run dev`)
-- **`.env.production`** - Production environment (used by PM2)
-- **`.env.example`** - Template/documentation file
+- **`.env.example`** - Committed template (names and placeholders only)
+- **`.env`** - Local development environment (gitignored; copy from `.env.example`)
+- **`.env.production`** - Local production environment (gitignored; copy from `.env.example`)
 
 ### Bot Directory (unchanged)
 
@@ -19,12 +19,19 @@ The project now has a clean, simplified environment configuration with only the 
 
 ## Usage
 
+Create local env files from the templates. Do not commit them.
+
+```bash
+cp .env.example .env
+cp bot/.env.example bot/.env
+```
+
 ### Development
 
 When you run `npm run dev`, the system automatically loads `.env` from the root directory.
 
-- Backend uses dotenv to load from `../env`
-- Frontend (Next.js) automatically loads `.env` from the project root
+- Backend loads the repository root `.env`
+- Frontend (Next.js) loads env files from `frontend/` when started with `npm run dev`
 
 ### Production
 
@@ -59,17 +66,19 @@ When you deploy with PM2 using `ecosystem.config.js`, it loads `.env.production`
 
 ✅ **Tracked Files** (committed to git):
 
-- `.env` (development config)
-- `.env.production` (production template)
-- `.env.example` (documentation)
+- `.env.example` (placeholders only)
+- `bot/.env.example` (placeholders only)
 
 ❌ **Ignored Files** (not committed):
 
+- `.env`
+- `.env.production`
+- `.env.development`
+- `.env.dev`
 - `.env.local`
-- `.env.*.local`
-- `.env.personal`
-- `.env.secrets`
-- `.env.custom`
+- `.env.*` except `*.example`
+- `*.env`
+- Private keys (`*.pem`, `*.key`, `id_rsa`, …) and credential JSON files
 
 ## Important Notes
 
